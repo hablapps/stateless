@@ -1,0 +1,2 @@
+# phoropter
+Generic optic library
