@@ -6,20 +6,19 @@ import scalaz._, Scalaz._
 
 trait Traversal[P[_], Q[_], A] {
 
-  // Generic Van Laarhoven?
+  implicit val MS: MonadState[Q, A]
+
   def modifyF[O: Monoid](qo: Q[O]): P[O]
 
-  def getAll(implicit MS: MonadState[Q, A]): P[List[A]] =
-    modifyF[List[A]](MS.gets(_.point[List]))
+  // derived methods
 
-  def set(a: A)(implicit MS: MonadState[Q, A]): P[Unit] =
-    modifyF[Unit](MS.put(a))
+  def getAll: P[List[A]] = modifyF[List[A]](MS.gets(_.point[List]))
 
-  def modify(f: A => A)(implicit MS: MonadState[Q, A]): P[Unit] =
-    modifyF[Unit](MS.modify(f))
+  def set(a: A): P[Unit] = modifyF[Unit](MS.put(a))
 
-  def count(implicit MS: MonadState[Q, A]): P[Int] =
-    modifyF[Int](MS.gets(const(1)))
+  def modify(f: A => A): P[Unit] = modifyF[Unit](MS.modify(f))
+
+  def count: P[Int] = modifyF[Int](MS.gets(const(1)))
 }
 
 object Traversal {

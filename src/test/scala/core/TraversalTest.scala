@@ -10,6 +10,8 @@ class TraversalTest extends FlatSpec with Matchers {
   case class Person(name: String, last: String, age: Int)
 
   val txtTr = new Traversal[State[Person, ?], State[String, ?], String] {
+    implicit val MS: MonadState[State[String, ?], String] =
+      StateT.stateTMonadState[String, Id.Id]
     def modifyF[O: Monoid](
         qo: State[String, O]): State[Person, O] = State { p =>
       val (name2, on) = qo(p.name)
