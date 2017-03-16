@@ -6,24 +6,23 @@ import scalaz._, Scalaz._
 
 trait Traversal[P[_], Q[_], A] {
 
-  implicit val MS: MonadState[Q, A]
+  val G: Getter[Q, A]
+  val M: Modifiable[Q, A]
+  implicit val F: Functor[Q]
 
-  def modifyF[O: Monoid](qo: Q[O]): P[O]
+  def modifyF[O](qo: Q[O]): P[List[O]]
 
   // derived methods
 
-  def getAll: P[List[A]] = modifyF[List[A]](MS.gets(_.point[List]))
+  def getAll: P[List[A]] = modifyF(G.get)
 
-  def set(a: A): P[Unit] = modifyF[Unit](MS.put(a))
+  def getsAll[B](f: A => B): P[List[B]] = modifyF(G.gets(f))
 
-  def modify(f: A => A): P[Unit] = modifyF[Unit](MS.modify(f))
+  def set(a: A)(implicit F2: Functor[P]): P[Unit] = modifyF(M.put(a)).as(())
 
-  def count: P[Int] = modifyF[Int](MS.gets(const(1)))
-}
+  def modify(f: A => A)(implicit F2: Functor[P]): P[Unit] =
+    modifyF(M.modify(f)).as(())
 
-object Traversal {
-
-  // XXX: Is this monoid such a crap as it seems?
-  implicit val unitMonoid: Monoid[Unit] =
-    Monoid.instance[Unit]((_, _) => (), ())
+  def count(implicit F2: Functor[P]): P[Int] =
+    modifyF(G.gets(const(1))).map(_.sum)
 }
