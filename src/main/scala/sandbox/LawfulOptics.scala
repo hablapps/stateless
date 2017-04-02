@@ -7,34 +7,35 @@ object LawfulOptics {
 
   trait Lens[P[_], Q[_], A] extends Monad[P] {
 
-    val MS: MonadState[Q, A]
-    val lift: Q ~> P
+    implicit val MS: MonadState[Q, A]
+    val hom: Q ~> P // monad homomorphism
 
     /* derived algebra */
 
-    def get: P[A] = lift(MS.get)
-    def set(a: A): P[Unit] = lift(MS.put(a))
+    def _get: P[A] = hom(MS.get)
+    def _set(a: A): P[Unit] = hom(MS.put(a))
 
     /* laws */
 
+    import MS.{ get , put }
     implicit val _: Monad[P] = this
 
-    def GG = (get >>= (a1 => get >>= (a2 => (a1, a2).point[P]))) <===>
-             (get >>= (a => (a, a).point[P]))
-    def GP = (get >>= set) <===> ().point[P]
-    def PG = set(a1) >> get <===> (set(a1) >> a1.point[P])
-    def PP = set(a1) >> set(a2) <===> set(a2)
+    def GG = hom(get >>= (a1 => get >>= (a2 => (a1, a2).point[Q]))) <===>
+             hom(get >>= (a => (a, a).point[Q]))
+    def GP = hom(get >>= put) <===> ().point[P]
+    def PG = hom(put(a1) >> get) <===> (hom(put(a1)) >> a1.point[P])
+    def PP = hom(put(a1) >> put(a2)) <===> hom(put(a2))
   }
 
   trait Prism[P[_], Q[_], A] extends Monad[P] {
 
     implicit val MS: MonadState[Q, A]
-    val lift: Q ~> λ[x => P[Option[x]]]
+    val hom: Q ~> λ[x => P[Option[x]]]
 
     /* derived algebra */
 
-    def getOpt: P[Option[A]] = lift(MS.get)
-    def set(a: A): P[Unit] = lift(MS.put(a)).map(_.get) // safe by laws
+    def getOpt: P[Option[A]] = hom(MS.get)
+    def set(a: A): P[Unit] = hom(MS.put(a)).map(_.get) // safe by laws
 
     /* laws */
 
@@ -50,12 +51,12 @@ object LawfulOptics {
   trait Optional[P[_], Q[_], A] extends Monad[P] {
 
     implicit val MS: MonadState[Q, A]
-    val lift: Q ~> λ[x => P[Option[x]]]
+    val hom: Q ~> λ[x => P[Option[x]]]
 
     /* derived algebra */
 
-    def getOpt: P[Option[A]] = lift(MS.get)
-    def set(a: A): P[Option[Unit]] = lift(MS.put(a))
+    def getOpt: P[Option[A]] = hom(MS.get)
+    def set(a: A): P[Option[Unit]] = hom(MS.put(a))
 
     /* laws */
 
@@ -72,16 +73,16 @@ object LawfulOptics {
   trait Traversal[P[_], Q[_], A] extends Monad[P] {
 
     implicit val MS: MonadState[Q, A]
-    val lift: Q ~> λ[x => P[List[x]]]
+    val hom: Q ~> λ[x => P[List[x]]]
 
     /* derived algebra */
 
-    def getAll: P[List[A]] = lift(MS.get)
-    // XXX: `setAll` can't be implemented in terms of `lift`. On the other hand,
+    def getAll: P[List[A]] = hom(MS.get)
+    // XXX: `setAll` can't be implemented in terms of `hom`. On the other hand,
     // it's not even contained in the `Monocle` api...
     // def setAll(as: List[A]): P[Unit] = ???
-    def set(a: A): P[Unit] = lift(MS.put(a)).as(())
-    def modify(f: A => A): P[Unit] = lift(MS.modify(f)).as(())
+    def set(a: A): P[Unit] = hom(MS.put(a)).as(())
+    def modify(f: A => A): P[Unit] = hom(MS.modify(f)).as(())
 
     /* laws */
 
@@ -97,11 +98,11 @@ object LawfulOptics {
   trait Getter[P[_], Q[_], A] extends Monad[P] {
 
     implicit val MR: MonadReader[Q, A]
-    val lift: Q ~> P
+    val hom: Q ~> P
 
     /* derived algebra */
 
-    def get: P[A] = lift(MR.ask)
+    def get: P[A] = hom(MR.ask)
 
     /* laws */
 
@@ -114,11 +115,11 @@ object LawfulOptics {
   trait Fold[P[_], Q[_], A] extends Monad[P] {
 
     implicit val MR: MonadReader[Q, A]
-    val lift: Q ~> λ[x => P[List[x]]]
+    val hom: Q ~> λ[x => P[List[x]]]
 
     /* derived algebra */
 
-    def getAll: P[List[A]] = lift(MR.ask)
+    def getAll: P[List[A]] = hom(MR.ask)
 
     /* laws */
 
@@ -131,11 +132,11 @@ object LawfulOptics {
   trait Setter[P[_], Q[_], A] extends Monad[P] {
 
     implicit val MS: MonadState[Q, A]
-    val lift: Q ~> P
+    val hom: Q ~> P
 
     /* derived algebra */
 
-    def modify(f: A => A): P[Unit] = lift(MS.modify(f))
+    def modify(f: A => A): P[Unit] = hom(MS.modify(f))
     def set(a: A): P[Unit] = modify(_ => a)
 
     /* laws */
@@ -156,22 +157,22 @@ object LawfulOptics {
 
     val MSL: MonadState[L, A]
     val MSR: MonadState[R, B]
-    val liftL: L ~> P
-    val liftR: R ~> P
+    val homL: L ~> P
+    val homR: R ~> P
 
     /* derived algebra */
 
-    def getL: P[A] = liftL(MSL.get)
-    def setL(a: A): P[Unit] = liftL(MSL.put(a))
-    def getR: P[B] = liftR(MSR.get)
-    def setR(b: B): P[Unit] = liftR(MSR.put(b))
+    def getL: P[A] = homL(MSL.get)
+    def setL(a: A): P[Unit] = homL(MSL.put(a))
+    def getR: P[B] = homR(MSR.get)
+    def setR(b: B): P[Unit] = homR(MSR.put(b))
 
     /* laws */
 
     // TODO: entangled state monads paper
   }
 
-  /* Indexed Optics */
+  /* TODO: Indexed Optics & Polymorphic Optics */
 
   /* Law Syntax Stuff */
 
