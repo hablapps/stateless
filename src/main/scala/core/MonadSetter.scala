@@ -5,7 +5,7 @@ import scalaz.{ Monad, MonadState, ~> }
 
 trait MonadSetter[P[_], Q[_], A] extends Monad[P] {
 
-  implicit val MS: MonadState[Q, A]
+  implicit val MS: MonadState[Q, A] // should be restricted to `MonadPut`
   val hom: Q ~> P
 
   /* derived algebra */

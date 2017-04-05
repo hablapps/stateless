@@ -1,9 +1,8 @@
 package org.hablapps.phoropter
 package state
 
-import scalaz.{ Reader, ~> }
-import scalaz.syntax.functor._
-import scalaz.std.tuple._
+import scalaz.{ Monad, ReaderT, ~> }
+import scalaz.Kleisli.kleisliMonadReader
 
 import monocle.Getter
 
@@ -11,21 +10,22 @@ import core.MonadGetter
 
 trait StateGetter {
 
-  def fromGetter[S, A](gt: Getter[S, A]): MonadGetter[Reader[S, ?], Reader[A, ?], A] = {
-    new MonadGetter[Reader[S, ?], Reader[A, ?], A] {
+  def fromGetter[F[_]: Monad, S, A](
+      gt: Getter[S, A]): MonadGetter[ReaderT[F, S, ?], ReaderT[F, A, ?], A] = {
+    new MonadGetter[ReaderT[F, S, ?], ReaderT[F, A, ?], A] {
 
-      def point[X](x: => X) = readerMonad.point(x)
+      def point[X](x: => X) = kleisliMonadReader.point(x)
 
-      def bind[X, Y](fx: Reader[S, X])(f: X => Reader[S, Y]) =
-        readerMonad.bind(fx)(f)
+      def bind[X, Y](fx: ReaderT[F, S, X])(f: X => ReaderT[F, S, Y]) =
+        kleisliMonadReader.bind(fx)(f)
 
-      // TODO: dummy implementation
-      def local[X](f: A => A)(fx: Reader[S, X]): Reader[S, X] = fx
+      // FIXME: dummy implementation
+      def local[X](f: A => A)(fx: ReaderT[F, S, X]) = fx
 
-      implicit val MR = readerMonad
+      implicit val MR = kleisliMonadReader
 
-      val hom: Reader[A, ?] ~> Reader[S, ?] = λ[Reader[A, ?] ~> Reader[S, ?]] {
-        ra => Reader(s => ra.run(gt.get(s)))
+      val hom = λ[ReaderT[F, A, ?] ~> ReaderT[F, S, ?]] {
+        ra => ReaderT(s => ra.run(gt.get(s)))
       }
     }
   }

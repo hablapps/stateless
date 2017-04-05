@@ -1,9 +1,9 @@
 package org.hablapps.phoropter
 package state
 
-import scalaz.{ State, ~> }
-import scalaz.syntax.functor._
-import scalaz.std.tuple._
+import scalaz.{ Monad, StateT, ~> }
+import StateT.stateTMonadState
+import scalaz.syntax.monad._
 
 import monocle.Prism
 
@@ -11,23 +11,23 @@ import core.MonadPrism
 
 trait StatePrism {
 
-  def fromPrism[S, A](pr: Prism[S, A]): MonadPrism[State[S, ?], State[A, ?], A] = {
-    new MonadPrism[State[S, ?], State[A, ?], A] {
+  def fromPrism[F[_]: Monad, S, A](
+      pr: Prism[S, A]): MonadPrism[StateT[F, S, ?], StateT[F, A, ?], A] = {
+    new MonadPrism[StateT[F, S, ?], StateT[F, A, ?], A] {
 
-      def point[X](x: => X) = stateMonad.point(x)
+      def point[X](x: => X) = stateTMonadState.point(x)
 
-      def bind[X, Y](fx: State[S, X])(f: X => State[S, Y]) =
-        stateMonad.bind(fx)(f)
+      def bind[X, Y](fx: StateT[F, S, X])(f: X => StateT[F, S, Y]) =
+        stateTMonadState.bind(fx)(f)
 
-      implicit val MS = stateMonad
+      implicit val MS = stateTMonadState
 
-      val hom: State[A, ?] ~> λ[x => State[S, Option[x]]] =
-        new (State[A, ?] ~> λ[x => State[S, Option[x]]]) {
-          def apply[X](sa: State[A, X]): State[S, Option[X]] =
-            State(s => pr.getOption(s).map(sa.run).fold((s, Option.empty[X])) {
-              case (a, o) => (pr.reverseGet(a), Option(o))
-            })
-        }
+      val hom = new (StateT[F, A, ?] ~> λ[x => StateT[F, S, Option[x]]]) {
+        def apply[X](sa: StateT[F, A, X]): StateT[F, S, Option[X]] =
+          StateT(s => pr.getOption(s).map(sa.run).fold(
+            (s, Option.empty[X]).point[F])(
+            _.map { case (a, o) => (pr.reverseGet(a), Option(o)) }))
+      }
     }
   }
 }

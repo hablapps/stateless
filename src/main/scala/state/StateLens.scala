@@ -1,9 +1,8 @@
 package org.hablapps.phoropter
 package state
 
-import scalaz.{ State, ~> }
-import scalaz.syntax.functor._
-import scalaz.std.tuple._
+import scalaz.{ Monad, StateT, ~> }
+import StateT.stateTMonadState
 
 import monocle.Lens
 
@@ -11,21 +10,22 @@ import core.MonadLens
 
 trait StateLens {
 
-  def fromLens[S, A](ln: Lens[S, A]): MonadLens[State[S, ?], State[A, ?], A] = {
-    new MonadLens[State[S, ?], State[A, ?], A] {
+  def fromLens[F[_]: Monad, S, A](
+      ln: Lens[S, A]): MonadLens[StateT[F, S, ?], StateT[F, A, ?], A] = {
+    new MonadLens[StateT[F, S, ?], StateT[F, A, ?], A] {
 
-      def point[X](x: => X) = stateMonad.point(x)
+      def point[X](x: => X) = stateTMonadState.point(x)
 
-      def bind[X, Y](fx: State[S, X])(f: X => State[S, Y]) =
-        stateMonad.bind(fx)(f)
+      def bind[X, Y](p: StateT[F, S, X])(f: X => StateT[F, S, Y]) =
+        stateTMonadState.bind(p)(f)
 
-      implicit val MS = stateMonad
+      def init = hom(MS.get)
 
-      val hom: State[A, ?] ~> State[S, ?] = λ[State[A, ?] ~> State[S, ?]] {
-        sa => State(s => sa.xmap(ln.set(_)(s))(ln.get)(s))
+      implicit val MS = stateTMonadState
+
+      val hom = λ[StateT[F, A, ?] ~> StateT[F, S, ?]] {
+        sa => StateT(s => sa.xmap(ln.set(_)(s))(ln.get)(s))
       }
-
-      def init = get
     }
   }
 }
