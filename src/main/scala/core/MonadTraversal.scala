@@ -15,6 +15,8 @@ trait MonadTraversal[P[_], Q[_], A] extends Monad[P] {
   def set(a: A): P[Unit] = map(hom(MS.put(a)))(_ => ())
 
   def modify(f: A => A): P[Unit] = map(hom(MS.modify(f)))(_ => ())
+
+  def count: P[Int] = map(hom(MS.point(())))(_.length)
 }
 
 object MonadTraversal {
