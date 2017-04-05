@@ -17,19 +17,9 @@ trait StateSetter {
   // ignores the attached output once applied `State[A, ?]` over the element
   // `A`, so we are using a `Lens` instead.
   def fromSetter[F[_]: Monad, S, A](
-      ln: Lens[S, A]): MonadSetter[StateT[F, S, ?], StateT[F, A, ?], A] = {
-    new MonadSetter[StateT[F, S, ?], StateT[F, A, ?], A] {
-
-      def point[X](x: => X) = stateTMonadState.point(x)
-
-      def bind[X, Y](fx: StateT[F, S, X])(f: X => StateT[F, S, Y]) =
-        stateTMonadState.bind(fx)(f)
-
-      implicit val MS = stateTMonadState
-
-      val hom = λ[StateT[F, A, ?] ~> StateT[F, S, ?]] {
+      ln: Lens[S, A]): MonadSetter[StateT[F, S, ?], StateT[F, A, ?], A] =
+    MonadSetter[StateT[F, S, ?], StateT[F, A, ?], A](
+      λ[StateT[F, A, ?] ~> StateT[F, S, ?]] {
         sa => StateT(s => sa.xmap(ln.set(_)(s))(ln.get)(s))
-      }
-    }
-  }
+      })
 }
