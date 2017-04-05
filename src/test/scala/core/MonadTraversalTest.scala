@@ -3,7 +3,7 @@ package test
 
 import org.scalatest._
 
-import scalaz.{ Lens => _, _ }, Scalaz._
+import scalaz._, Scalaz._
 
 import monocle.Traversal
 

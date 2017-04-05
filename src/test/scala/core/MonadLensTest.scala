@@ -3,7 +3,7 @@ package test
 
 import org.scalatest._
 
-import scalaz.{ Lens => _, IndexedStateT => IStateT, _ }, Scalaz._, Id.Id
+import scalaz._, Scalaz._
 
 import monocle.macros.Lenses
 import monocle.Traversal
