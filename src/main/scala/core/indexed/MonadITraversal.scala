@@ -18,9 +18,9 @@ trait MonadITraversal[P[_], Q[_], I, A] extends Monad[P] {
 
   def modify(f: A => A): P[Unit] = map(hom(_ => MS.modify(f)))(_ => ())
 
-  def keys: P[List[I]] = hom(MS.point(_))
+  def indexes: P[List[I]] = hom(MS.point(_))
 
-  def values: P[List[A]] = hom(_ => MS.get)
+  def foci: P[List[A]] = hom(_ => MS.get)
 
   def collect[O](qo: Q[O]): P[List[O]] = hom(_ => qo)
 }
