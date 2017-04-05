@@ -2,7 +2,6 @@ package org.hablapps.phoropter
 package state
 
 import scalaz._, Scalaz._
-import StateT.stateTMonadState
 
 import monocle.Traversal
 

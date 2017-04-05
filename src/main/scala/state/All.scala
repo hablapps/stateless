@@ -8,3 +8,4 @@ object all extends StateFold
   with StatePrism
   with StateSetter
   with StateTraversal
+  with indexed.StateMap

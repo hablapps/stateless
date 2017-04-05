@@ -2,7 +2,6 @@ package org.hablapps.phoropter
 package state
 
 import scalaz.{ Monad, StateT, ~> }
-import StateT.stateTMonadState
 import scalaz.syntax.monad._
 
 import monocle.Prism

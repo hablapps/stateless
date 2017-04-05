@@ -2,7 +2,6 @@ package org.hablapps.phoropter
 package state
 
 import scalaz.{ Monad, StateT, ~> }
-import StateT.stateTMonadState
 import scalaz.syntax.functor._
 
 import monocle.Lens
@@ -19,7 +18,7 @@ trait StateSetter {
   def fromSetter[F[_]: Monad, S, A](
       ln: Lens[S, A]): MonadSetter[StateT[F, S, ?], StateT[F, A, ?], A] =
     MonadSetter[StateT[F, S, ?], StateT[F, A, ?], A](
-      λ[StateT[F, A, ?] ~> StateT[F, S, ?]] {
-        sa => StateT(s => sa.xmap(ln.set(_)(s))(ln.get)(s))
+      λ[StateT[F, A, ?] ~> StateT[F, S, ?]] { sa =>
+        StateT(s => sa.xmap(ln.set(_)(s))(ln.get)(s))
       })
 }

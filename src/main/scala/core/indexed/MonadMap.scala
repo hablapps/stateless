@@ -8,9 +8,9 @@ import scalaz.syntax.functor._
 import op.At
 import At.syntax._
 
-trait MonadMap[P[_], Q[_], I, A] extends MonadITraversal[P, Q, I, A] {
+trait MonadMap[P[_], Q[_], R[_], I, A] extends MonadITraversal[P, Q, I, A] {
 
-  implicit val ta: At[P, Q, I, A]
+  implicit val ta: At[P, R, I, A]
 
   // additional algebra
 
@@ -18,7 +18,7 @@ trait MonadMap[P[_], Q[_], I, A] extends MonadITraversal[P, Q, I, A] {
 
   def remove(i: I): P[Unit] = putOpt(i)(None)
 
-  def pick[O](i: I)(qo: Q[O]): P[Option[O]] = at(i).hom(qo.map(Option(_)))
+  def pick[O](i: I)(ro: R[O]): P[O] = at(i).hom(ro)
 
   def get(i: I): P[Option[A]] = at(i).get
 
@@ -27,11 +27,11 @@ trait MonadMap[P[_], Q[_], I, A] extends MonadITraversal[P, Q, I, A] {
 
 object MonadMap {
 
-  def apply[P[_], Q[_], I, A](
+  def apply[P[_], Q[_], R[_], I, A](
       hom2: λ[x => I => Q[x]] ~> λ[x => P[List[x]]])(implicit
       ev0: Monad[P],
       ev1: MonadState[Q, A],
-      ev2: At[P, Q, I, A]) = new MonadMap[P, Q, I, A] {
+      ev2: At[P, R, I, A]) = new MonadMap[P, Q, R, I, A] {
     def point[X](x: => X) = ev0.point(x)
     def bind[X, Y](fx: P[X])(f: X => P[Y]): P[Y] = ev0.bind(fx)(f)
     implicit val MS = ev1
