@@ -1,24 +1,28 @@
 package org.hablapps.phoropter
 package state
 
-import scalaz.{ Monad, StateT, ~> }
+import scalaz.{ Const, Monad, State, StateT, ~> }
 import scalaz.syntax.functor._
+import scalaz.std.tuple._
 
-import monocle.Lens
+import monocle.{ Lens, Setter }
 
 import core.MonadSetter
 
 trait StateSetter {
 
-  // XXX: we can't create a `MonadSetter` from a `Getter`, because we need an
-  // `A` somehow. The only way to access an `A` with `Setter` is by means of
-  // `setter.modify`, that requires an `A => A` as input. However, that function
-  // ignores the attached output once applied `State[A, ?]` over the element
-  // `A`, so we are using a `Lens` instead.
+  // XXX: can't provide an instance for `StateT` by using only a `Setter`
+  def fromSetter[S, A](
+      st: Setter[S, A]): MonadSetter[State[S, ?], State[A, ?], A] =
+    MonadSetter[State[S, ?], State[A, ?], A](
+      λ[State[A, ?] ~> λ[x => State[S, Const[Unit, x]]]] { sa =>
+        State(s => (st.modify(sa.exec)(s), Const(())))
+      })
+
   def fromSetter[F[_]: Monad, S, A](
       ln: Lens[S, A]): MonadSetter[StateT[F, S, ?], StateT[F, A, ?], A] =
     MonadSetter[StateT[F, S, ?], StateT[F, A, ?], A](
-      λ[StateT[F, A, ?] ~> StateT[F, S, ?]] { sa =>
-        StateT(s => sa.xmap(ln.set(_)(s))(ln.get)(s))
+      λ[StateT[F, A, ?] ~> λ[x => StateT[F, S, Const[Unit, x]]]] { sa =>
+        StateT(s => sa.xmap(ln.set(_)(s))(ln.get)(s).map(_.map(_ => Const(()))))
       })
 }
