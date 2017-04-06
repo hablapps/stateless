@@ -18,11 +18,11 @@ trait MonadMap[P[_], Q[_], R[_], I, A] extends MonadITraversal[P, Q, I, A] {
 
   def remove(i: I): P[Unit] = putOpt(i)(None)
 
-  def pick[O](i: I)(ro: R[O]): P[O] = at(i).hom(ro)
+  def pick[O](i: I)(ro: R[O]): P[O] = at(i).hom[O](ro)
 
   def get(i: I): P[Option[A]] = at(i).get
 
-  private def putOpt(i: I)(oa: Option[A]): P[Unit] = at(i).hom(at(i).MS.put(oa))
+  private def putOpt(i: I)(oa: Option[A]): P[Unit] = at(i).hom(at(i).ev.put(oa))
 }
 
 object MonadMap {

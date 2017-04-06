@@ -10,7 +10,7 @@ import monocle.Traversal
 
 import org.hablapps.phoropter.state.all._
 
-class MonadLensTest extends FlatSpec with Matchers {
+class LensAlgTest extends FlatSpec with Matchers {
 
   @Lenses
   case class Person(name: String, last: String, age: Int, address: Address)

@@ -9,7 +9,7 @@ import monocle.Traversal
 
 import org.hablapps.phoropter.state.all._
 
-class MonadTraversalTest extends FlatSpec with Matchers {
+class TraversalAlgTest extends FlatSpec with Matchers {
 
   case class Person(name: String, last: String, age: Int)
 

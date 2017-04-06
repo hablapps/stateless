@@ -40,7 +40,7 @@ object LawfulOptics {
     def PP = hom(qput(a1) >> qput(a2)) <===> hom(qput(a2))
   }
 
-  // MonadPrism
+  // PrismAlg
   trait Prism[P[_], Q[_], A] extends Monad[P] {
 
     implicit val MS: MonadState[Q, A]
