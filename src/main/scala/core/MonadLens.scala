@@ -1,7 +1,7 @@
 package org.hablapps.phoropter
 package core
 
-import scalaz.{ Monad, MonadState, ~> }
+import scalaz.{ Const, Monad, MonadState, ~> }
 
 trait MonadLens[P[_], Q[_], A] extends MonadState[P, A] {
 
@@ -27,7 +27,7 @@ trait MonadLens[P[_], Q[_], A] extends MonadState[P, A] {
     MonadGetter(hom compose gt.hom)(this, gt.MR)
 
   def composeSetter[R[_], B](st: MonadSetter[Q, R, B]): MonadSetter[P, R, B] =
-    MonadSetter(hom compose st.hom)(this, st.MS)
+    MonadSetter(λ[R ~> λ[x => P[Const[Unit, x]]]](rx => hom(st.hom(rx))))(this, st.MS)
 
   def composeTraversal[R[_], B](tr: MonadTraversal[Q, R, B]): MonadTraversal[P, R, B] =
     MonadTraversal(λ[R ~> λ[x => P[List[x]]]](rx => hom(tr.hom(rx))))(this, tr.MS)

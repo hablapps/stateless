@@ -1,6 +1,7 @@
 package org.hablapps.phoropter
 
-import scalaz.{ MonadState, MonadReader }
+import scalaz.{ Const, Monad, MonadState, MonadReader, StateT }
+import scalaz.syntax.monad._
 
 package object `core` {
 

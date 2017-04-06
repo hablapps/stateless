@@ -49,7 +49,7 @@ trait MonadFold[P[_], Q[_], A] extends Monad[P] {
       map(hom(op.map(op.hom(rx))(_.toList)))(_.join)
     })(this, op.MS)
 
-  def composePrism[R[_], B](pr: MonadOptional[Q, R, B]): MonadFold[P, R, B] =
+  def composePrism[R[_], B](pr: MonadPrism[Q, R, B]): MonadFold[P, R, B] =
     MonadFold(λ[R ~> λ[x => P[List[x]]]] { rx =>
       map(hom(pr.map(pr.hom(rx))(_.toList)))(_.join)
     })(this, pr.MS)

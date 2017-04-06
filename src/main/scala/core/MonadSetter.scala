@@ -1,23 +1,24 @@
 package org.hablapps.phoropter
 package core
 
-import scalaz.{ Monad, MonadState, ~> }
+import scalaz.{ Const, Monad, MonadState, ~> }
 
 trait MonadSetter[P[_], Q[_], A] extends Monad[P] {
 
   implicit val MS: MonadState[Q, A] // should be restricted to `MonadPut`
-  val hom: Q ~> P
+  val hom: Q ~> λ[x => P[Const[Unit, x]]]
 
   /* derived algebra */
 
-  def modify(f: A => A): P[Unit] = hom(MS.modify(f))
+  def modify(f: A => A): P[Unit] = map(hom(MS.modify(f)))(_.getConst)
+
   def set(a: A): P[Unit] = modify(_ => a)
 }
 
 object MonadSetter {
 
   def apply[P[_], Q[_], A](
-      hom2: Q ~> P)(implicit
+      hom2: Q ~> λ[x => P[Const[Unit, x]]])(implicit
       ev0: Monad[P],
       ev1: MonadState[Q, A]) = new MonadSetter[P, Q, A] {
     def point[X](x: => X) = ev0.point(x)
