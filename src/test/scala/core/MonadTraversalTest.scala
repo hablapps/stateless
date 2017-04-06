@@ -33,7 +33,7 @@ class MonadTraversalTest extends FlatSpec with Matchers {
     txtTr.set("*").apply(john) shouldBe (john.copy(name = "*", last = "*"), ())
   }
 
-  it should "count" in {
-    txtTr.count.apply(john) shouldBe (john, 2)
+  it should "length" in {
+    txtTr.length.apply(john) shouldBe (john, 2)
   }
 }
