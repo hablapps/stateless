@@ -12,7 +12,7 @@ trait TraversalAlg[P[_], Q[_], A] extends OpticAlg[P, Q, A, MonadState, List]
 
   def getAll: P[List[A]] = hom(ev.get)
 
-  def modify(f: A => A): P[Unit] = map(hom(ev.modify(f)))(_ => ())
+  def modifyList(f: A => A): P[List[Unit]] = hom(ev.modify(f))
 
   /* composing algebras */
 

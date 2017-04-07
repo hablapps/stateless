@@ -13,7 +13,7 @@ trait OptionalAlg[P[_], Q[_], A] extends OpticAlg[P, Q, A, MonadState, Option]
 
   def getOption: P[Option[A]] = hom(ev.get)
 
-  def modifyOption(f: A => A): P[Option[Unit]] = hom(ev.modify(f))
+  def setOption(a: A): P[Option[Unit]] = hom(ev.put(a))
 
   /* composing algebras */
 

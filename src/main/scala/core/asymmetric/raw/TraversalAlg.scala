@@ -3,15 +3,17 @@ package core
 package asymmetric
 package raw
 
-import scalaz.{ Monad, Monoid }
+import scalaz.{ Equal, Monad, Monoid }
+import scalaz.syntax.equal._
 import scalaz.syntax.foldable._
+import scalaz.syntax.monad._
 import scalaz.std.list._
 
-trait TraversalAlg[P[_], A] extends Monad[P] {
+trait TraversalAlg[P[_], A] extends Monad[P] { self =>
 
   def getAll: P[List[A]]
 
-  def modify(f: A => A): P[Unit]
+  def modifyList(f: A => A): P[List[Unit]]
 
   /* derived methods */
 
@@ -33,5 +35,23 @@ trait TraversalAlg[P[_], A] extends Monad[P] {
 
   def nonEmpty: P[Boolean] = map(isEmpty)(! _)
 
-  def set(a: A): P[Unit] = modify(_ => a)
+  def setList(a: A): P[List[Unit]] = modifyList(_ => a)
+
+  def set(a: A): P[Unit] = map(setList(a))(_ => ())
+
+  def modify(f: A => A): P[Unit] = map(modifyList(f))(_ => ())
+
+  trait TraversalAlgLaw {
+    implicit val _: Monad[P] = self
+
+    def getGet(implicit eq: Equal[P[(List[A], List[A])]]): Boolean =
+      (getAll >>= (as1 => getAll >>= (as2 => (as1, as2).point[P]))) ===
+        (getAll >>= (as => (as, as).point[P]))
+
+    def putGet(a: A)(implicit eq: Equal[P[List[A]]]): Boolean =
+      (setList(a) >> getAll) === (setList(a).map(_.as(a)))
+
+    def putPut(a1: A, a2: A)(implicit eq: Equal[P[List[Unit]]]): Boolean =
+      (setList(a1) >> setList(a2)) === setList(a2)
+  }
 }

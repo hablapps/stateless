@@ -3,11 +3,13 @@ package core
 package asymmetric
 package raw
 
-import scalaz.{ Monad, Monoid }
+import scalaz.{ Equal, Monad, Monoid }
+import scalaz.syntax.equal._
 import scalaz.syntax.foldable._
+import scalaz.syntax.monad._
 import scalaz.std.list._
 
-trait FoldAlg[P[_], A] extends Monad[P] {
+trait FoldAlg[P[_], A] extends Monad[P] { self =>
 
   def getAll: P[List[A]]
 
@@ -30,4 +32,12 @@ trait FoldAlg[P[_], A] extends Monad[P] {
   def isEmpty: P[Boolean] = map(getAll)(_.isEmpty)
 
   def nonEmpty: P[Boolean] = map(isEmpty)(! _)
+
+  trait FoldAlgLaw {
+    implicit val _: Monad[P] = self
+
+    def getGet(implicit eq: Equal[P[(List[A], List[A])]]): Boolean =
+      (getAll >>= (as1 => getAll >>= (as2 => (as1, as2).point[P]))) ===
+        (getAll >>= (as => (as, as).point[P]))
+  }
 }

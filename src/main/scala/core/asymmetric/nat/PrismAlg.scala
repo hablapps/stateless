@@ -13,7 +13,7 @@ trait PrismAlg[P[_], Q[_], A] extends OpticAlg[P, Q, A, MonadState, Option]
 
   def getOption: P[Option[A]] = hom(ev.get)
 
-  def reverseGet(a: A): P[Unit] = map(hom(ev.put(a)))(_.get) // safe by laws
+  def set(a: A): P[Unit] = map(hom(ev.put(a)))(_.get) // safe by laws
 
   /* composing algebras */
 
