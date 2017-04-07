@@ -7,14 +7,9 @@ import scalaz.{ Monad, MonadReader, ~> }
 import scalaz.Id.Id
 
 trait GetterAlg[P[_], Q[_], A] extends OpticAlg[P, Q, A, MonadReader, Id]
-    with MonadReader[P, A] {
+    with raw.GetterAlg[P, A] {
 
-  def get: P[A] = hom[A](ev.ask)
-
-  override def ask = get
-
-  // FIXME: dummy implementation
-  override def local[X](f: A => A)(px: P[X]) = px
+  def ask: P[A] = hom[A](ev.ask)
 
   /* composing algebras */
 

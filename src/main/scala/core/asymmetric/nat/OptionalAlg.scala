@@ -8,27 +8,12 @@ import scalaz.syntax.monad._
 import scalaz.std.list._
 import scalaz.std.option._
 
-trait OptionalAlg[P[_], Q[_], A] extends OpticAlg[P, Q, A, MonadState, Option] {
+trait OptionalAlg[P[_], Q[_], A] extends OpticAlg[P, Q, A, MonadState, Option]
+    with raw.OptionalAlg[P, A] {
 
   def getOption: P[Option[A]] = hom(ev.get)
 
-  def setOption(a: A): P[Option[Unit]] = hom(ev.put(a))
-
-  def set(a: A): P[Unit] = map(setOption(a))(_ => ())
-
   def modifyOption(f: A => A): P[Option[Unit]] = hom(ev.modify(f))
-
-  def modify(f: A => A): P[Unit] = map(modifyOption(f))(_ => ())
-
-  def isEmpty: P[Boolean] = map(getOption)(_.isEmpty)
-
-  def nonEmpty: P[Boolean] = map(getOption)(_.nonEmpty)
-
-  def find(p: A => Boolean): P[Boolean] = map(getOption)(_.fold(false)(p))
-
-  def exist(p: A => Boolean): P[Boolean] = map(getOption)(_.fold(false)(p))
-
-  def all(p: A => Boolean): P[Boolean] = map(getOption)(_.fold(true)(p))
 
   /* composing algebras */
 

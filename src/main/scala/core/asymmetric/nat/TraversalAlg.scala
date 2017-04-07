@@ -3,36 +3,16 @@ package core
 package asymmetric
 package nat
 
-import scalaz.{ Const, Monad, MonadState, Monoid, ~> }
-import scalaz.syntax.foldable._
+import scalaz.{ Const, Monad, MonadState, ~> }
 import scalaz.syntax.monad._
 import scalaz.std.list._
 
-trait TraversalAlg[P[_], Q[_], A] extends OpticAlg[P, Q, A, MonadState, List] {
+trait TraversalAlg[P[_], Q[_], A] extends OpticAlg[P, Q, A, MonadState, List]
+    with raw.TraversalAlg[P, A] {
 
   def getAll: P[List[A]] = hom(ev.get)
 
-  def foldMap[M: Monoid](f: A => M): P[M] = map(getAll)(_.foldMap(f))
-
-  def find(p: A => Boolean): P[Option[A]] = map(getAll)(_.find(p))
-
-  def headOption: P[Option[A]] = map(getAll)(_.headOption)
-
-  def lastOption: P[Option[A]] = map(getAll)(_.lastOption)
-
-  def exist(p: A => Boolean): P[Boolean] = map(getAll)(_.exists(p))
-
-  def all(p: A => Boolean): P[Boolean] = map(getAll)(_.all(p))
-
-  def length: P[Int] = map(getAll)(_.length)
-
-  def isEmpty: P[Boolean] = map(getAll)(_.isEmpty)
-
-  def nonEmpty: P[Boolean] = map(isEmpty)(! _)
-
   def modify(f: A => A): P[Unit] = map(hom(ev.modify(f)))(_ => ())
-
-  def set(a: A): P[Unit] = map(hom(ev.put(a)))(_ => ())
 
   /* composing algebras */
 

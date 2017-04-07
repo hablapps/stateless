@@ -7,15 +7,11 @@ import scalaz.{ Const, Monad, MonadState, ~> }
 import scalaz.Id.Id
 
 trait LensAlg[P[_], Q[_], A] extends OpticAlg[P, Q, A, MonadState, Id]
-    with MonadState[P, A] {
+    with raw.LensAlg[P, A] {
 
   override def get: P[A] = hom[A](ev.get)
 
-  def set(a: A): P[Unit] = hom(ev.put(a))
-
-  override def put(a: A): P[Unit] = set(a)
-
-  override def init: P[A] = hom[A](ev.get)
+  override def put(a: A): P[Unit] = hom(ev.put(a))
 
   /* composing algebras */
 

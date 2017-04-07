@@ -7,11 +7,10 @@ import scalaz.{ Const, Monad, MonadState, ~> }
 import scalaz.syntax.monad._
 import scalaz.std.option._
 
-trait SetterAlg[P[_], Q[_], A] extends OpticAlg[P, Q, A, MonadState, Const[Unit, ?]] {
+trait SetterAlg[P[_], Q[_], A] extends OpticAlg[P, Q, A, MonadState, Const[Unit, ?]]
+    with raw.SetterAlg[P, A] {
 
   def modify(f: A => A): P[Unit] = map(hom(ev.modify(f)))(_.getConst)
-
-  def set(a: A): P[Unit] = modify(_ => a)
 
   /* composing algebras */
 
