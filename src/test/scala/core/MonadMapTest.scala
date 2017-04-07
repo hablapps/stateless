@@ -7,7 +7,7 @@ import scalaz._, Scalaz._
 
 import org.hablapps.phoropter.state.all._
 
-class MonadMapTest extends FlatSpec with Matchers {
+class IMapAlgTest extends FlatSpec with Matchers {
 
   case class Person(name: String, last: String, age: Int)
 

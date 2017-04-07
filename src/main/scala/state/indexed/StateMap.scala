@@ -5,12 +5,12 @@ package indexed
 import scalaz._, Scalaz._
 
 import op.all._
-import core.indexed.MonadMap
+import core.indexed.IMapAlg
 
 trait StateMap {
 
-  def fromMap[F[_]: Monad, K, V]: MonadMap[StateT[F, Map[K, V], ?], StateT[F, V, ?], StateT[F, Option[V], ?], K, V] =
-    MonadMap[StateT[F, Map[K, V], ?], StateT[F, V, ?], StateT[F, Option[V], ?], K, V](
+  def fromMap[F[_]: Monad, K, V]: IMapAlg[StateT[F, Map[K, V], ?], StateT[F, V, ?], StateT[F, Option[V], ?], K, V] =
+    IMapAlg[StateT[F, Map[K, V], ?], StateT[F, V, ?], StateT[F, Option[V], ?], K, V](
       λ[λ[x => K => StateT[F, V, x]] ~> λ[x => StateT[F, Map[K, V], List[x]]]] { sx =>
         StateT(_.toList
           .traverse { case (k, v) => sx(k)(v).strengthL(k) }

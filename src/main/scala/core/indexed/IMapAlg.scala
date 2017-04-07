@@ -8,7 +8,7 @@ import scalaz.syntax.functor._
 import op.At
 import At.syntax._
 
-trait MonadMap[P[_], Q[_], R[_], I, A] extends MonadITraversal[P, Q, I, A] {
+trait IMapAlg[P[_], Q[_], R[_], I, A] extends ITraversalAlg[P, Q, I, A] {
 
   implicit val ta: At[P, R, I, A]
 
@@ -25,16 +25,16 @@ trait MonadMap[P[_], Q[_], R[_], I, A] extends MonadITraversal[P, Q, I, A] {
   private def putOpt(i: I)(oa: Option[A]): P[Unit] = at(i).hom(at(i).ev.put(oa))
 }
 
-object MonadMap {
+object IMapAlg {
 
   def apply[P[_], Q[_], R[_], I, A](
       hom2: λ[x => I => Q[x]] ~> λ[x => P[List[x]]])(implicit
       ev0: Monad[P],
       ev1: MonadState[Q, A],
-      ev2: At[P, R, I, A]) = new MonadMap[P, Q, R, I, A] {
+      ev2: At[P, R, I, A]) = new IMapAlg[P, Q, R, I, A] {
     def point[X](x: => X) = ev0.point(x)
     def bind[X, Y](fx: P[X])(f: X => P[Y]): P[Y] = ev0.bind(fx)(f)
-    implicit val MS = ev1
+    implicit val ev = ev1
     val hom = hom2
     implicit val ta = ev2
   }
