@@ -6,8 +6,7 @@ import scalaz.syntax.monad._
 import scalaz.std.list._
 import scalaz.std.option._
 
-trait OptionalAlg[P[_], Q[_], A] extends OpticAlg[P, Q, A, MonadState, Option]
-    with Monad[P] {
+trait OptionalAlg[P[_], Q[_], A] extends OpticAlg[P, Q, A, MonadState, Option] {
 
   def getOption: P[Option[A]] = hom(ev.get)
 

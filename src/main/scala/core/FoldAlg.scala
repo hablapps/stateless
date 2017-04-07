@@ -6,8 +6,7 @@ import scalaz.syntax.foldable._
 import scalaz.syntax.monad._
 import scalaz.std.list._
 
-trait FoldAlg[P[_], Q[_], A] extends OpticAlg[P, Q, A, MonadReader, List]
-    with Monad[P] {
+trait FoldAlg[P[_], Q[_], A] extends OpticAlg[P, Q, A, MonadReader, List] {
 
   def getAll: P[List[A]] = hom(ev.ask)
 

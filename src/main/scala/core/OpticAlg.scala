@@ -3,7 +3,7 @@ package core
 
 import scalaz.{ Monad, ~> }
 
-trait OpticAlg[P[_], Q[_], A, Ev[_[_], _], F[_]] {
+trait OpticAlg[P[_], Q[_], A, Ev[M[_], _] <: Monad[M], F[_]] extends Monad[P] {
 
   implicit val ev: Ev[Q, A]
 

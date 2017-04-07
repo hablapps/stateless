@@ -5,8 +5,7 @@ import scalaz.{ Const, Monad, MonadState, ~> }
 import scalaz.syntax.monad._
 import scalaz.std.option._
 
-trait SetterAlg[P[_], Q[_], A] extends OpticAlg[P, Q, A, MonadState, Const[Unit, ?]]
-    with Monad[P] {
+trait SetterAlg[P[_], Q[_], A] extends OpticAlg[P, Q, A, MonadState, Const[Unit, ?]] {
 
   def modify(f: A => A): P[Unit] = map(hom(ev.modify(f)))(_.getConst)
 
