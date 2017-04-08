@@ -6,6 +6,8 @@ package nat
 import scalaz.{ Const, Monad, MonadState, ~> }
 import scalaz.Id.Id
 
+import symmetric.nat._
+
 trait LensAlg[P[_], Q[_], A] extends OpticAlg[P, Q, A, MonadState, Id]
     with raw.LensAlg[P, A] {
 
@@ -35,6 +37,36 @@ trait LensAlg[P[_], Q[_], A] extends OpticAlg[P, Q, A, MonadState, Id]
 
   def composeLens[R[_], B](ln: LensAlg[Q, R, B]): LensAlg[P, R, B] =
     LensAlg(hom compose ln.hom)(this, ln.ev)
+
+  /* composing symmetric algebras */
+
+  def composeSFold[L[_], R[_], B, C](fl: SFoldAlg[Q, L, R, B, C]): SFoldAlg[P, L, R, B, C] =
+    SFoldAlg(
+      λ[L ~> λ[x => P[List[x]]]](rx => hom(fl.homL(rx))),
+      λ[R ~> λ[x => P[List[x]]]](rx => hom(fl.homR(rx))))(this, fl.evL, fl.evR)
+
+  def composeSGetter[R[_], L[_], B, C](gt: SGetterAlg[Q, L, R, B, C]): SGetterAlg[P, L, R, B, C] =
+    SGetterAlg(hom compose gt.homL, hom compose gt.homR)(this, gt.evL, gt.evR)
+
+  def composeSSetter[R[_], L[_], B, C](st: SSetterAlg[Q, L, R, B, C]): SSetterAlg[P, L, R, B, C] =
+    SSetterAlg(
+      λ[L ~> λ[x => P[Const[Unit, x]]]](rx => hom(st.homL(rx))),
+      λ[R ~> λ[x => P[Const[Unit, x]]]](rx => hom(st.homR(rx))))(this, st.evL, st.evR)
+
+  def composeSTraversal[R[_], L[_], B, C](tr: STraversalAlg[Q, L, R, B, C]): STraversalAlg[P, L, R, B, C] =
+    STraversalAlg(
+      λ[L ~> λ[x => P[List[x]]]](rx => hom(tr.homL(rx))),
+      λ[R ~> λ[x => P[List[x]]]](rx => hom(tr.homR(rx))))(this, tr.evL, tr.evR)
+
+  def composeSOptional[R[_], L[_], B, C](op: SOptionalAlg[Q, L, R, B, C]): SOptionalAlg[P, L, R, B, C] =
+    SOptionalAlg(
+      λ[L ~> λ[x => P[Option[x]]]](rx => hom(op.homL(rx))),
+      λ[R ~> λ[x => P[Option[x]]]](rx => hom(op.homR(rx))))(this, op.evL, op.evR)
+
+  def composeSPrism[R[_], L[_], B, C](pr: SPrismAlg[Q, L, R, B, C]): SOptionalAlg[P, L, R, B, C] =
+    SOptionalAlg(
+      λ[L ~> λ[x => P[Option[x]]]](rx => hom(pr.homL(rx))),
+      λ[R ~> λ[x => P[Option[x]]]](rx => hom(pr.homR(rx))))(this, pr.evL, pr.evR)
 }
 
 object LensAlg {
