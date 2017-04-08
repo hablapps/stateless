@@ -5,7 +5,7 @@ import org.scalatest._
 
 import scalaz._, Scalaz._
 
-import org.hablapps.phoropter.state.asymmetric.nat.all._
+import org.hablapps.phoropter.smonocle.asymmetric.nat.all._
 
 class IMapAlgTest extends FlatSpec with Matchers {
 
