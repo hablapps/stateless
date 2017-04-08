@@ -45,28 +45,31 @@ trait LensAlg[P[_], Q[_], A] extends OpticAlg[P, Q, A, MonadState, Id]
       λ[L ~> λ[x => P[List[x]]]](rx => hom(fl.homL(rx))),
       λ[R ~> λ[x => P[List[x]]]](rx => hom(fl.homR(rx))))(this, fl.evL, fl.evR)
 
-  def composeSGetter[R[_], L[_], B, C](gt: SGetterAlg[Q, L, R, B, C]): SGetterAlg[P, L, R, B, C] =
+  def composeSGetter[L[_], R[_], B, C](gt: SGetterAlg[Q, L, R, B, C]): SGetterAlg[P, L, R, B, C] =
     SGetterAlg(hom compose gt.homL, hom compose gt.homR)(this, gt.evL, gt.evR)
 
-  def composeSSetter[R[_], L[_], B, C](st: SSetterAlg[Q, L, R, B, C]): SSetterAlg[P, L, R, B, C] =
+  def composeSSetter[L[_], R[_], B, C](st: SSetterAlg[Q, L, R, B, C]): SSetterAlg[P, L, R, B, C] =
     SSetterAlg(
       λ[L ~> λ[x => P[Const[Unit, x]]]](rx => hom(st.homL(rx))),
       λ[R ~> λ[x => P[Const[Unit, x]]]](rx => hom(st.homR(rx))))(this, st.evL, st.evR)
 
-  def composeSTraversal[R[_], L[_], B, C](tr: STraversalAlg[Q, L, R, B, C]): STraversalAlg[P, L, R, B, C] =
+  def composeSTraversal[L[_], R[_], B, C](tr: STraversalAlg[Q, L, R, B, C]): STraversalAlg[P, L, R, B, C] =
     STraversalAlg(
       λ[L ~> λ[x => P[List[x]]]](rx => hom(tr.homL(rx))),
       λ[R ~> λ[x => P[List[x]]]](rx => hom(tr.homR(rx))))(this, tr.evL, tr.evR)
 
-  def composeSOptional[R[_], L[_], B, C](op: SOptionalAlg[Q, L, R, B, C]): SOptionalAlg[P, L, R, B, C] =
+  def composeSOptional[L[_], R[_], B, C](op: SOptionalAlg[Q, L, R, B, C]): SOptionalAlg[P, L, R, B, C] =
     SOptionalAlg(
       λ[L ~> λ[x => P[Option[x]]]](rx => hom(op.homL(rx))),
       λ[R ~> λ[x => P[Option[x]]]](rx => hom(op.homR(rx))))(this, op.evL, op.evR)
 
-  def composeSPrism[R[_], L[_], B, C](pr: SPrismAlg[Q, L, R, B, C]): SOptionalAlg[P, L, R, B, C] =
+  def composeSPrism[L[_], R[_], B, C](pr: SPrismAlg[Q, L, R, B, C]): SOptionalAlg[P, L, R, B, C] =
     SOptionalAlg(
       λ[L ~> λ[x => P[Option[x]]]](rx => hom(pr.homL(rx))),
       λ[R ~> λ[x => P[Option[x]]]](rx => hom(pr.homR(rx))))(this, pr.evL, pr.evR)
+
+  def composeSLens[L[_], R[_], B, C](ln: SLensAlg[Q, L, R, B, C]): SLensAlg[P, L, R, B, C] =
+    SLensAlg(hom compose ln.homL, hom compose ln.homR)(this, ln.evL, ln.evR)
 }
 
 object LensAlg {
