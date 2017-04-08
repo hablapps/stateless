@@ -10,7 +10,7 @@ import scalaz.std.list._
 trait FoldAlg[P[_], Q[_], A] extends OpticAlg[P, Q, A, MonadReader, List]
     with raw.FoldAlg[P, A] {
 
-  def getAll: P[List[A]] = hom(ev.ask)
+  def getList: P[List[A]] = hom(ev.ask)
 
   /* composing algebras */
 

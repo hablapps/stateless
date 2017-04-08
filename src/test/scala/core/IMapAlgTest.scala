@@ -18,8 +18,8 @@ class IMapAlgTest extends FlatSpec with Matchers {
 
   val myMap = fromMap[Id, String, Person]
 
-  "Map" should "getAll" in {
-    myMap.getAll(init) shouldBe (init, init.toList)
+  "Map" should "getList" in {
+    myMap.getList(init) shouldBe (init, init.toList)
   }
 
   it should "set" in {

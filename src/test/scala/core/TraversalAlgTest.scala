@@ -20,8 +20,8 @@ class TraversalAlgTest extends FlatSpec with Matchers {
 
   val john = Person("John", "Doe", 40)
 
-  "Traversal" should "getAll" in {
-    txtTr.getAll.apply(john) shouldBe (john, List("John", "Doe"))
+  "Traversal" should "getList" in {
+    txtTr.getList.apply(john) shouldBe (john, List("John", "Doe"))
   }
 
   it should "modify" in {

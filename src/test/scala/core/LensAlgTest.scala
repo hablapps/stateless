@@ -60,7 +60,7 @@ class LensAlgTest extends FlatSpec with Matchers {
   it should "compose with Traversals" in {
     val tr = addrLn.composeTraversal[StateT[Id, String, ?], String](txtTr)
 
-    tr.getAll.apply(john) shouldBe
+    tr.getList.apply(john) shouldBe
       (john, List(john.address.street, john.address.city))
 
     tr.modify(_.toUpperCase).apply(john) shouldBe
