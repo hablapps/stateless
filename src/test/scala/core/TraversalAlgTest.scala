@@ -7,7 +7,7 @@ import scalaz._, Scalaz._
 
 import monocle.Traversal
 
-import org.hablapps.phoropter.state.asymmetric.nat.all._
+import org.hablapps.phoropter.smonocle.asymmetric.nat.all._
 
 class TraversalAlgTest extends FlatSpec with Matchers {
 
@@ -20,8 +20,8 @@ class TraversalAlgTest extends FlatSpec with Matchers {
 
   val john = Person("John", "Doe", 40)
 
-  "Traversal" should "getAll" in {
-    txtTr.getAll.apply(john) shouldBe (john, List("John", "Doe"))
+  "Traversal" should "getList" in {
+    txtTr.getList.apply(john) shouldBe (john, List("John", "Doe"))
   }
 
   it should "modify" in {

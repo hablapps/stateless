@@ -5,7 +5,7 @@ import org.scalatest._
 
 import scalaz._, Scalaz._
 
-import org.hablapps.phoropter.state.asymmetric.nat.all._
+import org.hablapps.phoropter.smonocle.asymmetric.nat.all._
 
 class IMapAlgTest extends FlatSpec with Matchers {
 
@@ -18,8 +18,8 @@ class IMapAlgTest extends FlatSpec with Matchers {
 
   val myMap = fromMap[Id, String, Person]
 
-  "Map" should "getAll" in {
-    myMap.getAll(init) shouldBe (init, init.toList)
+  "Map" should "getList" in {
+    myMap.getList(init) shouldBe (init, init.toList)
   }
 
   it should "set" in {

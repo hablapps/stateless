@@ -9,7 +9,7 @@ import scalaz.syntax.functor._
 
 trait ITraversalAlg[P[_], Q[_], I, A] extends IOpticAlg[P, Q, I, A, MonadState, List] {
 
-  def getAll: P[List[(I, A)]] = hom(ev.get.strengthL)
+  def getList: P[List[(I, A)]] = hom(ev.get.strengthL)
 
   def set(a: A): P[Unit] = map(hom(_ => ev.put(a)))(_ => ())
 

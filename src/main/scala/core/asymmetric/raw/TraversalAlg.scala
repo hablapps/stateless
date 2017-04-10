@@ -11,27 +11,27 @@ import scalaz.std.list._
 
 trait TraversalAlg[P[_], A] extends Monad[P] { self =>
 
-  def getAll: P[List[A]]
+  def getList: P[List[A]]
 
   def modifyList(f: A => A): P[List[Unit]]
 
   /* derived methods */
 
-  def foldMap[M: Monoid](f: A => M): P[M] = map(getAll)(_.foldMap(f))
+  def foldMap[M: Monoid](f: A => M): P[M] = map(getList)(_.foldMap(f))
 
-  def find(p: A => Boolean): P[Option[A]] = map(getAll)(_.find(p))
+  def find(p: A => Boolean): P[Option[A]] = map(getList)(_.find(p))
 
-  def headOption: P[Option[A]] = map(getAll)(_.headOption)
+  def headOption: P[Option[A]] = map(getList)(_.headOption)
 
-  def lastOption: P[Option[A]] = map(getAll)(_.lastOption)
+  def lastOption: P[Option[A]] = map(getList)(_.lastOption)
 
-  def exist(p: A => Boolean): P[Boolean] = map(getAll)(_.exists(p))
+  def exist(p: A => Boolean): P[Boolean] = map(getList)(_.exists(p))
 
-  def all(p: A => Boolean): P[Boolean] = map(getAll)(_.all(p))
+  def all(p: A => Boolean): P[Boolean] = map(getList)(_.all(p))
 
-  def length: P[Int] = map(getAll)(_.length)
+  def length: P[Int] = map(getList)(_.length)
 
-  def isEmpty: P[Boolean] = map(getAll)(_.isEmpty)
+  def isEmpty: P[Boolean] = map(getList)(_.isEmpty)
 
   def nonEmpty: P[Boolean] = map(isEmpty)(! _)
 
@@ -45,11 +45,11 @@ trait TraversalAlg[P[_], A] extends Monad[P] { self =>
     implicit val _: Monad[P] = self
 
     def getGet(implicit eq: Equal[P[(List[A], List[A])]]): Boolean =
-      (getAll >>= (as1 => getAll >>= (as2 => (as1, as2).point[P]))) ===
-        (getAll >>= (as => (as, as).point[P]))
+      (getList >>= (as1 => getList >>= (as2 => (as1, as2).point[P]))) ===
+        (getList >>= (as => (as, as).point[P]))
 
     def putGet(a: A)(implicit eq: Equal[P[List[A]]]): Boolean =
-      (setList(a) >> getAll) === (setList(a).map(_.as(a)))
+      (setList(a) >> getList) === (setList(a).map(_.as(a)))
 
     def putPut(a1: A, a2: A)(implicit eq: Equal[P[List[Unit]]]): Boolean =
       (setList(a1) >> setList(a2)) === setList(a2)

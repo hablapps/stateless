@@ -10,7 +10,7 @@ import scalaz.std.list._
 trait TraversalAlg[P[_], Q[_], A] extends OpticAlg[P, Q, A, MonadState, List]
     with raw.TraversalAlg[P, A] {
 
-  def getAll: P[List[A]] = hom(ev.get)
+  def getList: P[List[A]] = hom(ev.get)
 
   def modifyList(f: A => A): P[List[Unit]] = hom(ev.modify(f))
 

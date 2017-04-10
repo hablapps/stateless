@@ -1,5 +1,5 @@
 package org.hablapps.phoropter
-package state
+package smonocle
 package asymmetric
 package nat
 package indexed
