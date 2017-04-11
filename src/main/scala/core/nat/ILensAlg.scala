@@ -23,3 +23,16 @@ trait ILensAlg[P[_], Q[_], I, A] extends raw.ILensAlg[P, I, A]
       }
     )(this, opt.ev)
 }
+
+object ILensAlg {
+
+  def apply[P[_], Q[_], I, A](
+      hom2: λ[x => I => Q[x]] ~> P)(implicit
+      ev0: Monad[P],
+      ev1: MonadState[Q, A]) = new ILensAlg[P, Q, I, A] {
+    def point[X](x: => X) = ev0.point(x)
+    def bind[X, Y](fx: P[X])(f: X => P[Y]): P[Y] = ev0.bind(fx)(f)
+    implicit val ev = ev1
+    val hom = hom2
+  }
+}

@@ -48,6 +48,14 @@ trait PrismAlg[P[_], Q[_], A] extends OpticAlg[P, Q, A, MonadState, Option]
   def asSetter: SetterAlg[P, Q, A] = asTraversal.asSetter
 
   def asFold: FoldAlg[P, Q, A] = asTraversal.asFold
+
+  def asIndexed: IPrismAlg[P, Q, Unit, A] =
+    IPrismAlg(λ[λ[x => Unit => Q[x]] ~> λ[x => P[Option[x]]]] { iqx =>
+      hom(iqx(()))
+    })(this, ev)
+
+  def asSymmetric: SPrismAlg[P, Q, Q, A, A] =
+    SPrismAlg(hom, hom)(this, ev, ev)
 }
 
 object PrismAlg {

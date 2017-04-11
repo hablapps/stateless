@@ -29,6 +29,16 @@ trait SetterAlg[P[_], Q[_], A] extends OpticAlg[P, Q, A, MonadState, Const[Unit,
 
   def composeLens[R[_], B](ln: LensAlg[Q, R, B]): SetterAlg[P, R, B] =
     composeSetter(ln.asSetter)
+
+  /* transforming algebras */
+
+  def asIndexed: ISetterAlg[P, Q, Unit, A] =
+    ISetterAlg(λ[λ[x => Unit => Q[x]] ~> λ[x => P[Const[Unit, x]]]] { iqx =>
+      hom(iqx(()))
+    })(this, ev)
+
+  def asSymmetric: SSetterAlg[P, Q, Q, A, A] =
+    SSetterAlg(hom, hom)(this, ev, ev)
 }
 
 object SetterAlg {

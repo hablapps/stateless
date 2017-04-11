@@ -46,6 +46,14 @@ trait TraversalAlg[P[_], Q[_], A] extends OpticAlg[P, Q, A, MonadState, List]
     SetterAlg(λ[Q ~> λ[x => P[Const[Unit, x]]]] { qx =>
       map(hom(qx))(_ => Const(()))
     })(this, ev)
+
+  def asIndexed: ITraversalAlg[P, Q, Unit, A] =
+    ITraversalAlg(λ[λ[x => Unit => Q[x]] ~> λ[x => P[List[x]]]] { iqx =>
+      hom(iqx(()))
+    })(this, ev)
+
+  def asSymmetric: STraversalAlg[P, Q, Q, A, A] =
+    STraversalAlg(hom, hom)(this, ev, ev)
 }
 
 object TraversalAlg {
