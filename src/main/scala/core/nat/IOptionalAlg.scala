@@ -2,13 +2,12 @@ package org.hablapps.stateless
 package core
 package asymmetric
 package nat
-package indexed
 
 import scalaz.{ Monad, MonadState, ~> }
 import scalaz.Id.Id
 import scalaz.syntax.functor._
 
-trait IOptionalAlg[P[_], Q[_], I, A] extends raw.indexed.IOptionalAlg[P, I, A]
+trait IOptionalAlg[P[_], Q[_], I, A] extends raw.IOptionalAlg[P, I, A]
     with IOpticAlg[P, Q, I, A, MonadState, Option] {
 
   def getOption: P[Option[(I, A)]] = hom(ev.get.strengthL)

@@ -2,7 +2,6 @@ package org.hablapps.stateless
 package core
 package asymmetric
 package nat
-package indexed
 
 import scalaz.{ Monad, MonadState, ~> }
 import scalaz.syntax.functor._

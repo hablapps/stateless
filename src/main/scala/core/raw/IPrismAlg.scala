@@ -2,9 +2,8 @@ package org.hablapps.stateless
 package core
 package asymmetric
 package raw
-package indexed
 
-import scalaz.{ Equal, Monad, MonadState }
+import scalaz.Monad
 
 trait IPrismAlg[P[_], I, A] extends Monad[P] {
 

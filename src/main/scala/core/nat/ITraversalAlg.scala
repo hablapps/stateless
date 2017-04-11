@@ -2,12 +2,11 @@ package org.hablapps.stateless
 package core
 package asymmetric
 package nat
-package indexed
 
 import scalaz.{ Monad, MonadState, ~> }
 import scalaz.syntax.functor._
 
-trait ITraversalAlg[P[_], Q[_], I, A] extends raw.indexed.ITraversalAlg[P, I, A]
+trait ITraversalAlg[P[_], Q[_], I, A] extends raw.ITraversalAlg[P, I, A]
     with IOpticAlg[P, Q, I, A, MonadState, List] {
 
   def getList: P[List[(I, A)]] = hom(ev.get.strengthL)

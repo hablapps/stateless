@@ -2,7 +2,6 @@ package org.hablapps.stateless
 package core
 package asymmetric
 package raw
-package indexed
 
 import scalaz.Monad
 
