@@ -1,4 +1,4 @@
-package org.hablapps.phoropter
+package org.hablapps.stateless
 package core
 package symmetric
 package nat

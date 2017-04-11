@@ -1,4 +1,4 @@
-package org.hablapps.phoropter
+package org.hablapps.stateless
 package test
 
 import org.scalatest._
@@ -7,7 +7,7 @@ import scalaz._, Scalaz._
 
 import monocle.Traversal
 
-import org.hablapps.phoropter.smonocle.asymmetric.nat.all._
+import org.hablapps.stateless.smonocle.asymmetric.nat.all._
 
 class TraversalAlgTest extends FlatSpec with Matchers {
 
