@@ -20,24 +20,16 @@ trait SetterAlg[P[_], Q[_], A] extends OpticAlg[P, Q, A, MonadState, Const[Unit,
     })(this, st.ev)
 
   def composeTraversal[R[_], B](tr: TraversalAlg[Q, R, B]): SetterAlg[P, R, B] =
-    SetterAlg(λ[R ~> λ[x => P[Const[Unit, x]]]] { rx =>
-      map(hom(tr.hom(rx)))(_ => Const(()))
-    })(this, tr.ev)
+    composeSetter(tr.asSetter)
 
   def composeOptional[R[_], B](op: OptionalAlg[Q, R, B]): SetterAlg[P, R, B] =
-    SetterAlg(λ[R ~> λ[x => P[Const[Unit, x]]]] { rx =>
-      map(hom(op.hom(rx)))(_ => Const(()))
-    })(this, op.ev)
+    composeSetter(op.asSetter)
 
   def composePrism[R[_], B](pr: PrismAlg[Q, R, B]): SetterAlg[P, R, B] =
-    SetterAlg(λ[R ~> λ[x => P[Const[Unit, x]]]] { rx =>
-      map(hom(pr.hom(rx)))(_ => Const(()))
-    })(this, pr.ev)
+    composeSetter(pr.asSetter)
 
   def composeLens[R[_], B](ln: LensAlg[Q, R, B]): SetterAlg[P, R, B] =
-    SetterAlg(λ[R ~> λ[x => P[Const[Unit, x]]]] { rx =>
-      map(hom(ln.hom(rx)))(_ => Const(()))
-    })(this, ln.ev)
+    composeSetter(ln.asSetter)
 }
 
 object SetterAlg {
