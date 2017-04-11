@@ -7,17 +7,12 @@ package indexed
 import scalaz.{ Monad, MonadState, ~> }
 import scalaz.syntax.functor._
 
-trait ITraversalAlg[P[_], Q[_], I, A] extends IOpticAlg[P, Q, I, A, MonadState, List] {
+trait ITraversalAlg[P[_], Q[_], I, A] extends raw.indexed.ITraversalAlg[P, I, A]
+    with IOpticAlg[P, Q, I, A, MonadState, List] {
 
   def getList: P[List[(I, A)]] = hom(ev.get.strengthL)
 
-  def set(a: A): P[Unit] = map(hom(_ => ev.put(a)))(_ => ())
-
-  def modify(f: A => A): P[Unit] = map(hom(_ => ev.modify(f)))(_ => ())
-
-  def indexes: P[List[I]] = hom(ev.point(_))
-
-  def foci: P[List[A]] = hom(_ => ev.get)
+  def modifyList(f: A => A): P[List[Unit]] = hom(_ => ev.modify(f))
 
   def collect[O](qo: Q[O]): P[List[O]] = hom(_ => qo)
 }
