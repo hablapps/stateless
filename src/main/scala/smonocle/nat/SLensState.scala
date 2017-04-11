@@ -1,6 +1,6 @@
 package org.hablapps.stateless
 package smonocle
-package symmetric
+package asymmetric
 package nat
 
 import scalaz.{ Monad, StateT, ~> }
@@ -11,7 +11,7 @@ import core.symmetric.nat.SLensAlg
 
 trait SLensState {
 
-  def fromLens[F[_]: Monad, S, A](
+  def fromSLens[F[_]: Monad, S, A](
       ln: Lens[S, A]): SLensAlg[StateT[F, S, ?], StateT[F, S, ?], StateT[F, A, ?], S, A] =
     SLensAlg[StateT[F, S, ?], StateT[F, S, ?], StateT[F, A, ?], S, A](
       λ[StateT[F, S, ?] ~> StateT[F, S, ?]](ss => ss),

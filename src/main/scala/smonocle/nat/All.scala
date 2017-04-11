@@ -11,3 +11,4 @@ object all extends FoldState
   with SetterState
   with TraversalState
   with indexed.IMapState
+  with SLensState
