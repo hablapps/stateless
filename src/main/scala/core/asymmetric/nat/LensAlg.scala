@@ -5,6 +5,7 @@ package nat
 
 import scalaz.{ Const, Monad, MonadState, ~> }
 import scalaz.Id.Id
+import scalaz.syntax.std.option._
 
 import symmetric.nat._
 
@@ -18,22 +19,22 @@ trait LensAlg[P[_], Q[_], A] extends OpticAlg[P, Q, A, MonadState, Id]
   /* composing algebras */
 
   def composeFold[R[_], B](fl: FoldAlg[Q, R, B]): FoldAlg[P, R, B] =
-    FoldAlg(λ[R ~> λ[x => P[List[x]]]](rx => hom(fl.hom(rx))))(this, fl.ev)
+    asFold.composeFold(fl)
 
   def composeGetter[R[_], B](gt: GetterAlg[Q, R, B]): GetterAlg[P, R, B] =
-    GetterAlg(hom compose gt.hom)(this, gt.ev)
+    asGetter.composeGetter(gt)
 
   def composeSetter[R[_], B](st: SetterAlg[Q, R, B]): SetterAlg[P, R, B] =
-    SetterAlg(λ[R ~> λ[x => P[Const[Unit, x]]]](rx => hom(st.hom(rx))))(this, st.ev)
+    asSetter.composeSetter(st)
 
   def composeTraversal[R[_], B](tr: TraversalAlg[Q, R, B]): TraversalAlg[P, R, B] =
-    TraversalAlg(λ[R ~> λ[x => P[List[x]]]](rx => hom(tr.hom(rx))))(this, tr.ev)
+    asTraversal.composeTraversal(tr)
 
   def composeOptional[R[_], B](op: OptionalAlg[Q, R, B]): OptionalAlg[P, R, B] =
-    OptionalAlg(λ[R ~> λ[x => P[Option[x]]]](rx => hom(op.hom(rx))))(this, op.ev)
+    asOptional.composeOptional(op)
 
   def composePrism[R[_], B](pr: PrismAlg[Q, R, B]): OptionalAlg[P, R, B] =
-    OptionalAlg(λ[R ~> λ[x => P[Option[x]]]](rx => hom(pr.hom(rx))))(this, pr.ev)
+    asOptional.composeOptional(pr.asOptional)
 
   def composeLens[R[_], B](ln: LensAlg[Q, R, B]): LensAlg[P, R, B] =
     LensAlg(hom compose ln.hom)(this, ln.ev)
@@ -70,6 +71,19 @@ trait LensAlg[P[_], Q[_], A] extends OpticAlg[P, Q, A, MonadState, Id]
 
   def composeSLens[L[_], R[_], B, C](ln: SLensAlg[Q, L, R, B, C]): SLensAlg[P, L, R, B, C] =
     SLensAlg(hom compose ln.homL, hom compose ln.homR)(this, ln.evL, ln.evR)
+
+  /* transforming algebras */
+
+  def asGetter: GetterAlg[P, Q, A] = GetterAlg(hom)(this, ev)
+
+  def asOptional: OptionalAlg[P, Q, A] =
+    OptionalAlg(λ[Q ~> λ[x => P[Option[x]]]](qx => map(hom(qx))(_.some)))(this, ev)
+
+  def asFold: FoldAlg[P, Q, A] = asGetter.asFold
+
+  def asTraversal: TraversalAlg[P, Q, A] = asOptional.asTraversal
+
+  def asSetter: SetterAlg[P, Q, A] = asTraversal.asSetter
 }
 
 object LensAlg {

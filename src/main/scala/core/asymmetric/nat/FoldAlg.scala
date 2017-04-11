@@ -18,23 +18,19 @@ trait FoldAlg[P[_], Q[_], A] extends OpticAlg[P, Q, A, MonadReader, List]
     FoldAlg(λ[R ~> λ[x => P[List[x]]]](rx => map(hom(fl.hom(rx)))(_.join)))(this, fl.ev)
 
   def composeGetter[R[_], B](gt: GetterAlg[Q, R, B]): FoldAlg[P, R, B] =
-    FoldAlg(hom compose gt.hom)(this, gt.ev)
+    composeFold(gt.asFold)
 
   def composeTraversal[R[_], B](tr: TraversalAlg[Q, R, B]): FoldAlg[P, R, B] =
-    FoldAlg(λ[R ~> λ[x => P[List[x]]]](rx => map(hom(tr.hom(rx)))(_.join)))(this, tr.ev)
+    composeFold(tr.asFold)
 
   def composeOptional[R[_], B](op: OptionalAlg[Q, R, B]): FoldAlg[P, R, B] =
-    FoldAlg(λ[R ~> λ[x => P[List[x]]]] { rx =>
-      map(hom(op.map(op.hom(rx))(_.toList)))(_.join)
-    })(this, op.ev)
+    composeFold(op.asFold)
 
   def composePrism[R[_], B](pr: PrismAlg[Q, R, B]): FoldAlg[P, R, B] =
-    FoldAlg(λ[R ~> λ[x => P[List[x]]]] { rx =>
-      map(hom(pr.map(pr.hom(rx))(_.toList)))(_.join)
-    })(this, pr.ev)
+    composeFold(pr.asFold)
 
   def composeLens[R[_], B](ln: LensAlg[Q, R, B]): FoldAlg[P, R, B] =
-    FoldAlg(hom compose ln.hom)(this, ln.ev)
+    composeFold(ln.asFold)
 }
 
 object FoldAlg {

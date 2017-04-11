@@ -18,29 +18,19 @@ trait PrismAlg[P[_], Q[_], A] extends OpticAlg[P, Q, A, MonadState, Option]
   /* composing algebras */
 
   def composeFold[R[_], B](fl: FoldAlg[Q, R, B]): FoldAlg[P, R, B] =
-    FoldAlg(λ[R ~> λ[x => P[List[x]]]] { rx =>
-      map(hom(fl.hom(rx)))(_.toList.join)
-    })(this, fl.ev)
+    asFold.composeFold(fl)
 
   def composeGetter[R[_], B](gt: GetterAlg[Q, R, B]): FoldAlg[P, R, B] =
-    FoldAlg(λ[R ~> λ[x => P[List[x]]]] { rx =>
-      map(hom(gt.hom(rx)))(_.toList)
-    })(this, gt.ev)
+    asFold.composeFold(gt.asFold)
 
   def composeSetter[R[_], B](st: SetterAlg[Q, R, B]): SetterAlg[P, R, B] =
-    SetterAlg(λ[R ~> λ[x => P[Const[Unit, x]]]] { rx =>
-      map(hom(st.hom(rx)))(_ => Const(()))
-    })(this, st.ev)
+    asSetter.composeSetter(st)
 
   def composeTraversal[R[_], B](tr: TraversalAlg[Q, R, B]): TraversalAlg[P, R, B] =
-    TraversalAlg(λ[R ~> λ[x => P[List[x]]]] { rx =>
-      map(hom(tr.hom(rx)))(_.toList.join)
-    })(this, tr.ev)
+    asTraversal.composeTraversal(tr)
 
   def composeOptional[R[_], B](op: OptionalAlg[Q, R, B]): OptionalAlg[P, R, B] =
-    OptionalAlg(λ[R ~> λ[x => P[Option[x]]]] { rx =>
-      map(hom(op.hom(rx)))(_.join)
-    })(this, op.ev)
+    asOptional.composeOptional(op)
 
   def composePrism[R[_], B](pr: PrismAlg[Q, R, B]): PrismAlg[P, R, B] =
     PrismAlg(λ[R ~> λ[x => P[Option[x]]]] { rx =>
@@ -49,6 +39,16 @@ trait PrismAlg[P[_], Q[_], A] extends OpticAlg[P, Q, A, MonadState, Option]
 
   def composeLens[R[_], B](ln: LensAlg[Q, R, B]): OptionalAlg[P, R, B] =
     OptionalAlg(hom compose ln.hom)(this, ln.ev)
+
+  /* transforming algebras */
+
+  def asOptional: OptionalAlg[P, Q, A] = OptionalAlg(hom)(this, ev)
+
+  def asTraversal: TraversalAlg[P, Q, A] = asOptional.asTraversal
+
+  def asSetter: SetterAlg[P, Q, A] = asTraversal.asSetter
+
+  def asFold: FoldAlg[P, Q, A] = asTraversal.asFold
 }
 
 object PrismAlg {
