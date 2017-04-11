@@ -3,7 +3,8 @@ package core
 package nat
 
 import scalaz.{ Const, Monad, MonadState, ~> }
-import scalaz.syntax.functor._
+import scalaz.syntax.monad._
+import scalaz.std.list._
 
 trait ITraversalAlg[P[_], Q[_], I, A] extends raw.ITraversalAlg[P, I, A]
     with IOpticAlg[P, Q, I, A, MonadState, List] {
@@ -13,6 +14,31 @@ trait ITraversalAlg[P[_], Q[_], I, A] extends raw.ITraversalAlg[P, I, A]
   def modifyList(f: A => A): P[List[Unit]] = hom(_ => ev.modify(f))
 
   def collect[O](qo: Q[O]): P[List[O]] = hom(_ => qo)
+
+  /* composing algebras */
+
+  def composeIFold[R[_], J, B](fl: IFoldAlg[Q, R, J, B]): IFoldAlg[P, R, (I, J), B] =
+    asIFold.composeIFold(fl)
+
+  def composeIGetter[R[_], J, B](gt: IGetterAlg[Q, R, J, B]): IFoldAlg[P, R, (I, J), B] =
+    asIFold.composeIFold(gt.asIFold)
+
+  def composeISetter[R[_], J, B](st: ISetterAlg[Q, R, J, B]): ISetterAlg[P, R, (I, J), B] =
+    asISetter.composeISetter(st)
+
+  def composeITraversal[R[_], J, B](tr: ITraversalAlg[Q, R, J, B]): ITraversalAlg[P, R, (I, J), B] =
+    ITraversalAlg(λ[λ[x => ((I, J)) => R[x]] ~> λ[x => P[List[x]]]] { iqx =>
+      map(hom(i => tr.hom(j => iqx((i, j)))))(_.join)
+    })(this, tr.ev)
+
+  def composeIOptional[R[_], J, B](op: IOptionalAlg[Q, R, J, B]): ITraversalAlg[P, R, (I, J), B] =
+    composeITraversal(op.asITraversal)
+
+  def composeIPrism[R[_], J, B](pr: IPrismAlg[Q, R, J, B]): ITraversalAlg[P, R, (I, J), B] =
+    composeITraversal(pr.asITraversal)
+
+  def composeILens[R[_], J, B](ln: ILensAlg[Q, R, J, B]): ITraversalAlg[P, R, (I, J), B] =
+    composeITraversal(ln.asITraversal)
 
   /* transforming algebras */
 

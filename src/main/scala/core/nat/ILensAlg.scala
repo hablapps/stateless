@@ -16,13 +16,29 @@ trait ILensAlg[P[_], Q[_], I, A] extends raw.ILensAlg[P, I, A]
 
   /* composing algebras */
 
-  def composeIOptional[R[_], J, B](
-      opt: IOptionalAlg[Q, R, J, B]): IOptionalAlg[P, R, (I, J), B] =
-    IOptionalAlg[P, R, (I, J), B](
-      λ[λ[x => ((I, J)) => R[x]] ~> λ[y => P[Option[y]]]] { irx =>
-        hom(i => opt.hom(j => irx((i, j))))
-      }
-    )(this, opt.ev)
+  def composeIFold[R[_], J, B](fl: IFoldAlg[Q, R, J, B]): IFoldAlg[P, R, (I, J), B] =
+    asIFold.composeIFold(fl)
+
+  def composeIGetter[R[_], J, B](gt: IGetterAlg[Q, R, J, B]): IGetterAlg[P, R, (I, J), B] =
+    asIGetter.composeIGetter(gt)
+
+  def composeISetter[R[_], J, B](st: ISetterAlg[Q, R, J, B]): ISetterAlg[P, R, (I, J), B] =
+    asISetter.composeISetter(st)
+
+  def composeITraversal[R[_], J, B](tr: ITraversalAlg[Q, R, J, B]): ITraversalAlg[P, R, (I, J), B] =
+    asITraversal.composeITraversal(tr)
+
+  def composeIOptional[R[_], J, B](op: IOptionalAlg[Q, R, J, B]): IOptionalAlg[P, R, (I, J), B] =
+    asIOptional.composeIOptional(op)
+
+  def composeIPrism[R[_], J, B](pr: IPrismAlg[Q, R, J, B]): IOptionalAlg[P, R, (I, J), B] =
+    asIOptional.composeIOptional(pr.asIOptional)
+
+  def composeILens[R[_], J, B](ln: ILensAlg[Q, R, J, B]): ILensAlg[P, R, (I, J), B] =
+    ILensAlg(new (λ[x => ((I, J)) => R[x]] ~> P) {
+      def apply[X](iqx: ((I, J)) => R[X]): P[X] =
+        hom[X](i => ln.hom[X](j => iqx((i, j))))
+    })(this, ln.ev)
 
   /* transforming algebras */
 

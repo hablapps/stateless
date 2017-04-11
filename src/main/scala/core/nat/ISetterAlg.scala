@@ -8,6 +8,23 @@ trait ISetterAlg[P[_], Q[_], I, A] extends raw.ISetterAlg[P, I, A]
     with IOpticAlg[P, Q, I, A, MonadState, Const[Unit, ?]] {
 
   def modify(f: A => A): P[Unit] = map(hom(_ => ev.modify(f)))(_.getConst)
+
+  def composeISetter[R[_], J, B](st: ISetterAlg[Q, R, J, B]): ISetterAlg[P, R, (I, J), B] =
+    ISetterAlg(λ[λ[x => ((I, J)) => R[x]] ~> λ[x => P[Const[Unit, x]]]] { iqx =>
+      map(hom(i => st.hom(j => iqx((i, j)))))(_ => Const(()))
+    })(this, st.ev)
+
+  def composeITraversal[R[_], J, B](tr: ITraversalAlg[Q, R, J, B]): ISetterAlg[P, R, (I, J), B] =
+    composeISetter(tr.asISetter)
+
+  def composeIOptional[R[_], J, B](op: IOptionalAlg[Q, R, J, B]): ISetterAlg[P, R, (I, J), B] =
+    composeISetter(op.asISetter)
+
+  def composeIPrism[R[_], J, B](pr: IPrismAlg[Q, R, J, B]): ISetterAlg[P, R, (I, J), B] =
+    composeISetter(pr.asISetter)
+
+  def composeILens[R[_], J, B](ln: ILensAlg[Q, R, J, B]): ISetterAlg[P, R, (I, J), B] =
+    composeISetter(ln.asISetter)
 }
 
 object ISetterAlg {
