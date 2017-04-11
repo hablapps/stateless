@@ -11,6 +11,16 @@ trait IPrismAlg[P[_], Q[_], I, A] extends raw.IPrismAlg[P, I, A]
   def getOption: P[Option[(I, A)]] = hom(ev.get.strengthL)
 
   def set(a: A): P[Unit] = map(hom(_ => ev.put(a)))(_.get)
+
+  /* transforming algebras */
+
+  def asIOptional: IOptionalAlg[P, Q, I, A] = IOptionalAlg(hom)(this, ev)
+
+  def asITraversal: ITraversalAlg[P, Q, I, A] = asIOptional.asITraversal
+
+  def asISetter: ISetterAlg[P, Q, I, A] = asITraversal.asISetter
+
+  def asIFold: IFoldAlg[P, Q, I, A] = asITraversal.asIFold
 }
 
 object IPrismAlg {

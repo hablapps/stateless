@@ -2,7 +2,7 @@ package org.hablapps.stateless
 package core
 package nat
 
-import scalaz.{ Monad, MonadState, ~> }
+import scalaz.{ Const, Monad, MonadState, ~> }
 import scalaz.syntax.functor._
 
 trait ITraversalAlg[P[_], Q[_], I, A] extends raw.ITraversalAlg[P, I, A]
@@ -13,6 +13,15 @@ trait ITraversalAlg[P[_], Q[_], I, A] extends raw.ITraversalAlg[P, I, A]
   def modifyList(f: A => A): P[List[Unit]] = hom(_ => ev.modify(f))
 
   def collect[O](qo: Q[O]): P[List[O]] = hom(_ => qo)
+
+  /* transforming algebras */
+
+  def asIFold: IFoldAlg[P, Q, I, A] = IFoldAlg(hom)(this, ev)
+
+  def asISetter: ISetterAlg[P, Q, I, A] =
+    ISetterAlg(λ[λ[x => I => Q[x]] ~> λ[x => P[Const[Unit, x]]]] { qx =>
+      map(hom(qx))(_ => Const(()))
+    })(this, ev)
 }
 
 object ITraversalAlg {

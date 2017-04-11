@@ -5,6 +5,7 @@ package nat
 import scalaz.{ Monad, MonadState, ~> }
 import scalaz.Id.Id
 import scalaz.syntax.functor._
+import scalaz.syntax.std.option._
 
 trait ILensAlg[P[_], Q[_], I, A] extends raw.ILensAlg[P, I, A]
     with IOpticAlg[P, Q, I, A, MonadState, Id] {
@@ -22,6 +23,20 @@ trait ILensAlg[P[_], Q[_], I, A] extends raw.ILensAlg[P, I, A]
         hom(i => opt.hom(j => irx((i, j))))
       }
     )(this, opt.ev)
+
+  /* transforming algebras */
+
+  def asIGetter: IGetterAlg[P, Q, I, A] = IGetterAlg(hom)(this, ev)
+
+  def asIOptional: IOptionalAlg[P, Q, I, A] =
+    IOptionalAlg(λ[λ[x => I => Q[x]] ~> λ[x => P[Option[x]]]](
+      qx => map(hom(qx))(_.some)))(this, ev)
+
+  def asIFold: IFoldAlg[P, Q, I, A] = asIGetter.asIFold
+
+  def asITraversal: ITraversalAlg[P, Q, I, A] = asIOptional.asITraversal
+
+  def asISetter: ISetterAlg[P, Q, I, A] = asITraversal.asISetter
 }
 
 object ILensAlg {

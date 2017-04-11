@@ -11,6 +11,17 @@ trait IOptionalAlg[P[_], Q[_], I, A] extends raw.IOptionalAlg[P, I, A]
   def getOption: P[Option[(I, A)]] = hom(ev.get.strengthL)
 
   def setOption(a: A): P[Option[Unit]] = hom(_ => ev.put(a))
+
+  /* transforming algebras */
+
+  def asITraversal: ITraversalAlg[P, Q, I, A] =
+    ITraversalAlg(λ[λ[x => I => Q[x]] ~> λ[x => P[List[x]]]] { qx =>
+      map(hom(qx))(_.toList)
+    })(this, ev)
+
+  def asISetter: ISetterAlg[P, Q, I, A] = asITraversal.asISetter
+
+  def asIFold: IFoldAlg[P, Q, I, A] = asITraversal.asIFold
 }
 
 object IOptionalAlg {

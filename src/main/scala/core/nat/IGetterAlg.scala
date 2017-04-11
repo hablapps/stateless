@@ -10,6 +10,13 @@ trait IGetterAlg[P[_], Q[_], I, A] extends raw.IGetterAlg[P, I, A]
     with IOpticAlg[P, Q, I, A, MonadReader, Id] {
 
   def get: P[(I, A)] = hom(ev.ask.strengthL)
+
+  /* transforming algebras */
+
+  def asIFold: IFoldAlg[P, Q, I, A] =
+    IFoldAlg(λ[λ[x => I => Q[x]] ~> λ[x => P[List[x]]]] { qx =>
+      map(hom(qx))(List(_))
+    })(this, ev)
 }
 
 object IGetterAlg {
