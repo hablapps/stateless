@@ -1,13 +1,12 @@
 package org.hablapps.stateless
 package smonocle
-package asymmetric
 package nat
 
 import scalaz._, Scalaz._
 
 import monocle.Traversal
 
-import core.asymmetric.nat.TraversalAlg
+import core.nat.TraversalAlg
 
 trait TraversalState {
 

@@ -1,13 +1,12 @@
 package org.hablapps.stateless
 package smonocle
-package asymmetric
 package nat
 
 import scalaz._, Scalaz._
 
 import monocle.Fold
 
-import core.asymmetric.nat.FoldAlg
+import core.nat.FoldAlg
 
 trait FoldState {
 

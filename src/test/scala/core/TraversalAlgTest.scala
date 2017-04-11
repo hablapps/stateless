@@ -7,7 +7,7 @@ import scalaz._, Scalaz._
 
 import monocle.Traversal
 
-import org.hablapps.stateless.smonocle.asymmetric.nat.all._
+import smonocle.nat.all._
 
 class TraversalAlgTest extends FlatSpec with Matchers {
 

@@ -1,6 +1,5 @@
 package org.hablapps.stateless
 package smonocle
-package asymmetric
 package nat
 
 import scalaz.{ Monad, StateT, ~> }
@@ -8,7 +7,7 @@ import scalaz.syntax.monad._
 
 import monocle.Prism
 
-import core.asymmetric.nat.PrismAlg
+import core.nat.PrismAlg
 
 trait PrismState {
 

@@ -1,6 +1,5 @@
 package org.hablapps.stateless
 package core
-package asymmetric
 package nat
 
 import scalaz.{ Const, Monad, MonadState, ~> }

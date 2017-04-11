@@ -1,13 +1,12 @@
 package org.hablapps.stateless
 package smonocle
-package asymmetric
 package nat
 package op
 
 import scalaz._, Scalaz._
 
-import core.asymmetric.nat.LensAlg
-import core.asymmetric.nat.op.At
+import core.nat.LensAlg
+import core.nat.op.At
 
 trait StateAt {
 

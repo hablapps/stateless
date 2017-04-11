@@ -1,6 +1,5 @@
 package org.hablapps.stateless
 package core
-package asymmetric
 package raw
 
 import scalaz.{ Equal, Monad, MonadReader }

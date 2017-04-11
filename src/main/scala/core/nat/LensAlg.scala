@@ -1,13 +1,10 @@
 package org.hablapps.stateless
 package core
-package asymmetric
 package nat
 
 import scalaz.{ Const, Monad, MonadState, ~> }
 import scalaz.Id.Id
 import scalaz.syntax.std.option._
-
-import symmetric.nat._
 
 trait LensAlg[P[_], Q[_], A] extends OpticAlg[P, Q, A, MonadState, Id]
     with raw.LensAlg[P, A] {

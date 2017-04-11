@@ -1,13 +1,12 @@
 package org.hablapps.stateless
 package smonocle
-package asymmetric
 package nat
 
 import scalaz.{ Monad, ReaderT, ~> }
 
 import monocle.Getter
 
-import core.asymmetric.nat.GetterAlg
+import core.nat.GetterAlg
 
 trait GetterState {
 

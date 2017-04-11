@@ -1,13 +1,12 @@
 package org.hablapps.stateless
 package smonocle
-package asymmetric
 package nat
 
 import scalaz.{ Monad, StateT, ~> }
 
 import monocle.Lens
 
-import core.symmetric.nat.SLensAlg
+import core.nat.SLensAlg
 
 trait SLensState {
 

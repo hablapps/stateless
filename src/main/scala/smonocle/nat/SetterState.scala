@@ -1,6 +1,5 @@
 package org.hablapps.stateless
 package smonocle
-package asymmetric
 package nat
 
 import scalaz.{ Const, Monad, State, StateT, ~> }
@@ -9,7 +8,7 @@ import scalaz.std.tuple._
 
 import monocle.{ Lens, Setter }
 
-import core.asymmetric.nat.SetterAlg
+import core.nat.SetterAlg
 
 trait SetterState {
 

@@ -7,7 +7,7 @@ import scalaz._, Scalaz._
 
 import monocle.macros.Lenses
 
-import smonocle.asymmetric.nat.all._
+import smonocle.nat.all._
 
 class SLensAlgTest extends FlatSpec with Matchers {
 

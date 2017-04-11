@@ -1,6 +1,5 @@
 package org.hablapps.stateless
 package smonocle
-package asymmetric
 package nat
 
 import scalaz.{ Monad, StateT, ~> }
@@ -8,7 +7,7 @@ import scalaz.syntax.monad._
 
 import monocle.Optional
 
-import core.asymmetric.nat.OptionalAlg
+import core.nat.OptionalAlg
 
 trait OptionalState {
 

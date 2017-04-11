@@ -1,6 +1,5 @@
 package org.hablapps.stateless
 package smonocle
-package asymmetric
 package nat
 
 object all extends FoldState

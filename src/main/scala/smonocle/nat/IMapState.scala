@@ -1,11 +1,10 @@
 package org.hablapps.stateless
 package smonocle
-package asymmetric
 package nat
 
 import scalaz._, Scalaz._
 
-import core.asymmetric.nat.IMapAlg
+import core.nat.IMapAlg
 import op.atState._
 
 trait IMapState {
