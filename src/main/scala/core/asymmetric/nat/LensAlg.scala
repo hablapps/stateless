@@ -5,6 +5,7 @@ package nat
 
 import scalaz.{ Const, Monad, MonadState, ~> }
 import scalaz.Id.Id
+import scalaz.syntax.std.option._
 
 import symmetric.nat._
 
@@ -70,6 +71,19 @@ trait LensAlg[P[_], Q[_], A] extends OpticAlg[P, Q, A, MonadState, Id]
 
   def composeSLens[L[_], R[_], B, C](ln: SLensAlg[Q, L, R, B, C]): SLensAlg[P, L, R, B, C] =
     SLensAlg(hom compose ln.homL, hom compose ln.homR)(this, ln.evL, ln.evR)
+
+  /* transforming algebras */
+
+  def asGetter: GetterAlg[P, Q, A] = GetterAlg(hom)(this, ev)
+
+  def asOptional: OptionalAlg[P, Q, A] =
+    OptionalAlg(λ[Q ~> λ[x => P[Option[x]]]](qx => map(hom(qx))(_.some)))(this, ev)
+
+  def asFold: FoldAlg[P, Q, A] = asGetter.asFold
+
+  def asTraversal: TraversalAlg[P, Q, A] = asOptional.asTraversal
+
+  def asSetter: SetterAlg[P, Q, A] = asTraversal.asSetter
 }
 
 object LensAlg {

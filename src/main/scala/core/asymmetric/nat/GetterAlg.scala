@@ -30,6 +30,11 @@ trait GetterAlg[P[_], Q[_], A] extends OpticAlg[P, Q, A, MonadReader, Id]
 
   def composeLens[R[_], B](ln: LensAlg[Q, R, B]): GetterAlg[P, R, B] =
     GetterAlg(hom compose ln.hom)(this, ln.ev)
+
+  /* transforming algebras */
+
+  def asFold: FoldAlg[P, Q, A] =
+    FoldAlg(λ[Q ~> λ[x => P[List[x]]]](qx => map(hom(qx))(List(_))))(this, ev)
 }
 
 object GetterAlg {

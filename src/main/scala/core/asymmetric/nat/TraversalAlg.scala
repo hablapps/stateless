@@ -48,6 +48,15 @@ trait TraversalAlg[P[_], Q[_], A] extends OpticAlg[P, Q, A, MonadState, List]
 
   def composeLens[R[_], B](ln: LensAlg[Q, R, B]): TraversalAlg[P, R, B] =
     TraversalAlg(hom compose ln.hom)(this, ln.ev)
+
+  /* transforming algebras */
+
+  def asFold: FoldAlg[P, Q, A] = FoldAlg(hom)(this, ev)
+
+  def asSetter: SetterAlg[P, Q, A] =
+    SetterAlg(λ[Q ~> λ[x => P[Const[Unit, x]]]] { qx =>
+      map(hom(qx))(_ => Const(()))
+    })(this, ev)
 }
 
 object TraversalAlg {

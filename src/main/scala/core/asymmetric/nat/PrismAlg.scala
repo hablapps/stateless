@@ -49,6 +49,14 @@ trait PrismAlg[P[_], Q[_], A] extends OpticAlg[P, Q, A, MonadState, Option]
 
   def composeLens[R[_], B](ln: LensAlg[Q, R, B]): OptionalAlg[P, R, B] =
     OptionalAlg(hom compose ln.hom)(this, ln.ev)
+
+  /* transforming algebras */
+
+  def asOptional: OptionalAlg[P, Q, A] = OptionalAlg(hom)(this, ev)
+
+  def asTraversal: TraversalAlg[P, Q, A] = asOptional.asTraversal
+
+  def asSetter: SetterAlg[P, Q, A] = asTraversal.asSetter
 }
 
 object PrismAlg {
