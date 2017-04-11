@@ -1,11 +1,11 @@
-package org.hablapps.phoropter
+package org.hablapps.stateless
 package test
 
 import org.scalatest._
 
 import scalaz._, Scalaz._
 
-import org.hablapps.phoropter.smonocle.asymmetric.nat.all._
+import org.hablapps.stateless.smonocle.asymmetric.nat.all._
 
 class IMapAlgTest extends FlatSpec with Matchers {
 

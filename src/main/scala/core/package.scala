@@ -1,4 +1,4 @@
-package org.hablapps.phoropter
+package org.hablapps.stateless
 
 import scalaz.{ Const, Monad, MonadState, MonadReader, StateT }
 import scalaz.syntax.monad._
