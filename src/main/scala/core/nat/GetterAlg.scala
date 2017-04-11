@@ -34,6 +34,14 @@ trait GetterAlg[P[_], Q[_], A] extends OpticAlg[P, Q, A, MonadReader, Id]
 
   def asFold: FoldAlg[P, Q, A] =
     FoldAlg(λ[Q ~> λ[x => P[List[x]]]](qx => map(hom(qx))(List(_))))(this, ev)
+
+  def asIndexed: IGetterAlg[P, Q, Unit, A] =
+    IGetterAlg(new (λ[x => Unit => Q[x]] ~> P) {
+      def apply[X](iqx: Unit => Q[X]): P[X] = hom[X](iqx(()))
+    })(this, ev)
+
+  def asSymmetric: SGetterAlg[P, Q, Q, A, A] =
+    SGetterAlg(hom, hom)(this, ev, ev)
 }
 
 object GetterAlg {

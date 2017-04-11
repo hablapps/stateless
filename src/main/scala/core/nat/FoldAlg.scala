@@ -30,6 +30,15 @@ trait FoldAlg[P[_], Q[_], A] extends OpticAlg[P, Q, A, MonadReader, List]
 
   def composeLens[R[_], B](ln: LensAlg[Q, R, B]): FoldAlg[P, R, B] =
     composeFold(ln.asFold)
+
+  /* transforming algebras */
+
+  def asIndexed: IFoldAlg[P, Q, Unit, A] =
+    IFoldAlg(λ[λ[x => Unit => Q[x]] ~> λ[x => P[List[x]]]] { iqx =>
+      hom(iqx(()))
+    })(this, ev)
+
+  def asSymmetric: SFoldAlg[P, Q, Q, A, A] = SFoldAlg(hom, hom)(this, ev, ev)
 }
 
 object FoldAlg {
