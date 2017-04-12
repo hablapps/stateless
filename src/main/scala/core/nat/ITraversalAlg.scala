@@ -13,8 +13,6 @@ trait ITraversalAlg[P[_], Q[_], I, A] extends raw.ITraversalAlg[P, I, A]
 
   def modifyList(f: A => A): P[List[Unit]] = hom(_ => ev.modify(f))
 
-  def collect[O](qo: Q[O]): P[List[O]] = hom(_ => qo)
-
   /* composing algebras */
 
   def composeIFold[R[_], J, B](fl: IFoldAlg[Q, R, J, B]): IFoldAlg[P, R, (I, J), B] =

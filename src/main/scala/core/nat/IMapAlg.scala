@@ -4,24 +4,29 @@ package nat
 
 import scalaz.{ Monad, MonadState, ~> }
 import scalaz.syntax.functor._
+import scalaz.syntax.id._
 
 import op._, At.syntax._
 
-trait IMapAlg[P[_], Q[_], R[_], I, A] extends ITraversalAlg[P, Q, I, A] {
+trait IMapAlg[P[_], Q[_], R[_], I, A] extends raw.IMapAlg[P, I, A]
+    with IOpticAlg[P, Q, I, A, MonadState, List] {
 
   implicit val ta: At[P, R, I, A]
 
-  // additional algebra
+  /* derived algebra */
 
-  def add(i: I)(a: A): P[Unit] = putOpt(i)(Option(a))
+  def getList: P[List[(I, A)]] = hom(ev.get.strengthL)
 
-  def remove(i: I): P[Unit] = putOpt(i)(None)
+  def modifyList(f: A => A): P[List[Unit]] = hom(_ => ev.modify(f))
+
+  def updateOption(i: I)(oa: Option[A]): P[Unit] =
+    at(i) |> (ln => ln.hom(ln.ev.put(oa)))
+
+  /* new algebra */
+
+  def collect[O](qo: Q[O]): P[List[O]] = hom(_ => qo)
 
   def pick[O](i: I)(ro: R[O]): P[O] = at(i).hom[O](ro)
-
-  def get(i: I): P[Option[A]] = at(i).get
-
-  private def putOpt(i: I)(oa: Option[A]): P[Unit] = at(i).hom(at(i).ev.put(oa))
 }
 
 object IMapAlg {
