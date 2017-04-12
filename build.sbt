@@ -6,6 +6,8 @@ crossScalaVersions := Seq("2.11.8", "2.12.1")
 
 organization := "org.hablapps"
 
+version := "0.1"
+
 libraryDependencies ++= Seq(
   "org.scalaz" %% "scalaz-core" % "7.2.8",
   "com.github.julien-truffaut" %%  "monocle-core"  % "1.4.0",
