@@ -17,7 +17,7 @@ trait PrismAlg[P[_], A] extends Monad[P] { self =>
 
   /* derived methods */
 
-  def modify(f: A => A): P[Unit] = map(modifyOption(f))(_ => ())
+  def modify(f: A => A): P[Unit] = void(modifyOption(f))
 
   def modifyOption(f: A => A): P[Option[Unit]] =
     bind(getOption)(_.fold(point(Option.empty[Unit])) { a =>

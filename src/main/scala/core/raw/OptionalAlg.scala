@@ -18,9 +18,9 @@ trait OptionalAlg[P[_], A] extends Monad[P] { self =>
   def modifyOption(f: A => A): P[Option[Unit]] =
     bind(getOption)(_.fold(point(Option.empty[Unit]))(setOption))
 
-  def set(a: A): P[Unit] = map(setOption(a))(_ => ())
+  def set(a: A): P[Unit] = void(setOption(a))
 
-  def modify(f: A => A): P[Unit] = map(modifyOption(f))(_ => ())
+  def modify(f: A => A): P[Unit] = void(modifyOption(f))
 
   def isEmpty: P[Boolean] = map(getOption)(_.isEmpty)
 

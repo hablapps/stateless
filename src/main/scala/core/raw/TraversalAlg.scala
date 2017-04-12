@@ -36,9 +36,9 @@ trait TraversalAlg[P[_], A] extends Monad[P] { self =>
 
   def setList(a: A): P[List[Unit]] = modifyList(_ => a)
 
-  def set(a: A): P[Unit] = map(setList(a))(_ => ())
+  def set(a: A): P[Unit] = void(setList(a))
 
-  def modify(f: A => A): P[Unit] = map(modifyList(f))(_ => ())
+  def modify(f: A => A): P[Unit] = void(modifyList(f))
 
   trait TraversalAlgLaw {
     implicit val _: Monad[P] = self
