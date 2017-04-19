@@ -6,7 +6,6 @@ object all extends FoldState
     with GetterState
     with LensState
     with OptionalState
-    with PrismState
     with SetterState
     with TraversalState
     with IMapState

@@ -24,9 +24,6 @@ trait SetterAlg[P[_], Q[_], A] extends OpticAlg[P, Q, A, MonadState, Const[Unit,
   def composeOptional[R[_], B](op: OptionalAlg[Q, R, B]): SetterAlg[P, R, B] =
     composeSetter(op.asSetter)
 
-  def composePrism[R[_], B](pr: PrismAlg[Q, R, B]): SetterAlg[P, R, B] =
-    composeSetter(pr.asSetter)
-
   def composeLens[R[_], B](ln: LensAlg[Q, R, B]): SetterAlg[P, R, B] =
     composeSetter(ln.asSetter)
 

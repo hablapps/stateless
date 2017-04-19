@@ -30,9 +30,6 @@ trait LensAlg[P[_], Q[_], A] extends OpticAlg[P, Q, A, MonadState, Id]
   def composeOptional[R[_], B](op: OptionalAlg[Q, R, B]): OptionalAlg[P, R, B] =
     asOptional.composeOptional(op)
 
-  def composePrism[R[_], B](pr: PrismAlg[Q, R, B]): OptionalAlg[P, R, B] =
-    asOptional.composeOptional(pr.asOptional)
-
   def composeLens[R[_], B](ln: LensAlg[Q, R, B]): LensAlg[P, R, B] =
     LensAlg(hom compose ln.hom)(this, ln.ev)
 

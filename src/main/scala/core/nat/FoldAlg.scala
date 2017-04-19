@@ -25,9 +25,6 @@ trait FoldAlg[P[_], Q[_], A] extends OpticAlg[P, Q, A, MonadReader, List]
   def composeOptional[R[_], B](op: OptionalAlg[Q, R, B]): FoldAlg[P, R, B] =
     composeFold(op.asFold)
 
-  def composePrism[R[_], B](pr: PrismAlg[Q, R, B]): FoldAlg[P, R, B] =
-    composeFold(pr.asFold)
-
   def composeLens[R[_], B](ln: LensAlg[Q, R, B]): FoldAlg[P, R, B] =
     composeFold(ln.asFold)
 

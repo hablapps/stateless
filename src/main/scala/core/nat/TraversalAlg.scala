@@ -32,9 +32,6 @@ trait TraversalAlg[P[_], Q[_], A] extends OpticAlg[P, Q, A, MonadState, List]
   def composeOptional[R[_], B](op: OptionalAlg[Q, R, B]): TraversalAlg[P, R, B] =
     composeTraversal(op.asTraversal)
 
-  def composePrism[R[_], B](pr: PrismAlg[Q, R, B]): TraversalAlg[P, R, B] =
-    composeTraversal(pr.asTraversal)
-
   def composeLens[R[_], B](ln: LensAlg[Q, R, B]): TraversalAlg[P, R, B] =
     composeTraversal(ln.asTraversal)
 
