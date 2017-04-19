@@ -10,3 +10,4 @@ object all extends FoldState
     with TraversalState
     with IMapState
     with SLensState
+    with op.AtState

@@ -8,9 +8,21 @@ import scalaz._, Scalaz._
 import core.nat.LensAlg
 import core.nat.op.At
 
-trait StateAt {
+trait AtState extends AtStateInstances {
 
-  implicit def fromIMapState[F[_]: Monad, K, V]
+  implicit def fromIMapState[K, V]
+      : At[State[Map[K, V], ?], State[Option[V], ?], K, V] =
+    new At[State[Map[K, V], ?], State[Option[V], ?], K, V] {
+      def at(k: K) = LensAlg[State[Map[K, V], ?], State[Option[V], ?], Option[V]](
+        λ[State[Option[V], ?] ~> State[Map[K, V], ?]] { sx =>
+          State(s => sx(s.get(k)).swap.map(_.fold(s - k)(p => s + (k -> p))).swap)
+        })
+    }
+}
+
+trait AtStateInstances {
+
+  implicit def fromIMapState2[F[_]: Monad, K, V]
       : At[StateT[F, Map[K, V], ?], StateT[F, Option[V], ?], K, V] =
     new At[StateT[F, Map[K, V], ?], StateT[F, Option[V], ?], K, V] {
       def at(k: K) = LensAlg[StateT[F, Map[K, V], ?], StateT[F, Option[V], ?], Option[V]](
@@ -20,4 +32,4 @@ trait StateAt {
     }
 }
 
-object atState extends StateAt
+object atState extends AtState
