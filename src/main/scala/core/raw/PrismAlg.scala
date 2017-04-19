@@ -34,6 +34,20 @@ trait PrismAlg[P[_], A] extends Monad[P] { self =>
 
   def all(p: A => Boolean): P[Boolean] = map(getOption)(_.fold(true)(p))
 
+  trait CompositionExperiment {
+    implicit val _: Monad[P] = self
+    import scalaz.~>
+
+    def composeLens[Q[_], B <: A](ln: LensAlg[Q, B])(nat: Q ~> P) = new OptionalAlg[P, B] {
+      def point[X](x: => X) = self.point(x)
+      def bind[X, Y](fx: P[X])(f: X => P[Y]) = self.bind(fx)(f)
+      def getOption: P[Option[B]] =
+        nat(ln.get) >>= (b => self.getOption.map(_.as(b)))
+      def setOption(b: B): P[Option[Unit]] =
+        nat(ln.set(b)) >> map(self.set(b))(_.some)
+    }
+  }
+
   trait PrismAlgLaw {
     implicit val _: Monad[P] = self
 

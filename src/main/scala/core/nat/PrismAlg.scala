@@ -6,6 +6,7 @@ import scalaz.{ Const, Monad, MonadState, ~> }
 import scalaz.syntax.monad._
 import scalaz.std.list._
 import scalaz.std.option._
+import scalaz.syntax.std.option._
 
 trait PrismAlg[P[_], Q[_], A] extends OpticAlg[P, Q, A, MonadState, Option]
     with raw.PrismAlg[P, A] {

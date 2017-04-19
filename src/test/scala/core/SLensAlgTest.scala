@@ -3,7 +3,7 @@ package test
 
 import org.scalatest._
 
-import scalaz._, Scalaz._
+import scalaz.{ Lens => _, _ }, Scalaz._
 
 import monocle.macros.Lenses
 
@@ -32,7 +32,7 @@ class SLensAlgTest extends FlatSpec with Matchers {
   @Lenses
   case class Department(name: String, boss: Person)
 
-  val bossLn = fromLens[Id, Department, Person](Department.boss)
+  val bossLn: Lens[Department, Person] = Department.boss
 
   val department = Department("IT", doe)
 

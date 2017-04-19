@@ -13,4 +13,7 @@ package object `core` {
       def ask = ms.get
       def local[X](f: A => A)(fx: F[X]): F[X] = ms.bind(ms.modify(f))(_ => fx)
     }
+
+  implicit def stateTMonadReader[F[_]: Monad, A]: MonadReader[StateT[F, A, ?], A] =
+    fromStateToReader[StateT[F, A, ?], A](MonadState[StateT[F, A, ?], A])
 }

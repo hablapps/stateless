@@ -3,7 +3,7 @@ package test
 
 import org.scalatest._
 
-import scalaz._, Scalaz._
+import scalaz.{ Lens => _, _ }, Scalaz._
 
 import monocle.macros.Lenses
 import monocle.Traversal
@@ -18,7 +18,7 @@ class LensAlgTest extends FlatSpec with Matchers {
   @Lenses
   case class Address(street: String, city: String, number: Int)
 
-  val ageLn = fromLens[Id, Person, Int](Person.age)
+  val ageLn: Lens[Person, Int] = Person.age
 
   val john = Person("John", "Doe", 40, Address("street", "city", 1))
 
@@ -34,9 +34,9 @@ class LensAlgTest extends FlatSpec with Matchers {
     ageLn.set(30).apply(john) shouldBe (john.copy(age = 30), ())
   }
 
-  val addrLn = fromLens[Id, Person, Address](Person.address)
+  val addrLn: Lens[Person, Address] = Person.address
 
-  val nmbLn = fromLens[Id, Address, Int](Address.number)
+  val nmbLn: Lens[Address, Int] = Address.number
 
   it should "compose" in {
 
