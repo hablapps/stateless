@@ -6,7 +6,7 @@ crossScalaVersions := Seq("2.11.8", "2.12.1")
 
 organization := "org.hablapps"
 
-version := "0.1"
+version := "0.1-SNAPSHOT"
 
 libraryDependencies ++= Seq(
   "org.scalaz" %% "scalaz-core" % "7.2.8",
