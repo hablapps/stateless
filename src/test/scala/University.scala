@@ -37,8 +37,7 @@ class University extends FlatSpec with Matchers {
     GenLens[University](_.departments)
 
   def department(s: String): Lens[University, Option[Department]] =
-    departments.composeLens[State[Option[Department], ?], Option[Department]](
-      fromIMapState.at(s))
+    departments.composeLens(fromIMapState.at(s))
 
   "Optics" should "remove elements from a map" in {
     department("History").set(None).exec(uni) shouldBe
@@ -60,12 +59,12 @@ class University extends FlatSpec with Matchers {
   val lecturers: Lens[Department, List[Lecturer]] = GenLens[Department](_.lecturers)
   val salary: Lens[Lecturer, Int] = GenLens[Lecturer](_.salary)
   val allLecturers: Traversal[University, Lecturer] = departments
-    .composeTraversal[State[Department, ?], Department](asTraversal(each))
-    .composeLens[State[List[Lecturer], ?], List[Lecturer]](lecturers)
-    .composeTraversal[State[Lecturer, ?], Lecturer](asTraversal(each))
+    .composeTraversal(asTraversal(each))
+    .composeLens(lecturers)
+    .composeTraversal(asTraversal(each))
 
   it should "update a field in nested class" in {
-    allLecturers.composeLens[State[Int, ?], Int](salary).modify(_ + 2).exec(uni) shouldBe
+    allLecturers.composeLens(salary).modify(_ + 2).exec(uni) shouldBe
       University("oxford", Map(
         "Computer Science" -> Department(45, List(
           Lecturer("john"  , "doe", 10 + 2),
@@ -82,11 +81,11 @@ class University extends FlatSpec with Matchers {
   val firstName: Lens[Lecturer, String] = GenLens[Lecturer](_.firstName)
   val lastName: Lens[Lecturer, String] = GenLens[Lecturer](_.lastName)
   val allFirstNameHead: Traversal[University, Char] = allLecturers
-    .composeLens[State[String, ?], String](firstName)
-    .composeOptional[State[Char, ?], Char](asOptional(headOption))
+    .composeLens(firstName)
+    .composeOptional(asOptional(headOption))
   val allLastNameHead: Traversal[University, Char] = allLecturers
-    .composeLens[State[String, ?], String](lastName)
-    .composeOptional[State[Char, ?], Char](asOptional(headOption))
+    .composeLens(lastName)
+    .composeOptional(asOptional(headOption))
 
   it should "upper case first name and then last name" in {
     val upperCasedFirstName = allFirstNameHead.modify(_.toUpper).exec(uni)
@@ -119,8 +118,8 @@ class University extends FlatSpec with Matchers {
       case (fn, ln, l) => l.copy(firstName = fn, lastName = ln)
     }
   val allFirstAndLastNamesHead: Traversal[University, Char] = allLecturers
-    .composeTraversal[State[String, ?], String](firstAndLastNames)
-    .composeOptional[State[Char, ?], Char](asOptional(headOption))
+    .composeTraversal(firstAndLastNames)
+    .composeOptional(asOptional(headOption))
 
   it should "upper case first and last name all together" in {
     allFirstAndLastNamesHead.modify(_.toUpper).exec(uni) shouldBe

@@ -6,7 +6,7 @@ import scalaz.{ Const, Monad, MonadState, ~> }
 import scalaz.syntax.monad._
 import scalaz.std.list._
 
-trait TraversalAlg[P[_], Q[_], A] extends OpticAlg[P, Q, A, MonadState, List]
+trait TraversalAlg[P[_], A] extends OpticAlg[P, A, MonadState, List]
     with raw.TraversalAlg[P, A] {
 
   def getList: P[List[A]] = hom(ev.get)
@@ -15,50 +15,53 @@ trait TraversalAlg[P[_], Q[_], A] extends OpticAlg[P, Q, A, MonadState, List]
 
   /* composing algebras */
 
-  def composeFold[R[_], B](fl: FoldAlg[Q, R, B]): FoldAlg[P, R, B] =
+  def composeFold[B](fl: FoldAlg[Q, B]): FoldAlg.Aux[P, fl.Q, B] =
     asFold.composeFold(fl)
 
-  def composeGetter[R[_], B](gt: GetterAlg[Q, R, B]): FoldAlg[P, R, B] =
+  def composeGetter[B](gt: GetterAlg[Q, B]): FoldAlg.Aux[P, gt.Q, B] =
     asFold.composeFold(gt.asFold)
 
-  def composeSetter[R[_], B](st: SetterAlg[Q, R, B]): SetterAlg[P, R, B] =
+  def composeSetter[B](st: SetterAlg[Q, B]): SetterAlg.Aux[P, st.Q, B] =
     asSetter.composeSetter(st)
 
-  def composeTraversal[R[_], B](tr: TraversalAlg[Q, R, B]): TraversalAlg[P, R, B] =
-    TraversalAlg(λ[R ~> λ[x => P[List[x]]]] { rx =>
+  def composeTraversal[B](tr: TraversalAlg[Q, B]): TraversalAlg.Aux[P, tr.Q, B] =
+    TraversalAlg(λ[tr.Q ~> λ[x => P[List[x]]]] { rx =>
       map(hom(tr.hom(rx)))(_.toList.join)
     })(this, tr.ev)
 
-  def composeOptional[R[_], B](op: OptionalAlg[Q, R, B]): TraversalAlg[P, R, B] =
+  def composeOptional[B](op: OptionalAlg[Q, B]): TraversalAlg.Aux[P, op.Q, B] =
     composeTraversal(op.asTraversal)
 
-  def composeLens[R[_], B](ln: LensAlg[Q, R, B]): TraversalAlg[P, R, B] =
+  def composeLens[B](ln: LensAlg[Q, B]): TraversalAlg.Aux[P, ln.Q, B] =
     composeTraversal(ln.asTraversal)
 
   /* transforming algebras */
 
-  def asFold: FoldAlg[P, Q, A] = FoldAlg(hom)(this, ev)
+  def asFold: FoldAlg.Aux[P, Q, A] = FoldAlg(hom)(this, ev)
 
-  def asSetter: SetterAlg[P, Q, A] =
+  def asSetter: SetterAlg.Aux[P, Q, A] =
     SetterAlg(λ[Q ~> λ[x => P[Const[Unit, x]]]] { qx =>
       map(hom(qx))(_ => Const(()))
     })(this, ev)
 
-  def asIndexed: ITraversalAlg[P, Q, Unit, A] =
-    ITraversalAlg(λ[λ[x => Unit => Q[x]] ~> λ[x => P[List[x]]]] { iqx =>
-      hom(iqx(()))
-    })(this, ev)
-
-  def asSymmetric: STraversalAlg[P, Q, Q, A, A] =
-    STraversalAlg(hom, hom)(this, ev, ev)
+  // def asIndexed: ITraversalAlg[P, Q, Unit, A] =
+  //   ITraversalAlg(λ[λ[x => Unit => Q[x]] ~> λ[x => P[List[x]]]] { iqx =>
+  //     hom(iqx(()))
+  //   })(this, ev)
+  //
+  // def asSymmetric: STraversalAlg[P, Q, Q, A, A] =
+  //   STraversalAlg(hom, hom)(this, ev, ev)
 }
 
 object TraversalAlg {
 
-  def apply[P[_], Q[_], A](
-      hom2: Q ~> λ[x => P[List[x]]])(implicit
+  type Aux[P[_], Q2[_], A] = TraversalAlg[P, A] { type Q[x] = Q2[x] }
+
+  def apply[P[_], Q2[_], A](
+      hom2: Q2 ~> λ[x => P[List[x]]])(implicit
       ev0: Monad[P],
-      ev1: MonadState[Q, A]) = new TraversalAlg[P, Q, A] {
+      ev1: MonadState[Q2, A]): Aux[P, Q2, A] = new TraversalAlg[P, A] {
+    type Q[x] = Q2[x]
     def point[X](x: => X) = ev0.point(x)
     def bind[X, Y](fx: P[X])(f: X => P[Y]): P[Y] = ev0.bind(fx)(f)
     implicit val ev = ev1

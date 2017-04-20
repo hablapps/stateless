@@ -6,44 +6,47 @@ import scalaz.{ Monad, MonadReader, ~> }
 import scalaz.syntax.monad._
 import scalaz.std.list._
 
-trait FoldAlg[P[_], Q[_], A] extends OpticAlg[P, Q, A, MonadReader, List]
+trait FoldAlg[P[_], A] extends OpticAlg[P, A, MonadReader, List]
     with raw.FoldAlg[P, A] {
 
   def getList: P[List[A]] = hom(ev.ask)
 
   /* composing algebras */
 
-  def composeFold[R[_], B](fl: FoldAlg[Q, R, B]): FoldAlg[P, R, B] =
-    FoldAlg(λ[R ~> λ[x => P[List[x]]]](rx => map(hom(fl.hom(rx)))(_.join)))(this, fl.ev)
+  def composeFold[B](fl: FoldAlg[Q, B]): FoldAlg.Aux[P, fl.Q, B] =
+    FoldAlg(λ[fl.Q ~> λ[x => P[List[x]]]](rx => map(hom(fl.hom(rx)))(_.join)))(this, fl.ev)
 
-  def composeGetter[R[_], B](gt: GetterAlg[Q, R, B]): FoldAlg[P, R, B] =
+  def composeGetter[B](gt: GetterAlg[Q, B]): FoldAlg.Aux[P, gt.Q, B] =
     composeFold(gt.asFold)
 
-  def composeTraversal[R[_], B](tr: TraversalAlg[Q, R, B]): FoldAlg[P, R, B] =
+  def composeTraversal[B](tr: TraversalAlg[Q, B]): FoldAlg.Aux[P, tr.Q, B] =
     composeFold(tr.asFold)
 
-  def composeOptional[R[_], B](op: OptionalAlg[Q, R, B]): FoldAlg[P, R, B] =
+  def composeOptional[B](op: OptionalAlg[Q, B]): FoldAlg.Aux[P, op.Q, B] =
     composeFold(op.asFold)
 
-  def composeLens[R[_], B](ln: LensAlg[Q, R, B]): FoldAlg[P, R, B] =
+  def composeLens[B](ln: LensAlg[Q, B]): FoldAlg.Aux[P, ln.Q, B] =
     composeFold(ln.asFold)
 
   /* transforming algebras */
 
-  def asIndexed: IFoldAlg[P, Q, Unit, A] =
-    IFoldAlg(λ[λ[x => Unit => Q[x]] ~> λ[x => P[List[x]]]] { iqx =>
-      hom(iqx(()))
-    })(this, ev)
-
-  def asSymmetric: SFoldAlg[P, Q, Q, A, A] = SFoldAlg(hom, hom)(this, ev, ev)
+  // def asIndexed: IFoldAlg[P, Q, Unit, A] =
+  //   IFoldAlg(λ[λ[x => Unit => Q[x]] ~> λ[x => P[List[x]]]] { iqx =>
+  //     hom(iqx(()))
+  //   })(this, ev)
+  //
+  // def asSymmetric: SFoldAlg[P, Q, Q, A, A] = SFoldAlg(hom, hom)(this, ev, ev)
 }
 
 object FoldAlg {
 
-  def apply[P[_], Q[_], A](
-      hom2: Q ~> λ[x => P[List[x]]])(implicit
+  type Aux[P[_], Q2[_], A] = FoldAlg[P, A] { type Q[x] = Q2[x] }
+
+  def apply[P[_], Q2[_], A](
+      hom2: Q2 ~> λ[x => P[List[x]]])(implicit
       ev0: Monad[P],
-      ev1: MonadReader[Q, A]) = new FoldAlg[P, Q, A] {
+      ev1: MonadReader[Q2, A]): Aux[P, Q2, A] = new FoldAlg[P, A] {
+    type Q[x] = Q2[x]
     def point[X](x: => X) = ev0.point(x)
     def bind[X, Y](fx: P[X])(f: X => P[Y]): P[Y] = ev0.bind(fx)(f)
     implicit val ev = ev1
