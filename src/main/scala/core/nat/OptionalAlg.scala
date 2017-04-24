@@ -47,11 +47,11 @@ trait OptionalAlg[P[_], A] extends OpticAlg[P, A, MonadState, Option]
 
   def asFold: FoldAlg.Aux[P, Q, A] = asTraversal.asFold
 
-  // def asIndexed: IOptionalAlg[P, Q, Unit, A] =
-  //   IOptionalAlg(λ[λ[x => Unit => Q[x]] ~> λ[x => P[Option[x]]]] { iqx =>
-  //     hom(iqx(()))
-  //   })(this, ev)
-  //
+  def asIndexed: IOptionalAlg.Aux[P, Q, Unit, A] =
+    IOptionalAlg(λ[λ[x => Unit => Q[x]] ~> λ[x => P[Option[x]]]] { iqx =>
+      hom(iqx(()))
+    })(this, ev)
+
   // def asSymmetric: SOptionalAlg[P, Q, Q, A, A] =
   //   SOptionalAlg(hom, hom)(this, ev, ev)
 }

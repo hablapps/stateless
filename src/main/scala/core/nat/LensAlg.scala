@@ -46,11 +46,11 @@ trait LensAlg[P[_], A] extends OpticAlg[P, A, MonadState, Id]
 
   def asSetter: SetterAlg.Aux[P, Q, A] = asTraversal.asSetter
 
-  // def asIndexed: ILensAlg[P, Q, Unit, A] =
-  //   ILensAlg(new (λ[x => Unit => Q[x]] ~> P) {
-  //     def apply[X](iqx: Unit => Q[X]): P[X] = hom[X](iqx(()))
-  //   })(this, ev)
-  //
+  def asIndexed: ILensAlg.Aux[P, Q, Unit, A] =
+    ILensAlg(new (λ[x => Unit => Q[x]] ~> P) {
+      def apply[X](iqx: Unit => Q[X]): P[X] = hom[X](iqx(()))
+    })(this, ev)
+
   // def asSymmetric: SLensAlg[P, Q, Q, A, A] = SLensAlg(hom, hom)(this, ev, ev)
 }
 

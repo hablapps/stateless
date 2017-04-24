@@ -30,11 +30,11 @@ trait FoldAlg[P[_], A] extends OpticAlg[P, A, MonadReader, List]
 
   /* transforming algebras */
 
-  // def asIndexed: IFoldAlg[P, Q, Unit, A] =
-  //   IFoldAlg(λ[λ[x => Unit => Q[x]] ~> λ[x => P[List[x]]]] { iqx =>
-  //     hom(iqx(()))
-  //   })(this, ev)
-  //
+  def asIndexed: IFoldAlg.Aux[P, Q, Unit, A] =
+    IFoldAlg(λ[λ[x => Unit => Q[x]] ~> λ[x => P[List[x]]]] { iqx =>
+      hom(iqx(()))
+    })(this, ev)
+
   // def asSymmetric: SFoldAlg[P, Q, Q, A, A] = SFoldAlg(hom, hom)(this, ev, ev)
 }
 

@@ -29,11 +29,11 @@ trait SetterAlg[P[_], A] extends OpticAlg[P, A, MonadState, Const[Unit, ?]]
 
   /* transforming algebras */
 
-  // def asIndexed: ISetterAlg[P, Q, Unit, A] =
-  //   ISetterAlg(λ[λ[x => Unit => Q[x]] ~> λ[x => P[Const[Unit, x]]]] { iqx =>
-  //     hom(iqx(()))
-  //   })(this, ev)
-  //
+  def asIndexed: ISetterAlg.Aux[P, Q, Unit, A] =
+    ISetterAlg(λ[λ[x => Unit => Q[x]] ~> λ[x => P[Const[Unit, x]]]] { iqx =>
+      hom(iqx(()))
+    })(this, ev)
+
   // def asSymmetric: SSetterAlg[P, Q, Q, A, A] =
   //   SSetterAlg(hom, hom)(this, ev, ev)
 }

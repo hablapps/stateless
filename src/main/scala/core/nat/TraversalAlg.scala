@@ -44,11 +44,11 @@ trait TraversalAlg[P[_], A] extends OpticAlg[P, A, MonadState, List]
       map(hom(qx))(_ => Const(()))
     })(this, ev)
 
-  // def asIndexed: ITraversalAlg[P, Q, Unit, A] =
-  //   ITraversalAlg(λ[λ[x => Unit => Q[x]] ~> λ[x => P[List[x]]]] { iqx =>
-  //     hom(iqx(()))
-  //   })(this, ev)
-  //
+  def asIndexed: ITraversalAlg.Aux[P, Q, Unit, A] =
+    ITraversalAlg(λ[λ[x => Unit => Q[x]] ~> λ[x => P[List[x]]]] { iqx =>
+      hom(iqx(()))
+    })(this, ev)
+
   // def asSymmetric: STraversalAlg[P, Q, Q, A, A] =
   //   STraversalAlg(hom, hom)(this, ev, ev)
 }
