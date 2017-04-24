@@ -33,6 +33,12 @@ trait LensAlg[P[_], A] extends OpticAlg[P, A, MonadState, Id]
   def composeLens[B](ln: LensAlg[Q, B]): LensAlg.Aux[P, ln.Q, B] =
     LensAlg(hom compose ln.hom)(this, ln.ev)
 
+  def parLens(ln: LensAlg.Aux[P, Q, A]): TraversalAlg.Aux[P, Q, A] =
+    TraversalAlg[P, Q, A](
+      λ[Q ~> λ[x => P[List[x]]]] { qx =>
+        bind(hom(qx))(a1 => map(ln.hom(qx))(a2 => List(a1, a2)))
+      })(this, ev)
+
   /* transforming algebras */
 
   def asGetter: GetterAlg.Aux[P, Q, A] = GetterAlg(hom)(this, ev)
