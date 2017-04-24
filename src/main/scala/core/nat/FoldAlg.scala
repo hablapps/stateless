@@ -35,7 +35,8 @@ trait FoldAlg[P[_], A] extends OpticAlg[P, A, MonadReader, List]
       hom(iqx(()))
     })(this, ev)
 
-  // def asSymmetric: SFoldAlg[P, Q, Q, A, A] = SFoldAlg(hom, hom)(this, ev, ev)
+  def asSymmetric: SFoldAlg.Aux[P, Q, Q, A, A] =
+    SFoldAlg(hom, hom)(this, ev, ev)
 }
 
 object FoldAlg {

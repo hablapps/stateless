@@ -20,14 +20,14 @@ trait LensState extends LensStateInstances {
 
 trait LensStateInstances extends LensStateInstances1 {
 
-  // type LensField[P[_], A] = LensAlg[P, State[A, ?], A]
-  //
-  // implicit def asLensField[F[_]: Monad, S, A](
-  //     ln: MLens[S, A]): LensField[StateT[F, S, ?], A] =
-  //   LensAlg[StateT[F, S, ?], State[A, ?], A](
-  //     λ[State[A, ?] ~> StateT[F, S, ?]] { sa =>
-  //       StateT(s => sa.xmap(ln.set(_)(s))(ln.get)(s).point[F])
-  //     })
+  type LensField[P[_], A] = LensAlg.Aux[P, State[A, ?], A]
+
+  implicit def asLensField[F[_]: Monad, S, A](
+      ln: MLens[S, A]): LensField[StateT[F, S, ?], A] =
+    LensAlg[StateT[F, S, ?], State[A, ?], A](
+      λ[State[A, ?] ~> StateT[F, S, ?]] { sa =>
+        StateT(s => sa.xmap(ln.set(_)(s))(ln.get)(s).point[F])
+      })
 }
 
 trait LensStateInstances1 {

@@ -51,7 +51,8 @@ trait LensAlg[P[_], A] extends OpticAlg[P, A, MonadState, Id]
       def apply[X](iqx: Unit => Q[X]): P[X] = hom[X](iqx(()))
     })(this, ev)
 
-  // def asSymmetric: SLensAlg[P, Q, Q, A, A] = SLensAlg(hom, hom)(this, ev, ev)
+  def asSymmetric: SLensAlg.Aux[P, Q, Q, A, A] =
+    SLensAlg(hom, hom)(this, ev, ev)
 }
 
 object LensAlg {
