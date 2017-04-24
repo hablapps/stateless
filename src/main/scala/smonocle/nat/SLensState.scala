@@ -11,7 +11,7 @@ import core.nat.SLensAlg
 trait SLensState {
 
   def fromSLens[F[_]: Monad, S, A](
-      ln: Lens[S, A]): SLensAlg[StateT[F, S, ?], StateT[F, S, ?], StateT[F, A, ?], S, A] =
+      ln: Lens[S, A]): SLensAlg.Aux[StateT[F, S, ?], StateT[F, S, ?], StateT[F, A, ?], S, A] =
     SLensAlg[StateT[F, S, ?], StateT[F, S, ?], StateT[F, A, ?], S, A](
       λ[StateT[F, S, ?] ~> StateT[F, S, ?]](ss => ss),
       λ[StateT[F, A, ?] ~> StateT[F, S, ?]] { sa =>

@@ -8,8 +8,8 @@ import scalaz.syntax.id._
 
 import op._, At.syntax._
 
-trait IMapAlg[P[_], Q[_], R[_], I, A] extends raw.IMapAlg[P, I, A]
-    with IOpticAlg[P, Q, I, A, MonadState, List] {
+trait IMapAlg[P[_], R[_], I, A] extends raw.IMapAlg[P, I, A]
+    with IOpticAlg[P, I, A, MonadState, List] {
 
   implicit val ta: At[P, R, I, A]
 
@@ -31,11 +31,14 @@ trait IMapAlg[P[_], Q[_], R[_], I, A] extends raw.IMapAlg[P, I, A]
 
 object IMapAlg {
 
-  def apply[P[_], Q[_], R[_], I, A](
-      hom2: λ[x => I => Q[x]] ~> λ[x => P[List[x]]])(implicit
+  type Aux[P[_], Q2[_], R[_], I, A] = IMapAlg[P, R, I, A] { type Q[x] = Q2[x] }
+
+  def apply[P[_], Q2[_], R[_], I, A](
+      hom2: λ[x => I => Q2[x]] ~> λ[x => P[List[x]]])(implicit
       ev0: Monad[P],
-      ev1: MonadState[Q, A],
-      ev2: At[P, R, I, A]) = new IMapAlg[P, Q, R, I, A] {
+      ev1: MonadState[Q2, A],
+      ev2: At[P, R, I, A]): Aux[P, Q2, R, I, A] = new IMapAlg[P, R, I, A] {
+    type Q[x] = Q2[x]
     def point[X](x: => X) = ev0.point(x)
     def bind[X, Y](fx: P[X])(f: X => P[Y]): P[Y] = ev0.bind(fx)(f)
     implicit val ev = ev1

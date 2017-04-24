@@ -12,13 +12,13 @@ import core.nat.OptionalAlg
 
 trait OptionalState {
 
-  type Optional[S, A] = OptionalAlg[State[S, ?], State[A, ?], A]
+  type Optional[S, A] = OptionalAlg.Aux[State[S, ?], State[A, ?], A]
 
   implicit def asOptional[S, A](op: MOptional[S, A]): Optional[S, A] =
     fromOptional[Id, S, A](op)
 
   def fromOptional[F[_]: Monad, S, A](
-      op: MOptional[S, A]): OptionalAlg[StateT[F, S, ?], StateT[F, A, ?], A] =
+      op: MOptional[S, A]): OptionalAlg.Aux[StateT[F, S, ?], StateT[F, A, ?], A] =
     OptionalAlg[StateT[F, S, ?], StateT[F, A, ?], A](
       new (StateT[F, A, ?] ~> λ[x => StateT[F, S, Option[x]]]) {
         def apply[X](sa: StateT[F, A, X]): StateT[F, S, Option[X]] =

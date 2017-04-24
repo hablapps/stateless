@@ -5,48 +5,51 @@ package nat
 import scalaz.{ Monad, MonadReader, ~> }
 import scalaz.Id.Id
 
-trait GetterAlg[P[_], Q[_], A] extends OpticAlg[P, Q, A, MonadReader, Id]
+trait GetterAlg[P[_], A] extends OpticAlg[P, A, MonadReader, Id]
     with raw.GetterAlg[P, A] {
 
   def ask: P[A] = hom[A](ev.ask)
 
   /* composing algebras */
 
-  def composeFold[R[_], B](fl: FoldAlg[Q, R, B]): FoldAlg[P, R, B] =
+  def composeFold[B](fl: FoldAlg[Q, B]): FoldAlg.Aux[P, fl.Q, B] =
     asFold.composeFold(fl)
 
-  def composeGetter[R[_], B](gt: GetterAlg[Q, R, B]): GetterAlg[P, R, B] =
+  def composeGetter[B](gt: GetterAlg[Q, B]): GetterAlg.Aux[P, gt.Q, B] =
     GetterAlg(hom compose gt.hom)(this, gt.ev)
 
-  def composeTraversal[R[_], B](tr: TraversalAlg[Q, R, B]): FoldAlg[P, R, B] =
+  def composeTraversal[B](tr: TraversalAlg[Q, B]): FoldAlg.Aux[P, tr.Q, B] =
     asFold.composeFold(tr.asFold)
 
-  def composeOptional[R[_], B](op: OptionalAlg[Q, R, B]): FoldAlg[P, R, B] =
+  def composeOptional[B](op: OptionalAlg[Q, B]): FoldAlg.Aux[P, op.Q, B] =
     asFold.composeFold(op.asFold)
 
-  def composeLens[R[_], B](ln: LensAlg[Q, R, B]): GetterAlg[P, R, B] =
+  def composeLens[B](ln: LensAlg[Q, B]): GetterAlg.Aux[P, ln.Q, B] =
     composeGetter(ln.asGetter)
 
   /* transforming algebras */
 
-  def asFold: FoldAlg[P, Q, A] =
+  def asFold: FoldAlg.Aux[P, Q, A] =
     FoldAlg(λ[Q ~> λ[x => P[List[x]]]](qx => map(hom(qx))(List(_))))(this, ev)
 
-  def asIndexed: IGetterAlg[P, Q, Unit, A] =
+  def asIndexed: IGetterAlg.Aux[P, Q, Unit, A] =
     IGetterAlg(new (λ[x => Unit => Q[x]] ~> P) {
       def apply[X](iqx: Unit => Q[X]): P[X] = hom[X](iqx(()))
     })(this, ev)
 
-  def asSymmetric: SGetterAlg[P, Q, Q, A, A] =
+  def asSymmetric: SGetterAlg.Aux[P, Q, Q, A, A] =
     SGetterAlg(hom, hom)(this, ev, ev)
 }
 
 object GetterAlg {
 
-  def apply[P[_], Q[_], A](
-      hom2: Q ~> P)(implicit
+  type Aux[P[_], Q2[_], A] = GetterAlg[P, A] { type Q[x] = Q2[x] }
+
+  def apply[P[_], Q2[_], A](
+      hom2: Q2 ~> P)(implicit
       ev0: Monad[P],
-      ev1: MonadReader[Q, A]) = new GetterAlg[P, Q, A] {
+      ev1: MonadReader[Q2, A]): Aux[P, Q2, A] = new GetterAlg[P, A] {
+    type Q[x] = Q2[x]
     def point[X](x: => X) = ev0.point(x)
     def bind[X, Y](fx: P[X])(f: X => P[Y]): P[Y] = ev0.bind(fx)(f)
     implicit val ev = ev1

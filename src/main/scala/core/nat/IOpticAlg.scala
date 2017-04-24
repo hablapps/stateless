@@ -4,7 +4,9 @@ package nat
 
 import scalaz.{ Monad, ~> }
 
-trait IOpticAlg[P[_], Q[_], I, A, Ev[M[_], _] <: Monad[M], F[_]] extends Monad[P] {
+trait IOpticAlg[P[_], I, A, Ev[M[_], _] <: Monad[M], F[_]] extends Monad[P] {
+
+  type Q[_]
 
   implicit val ev: Ev[Q, A]
 

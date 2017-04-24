@@ -7,7 +7,7 @@ import scalaz.syntax.monad._
 import scalaz.std.list._
 import scalaz.std.option._
 
-trait OptionalAlg[P[_], Q[_], A] extends OpticAlg[P, Q, A, MonadState, Option]
+trait OptionalAlg[P[_], A] extends OpticAlg[P, A, MonadState, Option]
     with raw.OptionalAlg[P, A] {
 
   def getOption: P[Option[A]] = hom(ev.get)
@@ -16,52 +16,55 @@ trait OptionalAlg[P[_], Q[_], A] extends OpticAlg[P, Q, A, MonadState, Option]
 
   /* composing algebras */
 
-  def composeFold[R[_], B](fl: FoldAlg[Q, R, B]): FoldAlg[P, R, B] =
+  def composeFold[B](fl: FoldAlg[Q, B]): FoldAlg.Aux[P, fl.Q, B] =
     asFold.composeFold(fl)
 
-  def composeGetter[R[_], B](gt: GetterAlg[Q, R, B]): FoldAlg[P, R, B] =
+  def composeGetter[B](gt: GetterAlg[Q, B]): FoldAlg.Aux[P, gt.Q, B] =
     asFold.composeFold(gt.asFold)
 
-  def composeSetter[R[_], B](st: SetterAlg[Q, R, B]): SetterAlg[P, R, B] =
+  def composeSetter[B](st: SetterAlg[Q, B]): SetterAlg.Aux[P, st.Q, B] =
     asSetter.composeSetter(st)
 
-  def composeTraversal[R[_], B](tr: TraversalAlg[Q, R, B]): TraversalAlg[P, R, B] =
+  def composeTraversal[B](tr: TraversalAlg[Q, B]): TraversalAlg.Aux[P, tr.Q, B] =
     asTraversal.composeTraversal(tr)
 
-  def composeOptional[R[_], B](op: OptionalAlg[Q, R, B]): OptionalAlg[P, R, B] =
-    OptionalAlg(λ[R ~> λ[x => P[Option[x]]]] { rx =>
+  def composeOptional[B](op: OptionalAlg[Q, B]): OptionalAlg.Aux[P, op.Q, B] =
+    OptionalAlg(λ[op.Q ~> λ[x => P[Option[x]]]] { rx =>
       map(hom(op.hom(rx)))(_.join)
     })(this, op.ev)
 
-  def composeLens[R[_], B](ln: LensAlg[Q, R, B]): OptionalAlg[P, R, B] =
+  def composeLens[B](ln: LensAlg[Q, B]): OptionalAlg.Aux[P, ln.Q, B] =
     composeOptional(ln.asOptional)
 
   /* transforming algebras */
 
-  def asTraversal: TraversalAlg[P, Q, A] =
+  def asTraversal: TraversalAlg.Aux[P, Q, A] =
     TraversalAlg(λ[Q ~> λ[x => P[List[x]]]] { qx =>
       map(hom(qx))(_.toList)
     })(this, ev)
 
-  def asSetter: SetterAlg[P, Q, A] = asTraversal.asSetter
+  def asSetter: SetterAlg.Aux[P, Q, A] = asTraversal.asSetter
 
-  def asFold: FoldAlg[P, Q, A] = asTraversal.asFold
+  def asFold: FoldAlg.Aux[P, Q, A] = asTraversal.asFold
 
-  def asIndexed: IOptionalAlg[P, Q, Unit, A] =
+  def asIndexed: IOptionalAlg.Aux[P, Q, Unit, A] =
     IOptionalAlg(λ[λ[x => Unit => Q[x]] ~> λ[x => P[Option[x]]]] { iqx =>
       hom(iqx(()))
     })(this, ev)
 
-  def asSymmetric: SOptionalAlg[P, Q, Q, A, A] =
+  def asSymmetric: SOptionalAlg.Aux[P, Q, Q, A, A] =
     SOptionalAlg(hom, hom)(this, ev, ev)
 }
 
 object OptionalAlg {
 
-  def apply[P[_], Q[_], A](
-      hom2: Q ~> λ[x => P[Option[x]]])(implicit
+  type Aux[P[_], Q2[_], A] = OptionalAlg[P, A] { type Q[x] = Q2[x] }
+
+  def apply[P[_], Q2[_], A](
+      hom2: Q2 ~> λ[x => P[Option[x]]])(implicit
       ev0: Monad[P],
-      ev1: MonadState[Q, A]) = new OptionalAlg[P, Q, A] {
+      ev1: MonadState[Q2, A]): Aux[P, Q2, A] = new OptionalAlg[P, A] {
+    type Q[x] = Q2[x]
     def point[X](x: => X) = ev0.point(x)
     def bind[X, Y](fx: P[X])(f: X => P[Y]): P[Y] = ev0.bind(fx)(f)
     implicit val ev = ev1
