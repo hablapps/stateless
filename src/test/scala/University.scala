@@ -37,7 +37,7 @@ class University extends FlatSpec with Matchers {
     GenLens[University](_.departments)
 
   def department(s: String): Lens[University, Option[Department]] =
-    departments.composeLens(fromIMapState.at(s))
+    departments.composeLens(fromAtState.at(s))
 
   "Optics" should "remove elements from a map" in {
     department("History").set(None).exec(uni) shouldBe
