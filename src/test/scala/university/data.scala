@@ -7,23 +7,6 @@ import scalaz.{ Monad, MonadError }
 import core.nat._, op.At
 import smonocle.nat.all._
 
-trait System[P[_], U] {
-
-  val university: University[P, U]
-
-  implicit val ME: MonadError[P, Throwable]
-}
-
-object System {
-  def apply[P[_], U](
-      uni2: University[P, U])(implicit
-      ME2: MonadError[P, Throwable]): System[P, U] =
-    new System[P, U] {
-      val university = uni2
-      implicit val ME = ME2
-    }
-}
-
 trait University[P[_], U] {
   type AP[_]
   type DP[_]

@@ -17,11 +17,10 @@ import StateTests._
 
 class StateTests extends FunSpec with Matchers with MyTest[Program, SUniversity] {
 
-  private implicit val ME: MonadError[Program, Throwable] =
+  implicit val MonadErrorP =
     stateTMonadError[SUniversity, Throwable \/ ?, Throwable]
 
-  lazy val uniSystem: System[Program, SUniversity] =
-    System[Program, SUniversity](SUniversity.model)
+  lazy val uni: University[Program, SUniversity] = SUniversity.model
 
   val FilterP: puretest.Filter[Program] = puretest.Filter[Program]
 
