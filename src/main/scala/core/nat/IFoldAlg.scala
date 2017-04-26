@@ -3,6 +3,7 @@ package core
 package nat
 
 import scalaz.{ Monad, MonadReader, ~> }
+import scalaz.Leibniz.===
 import scalaz.std.list._
 import scalaz.syntax.monad._
 
@@ -41,6 +42,11 @@ trait IFoldAlg[P[_], I <: HList, A] extends raw.IFoldAlg[P, I, A]
       ln: ILensAlg[Q, J, B])(implicit
       ev0: Prepend.Aux[I, J, K]): IFoldAlg.Aux[P, ln.Q, K, B] =
     composeIFold(ln.asIFold)
+
+  /* transforming algebras */
+
+  def asIndexed(implicit ev0: I === HNil): FoldAlg.Aux[P, Q, A] =
+    FoldAlg[P, Q, A](λ[Q ~> λ[x => P[List[x]]]](qx => hom(_ => qx)))(this, ev)
 }
 
 object IFoldAlg {

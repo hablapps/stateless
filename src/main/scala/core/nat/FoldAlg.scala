@@ -6,7 +6,7 @@ import scalaz.{ Monad, MonadReader, ~> }
 import scalaz.syntax.monad._
 import scalaz.std.list._
 
-import shapeless.HNil
+import shapeless._
 
 trait FoldAlg[P[_], A] extends OpticAlg[P, A, MonadReader, List]
     with raw.FoldAlg[P, A] {
@@ -29,6 +29,9 @@ trait FoldAlg[P[_], A] extends OpticAlg[P, A, MonadReader, List]
 
   def composeLens[B](ln: LensAlg[Q, B]): FoldAlg.Aux[P, ln.Q, B] =
     composeFold(ln.asFold)
+
+  def composeIFold[I <: HList, B](fl: IFoldAlg[Q, I, B]): IFoldAlg.Aux[P, fl.Q, I, B] =
+    asIndexed.composeIFold(fl)
 
   /* transforming algebras */
 
