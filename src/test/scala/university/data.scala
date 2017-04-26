@@ -2,19 +2,20 @@ package org.hablapps.stateless
 package test
 package university
 
-import scalaz.{ Monad, MonadError }
+import scalaz._, Scalaz._
+import monocle.function.all._
 
 import core.nat._, op.At
 import smonocle.nat.all._
 
-trait University[P[_], U] {
+trait University[U] {
+  type P[_]
   type AP[_]
-  type DP[_]
   type D
 
   val name: LensField[P, String]
-  val department: Department[DP, D]
-  val departments: TraversalAlg.Aux[P, DP, D]
+  val department: Department[D]
+  val departments: TraversalAlg.Aux[P, department.P, D]
   val ev: At[P, AP, String, D]
 
   def create(name: String): U
@@ -22,21 +23,23 @@ trait University[P[_], U] {
 
 object University {
 
-  type Aux[P[_], U, AP2[_], DP2[_], D2] = University[P, U] {
+  type WithP[P2[_], U] = University[U] { type P[x] = P2[x] }
+
+  type Aux[P2[_], U, AP2[_], D2] = University[U] {
+    type P[x] = P2[x]
     type AP[x] = AP2[x]
-    type DP[x] = DP2[x]
     type D = D2
   }
 
-  def apply[P[_], U, AP2[_], DP2[_], D2](
-      name2: LensField[P, String],
-      department2: Department[DP2, D2],
-      departments2: TraversalAlg.Aux[P, DP2, D2],
-      ev2: At[P, AP2, String, D2],
-      create2: String => U): Aux[P, U, AP2, DP2, D2] =
-    new University[P, U] {
+  def apply[P2[_], U, AP2[_], DP2[_], D2](
+      name2: LensField[P2, String],
+      department2: Department.WithP[DP2, D2],
+      departments2: TraversalAlg.Aux[P2, DP2, D2],
+      ev2: At[P2, AP2, String, D2],
+      create2: String => U): Aux[P2, U, AP2, D2] =
+    new University[U] {
+      type P[x] = P2[x]
       type AP[x] = AP2[x]
-      type DP[x] = DP2[x]
       type D = D2
       val name = name2
       val department = department2
@@ -45,12 +48,8 @@ object University {
       def create(name: String) = create2(name)
     }
 
-  import scalaz._, Scalaz._
-  import monocle.function.all._
-  import smonocle.nat.all.asOptional
-
-  def fromData[P[_]: Monad, U](uni: University[P, U]) = new UniversityView[P] {
-    import uni._, department._, lecturer._
+  def fromData[U](uni: University[U]) = new UniversityView[uni.P] {
+    import uni._, department.{ P => _, _ }, lecturer.{ P => _, _ }
 
     def removeDepartment(name: String): P[Unit] =
       uni.ev.at(name).set(None)
@@ -89,12 +88,12 @@ object University {
   }
 }
 
-trait Department[P[_], D] {
-  type LP[_]
+trait Department[D] {
+  type P[_]
   type L
 
-  val lecturer: Lecturer[LP, L]
-  val lecturers: TraversalAlg.Aux[P, LP, L]
+  val lecturer: Lecturer[L]
+  val lecturers: TraversalAlg.Aux[P, lecturer.P, L]
   val budget: LensField[P, Int]
 
   def create(b: Int, l: List[(String, String, Int)]): D
@@ -102,18 +101,20 @@ trait Department[P[_], D] {
 
 object Department {
 
-  type Aux[P[_], D, LP2[_], L2] = Department[P, D] {
-    type LP[x] = LP2[x]
+  type WithP[P2[_], D] = Department[D] { type P[x] = P2[x] }
+
+  type Aux[P2[_], D, L2] = Department[D] {
+    type P[x] = P2[x]
     type L = L2
   }
 
-  def apply[P[_], D, LP2[_], L2](
-      lecturer2: Lecturer[LP2, L2],
-      lecturers2: TraversalAlg.Aux[P, LP2, L2],
-      budget2: LensField[P, Int],
-      create2: (Int, List[(String, String, Int)]) => D): Aux[P, D, LP2, L2] =
-    new Department[P, D] {
-      type LP[x] = LP2[x]
+  def apply[P2[_], D, LP2[_], L2](
+      lecturer2: Lecturer.WithP[LP2, L2],
+      lecturers2: TraversalAlg.Aux[P2, LP2, L2],
+      budget2: LensField[P2, Int],
+      create2: (Int, List[(String, String, Int)]) => D): Aux[P2, D, L2] =
+    new Department[D] {
+      type P[x] = P2[x]
       type L = L2
       val lecturer = lecturer2
       val lecturers = lecturers2
@@ -122,7 +123,9 @@ object Department {
     }
 }
 
-trait Lecturer[P[_], L] {
+trait Lecturer[L] {
+  type P[_]
+
   val first: LensField[P, String]
   val last: LensField[P, String]
   val salary: LensField[P, Int]
@@ -132,12 +135,17 @@ trait Lecturer[P[_], L] {
 
 object Lecturer {
 
-  def apply[P[_], L](
-      first2: LensField[P, String],
-      last2: LensField[P, String],
-      salary2: LensField[P, Int],
-      create2: (String, String, Int) => L): Lecturer[P, L] =
-    new Lecturer[P, L] {
+  type WithP[P2[_], L] = Lecturer[L] { type P[x] = P2[x] }
+
+  type Aux[P[_], L] = WithP[P, L]
+
+  def apply[P2[_], L](
+      first2: LensField[P2, String],
+      last2: LensField[P2, String],
+      salary2: LensField[P2, Int],
+      create2: (String, String, Int) => L): Aux[P2, L] =
+    new Lecturer[L] {
+      type P[x] = P2[x]
       val first = first2
       val last = last2
       val salary = salary2

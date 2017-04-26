@@ -7,11 +7,11 @@ import org.hablapps.puretest._, scalatestImpl._, ProgramStateMatchers.Syntax._
 
 trait MyTest[P[_], U] extends UniversitySpec[P] { self: FunSpec with Matchers =>
 
-  val uni: University[P, U]
+  val uni: University.WithP[P, U]
 
   implicit val Tester: StateTester[P, U, Throwable]
 
-  lazy val view: UniversityView[P] = University.fromData[P, U](uni)
+  lazy val view: UniversityView[uni.P] = University.fromData[U](uni)
 
   describe("University") {
     it ("should execute basic bureaucracy") {
