@@ -56,7 +56,7 @@ trait UniversitySpec[P[_]] {
          _ <- prefix
         v1 <- view.getTotalSalary
          _ <- view.updateSalary(_ * 2) // not bad
-      true <- view.getTotalSalary.map(_ == v1 * 2)
+      true <- view.getTotalSalary.isEqual(v1 * 2)
     } yield ()
 
   // Test 4: formatting names
