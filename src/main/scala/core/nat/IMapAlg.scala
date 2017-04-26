@@ -8,7 +8,9 @@ import scalaz.syntax.id._
 
 import op._, At.syntax._
 
-trait IMapAlg[P[_], R[_], I, A] extends raw.IMapAlg[P, I, A]
+import shapeless.HList
+
+trait IMapAlg[P[_], R[_], I <: HList, A] extends raw.IMapAlg[P, I, A]
     with IOpticAlg[P, I, A, MonadState, List] {
 
   implicit val ta: At.Aux[P, R, I, A]
@@ -31,9 +33,9 @@ trait IMapAlg[P[_], R[_], I, A] extends raw.IMapAlg[P, I, A]
 
 object IMapAlg {
 
-  type Aux[P[_], Q2[_], R[_], I, A] = IMapAlg[P, R, I, A] { type Q[x] = Q2[x] }
+  type Aux[P[_], Q2[_], R[_], I <: HList, A] = IMapAlg[P, R, I, A] { type Q[x] = Q2[x] }
 
-  def apply[P[_], Q2[_], R[_], I, A](
+  def apply[P[_], Q2[_], R[_], I <: HList, A](
       hom2: λ[x => I => Q2[x]] ~> λ[x => P[List[x]]])(implicit
       ev0: Monad[P],
       ev1: MonadState[Q2, A],

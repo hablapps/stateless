@@ -6,6 +6,8 @@ import scalaz.{ Monad, MonadReader, ~> }
 import scalaz.syntax.monad._
 import scalaz.std.list._
 
+import shapeless.HNil
+
 trait FoldAlg[P[_], A] extends OpticAlg[P, A, MonadReader, List]
     with raw.FoldAlg[P, A] {
 
@@ -30,9 +32,9 @@ trait FoldAlg[P[_], A] extends OpticAlg[P, A, MonadReader, List]
 
   /* transforming algebras */
 
-  def asIndexed: IFoldAlg.Aux[P, Q, Unit, A] =
-    IFoldAlg(λ[λ[x => Unit => Q[x]] ~> λ[x => P[List[x]]]] { iqx =>
-      hom(iqx(()))
+  def asIndexed: IFoldAlg.Aux[P, Q, HNil, A] =
+    IFoldAlg(λ[λ[x => HNil => Q[x]] ~> λ[x => P[List[x]]]] { iqx =>
+      hom(iqx(HNil))
     })(this, ev)
 
   def asSymmetric: SFoldAlg.Aux[P, Q, Q, A, A] =

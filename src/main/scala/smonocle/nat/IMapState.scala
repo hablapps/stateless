@@ -4,12 +4,14 @@ package nat
 
 import scalaz._, Scalaz._
 
+import shapeless.HList
+
 import core.nat.IMapAlg
 import op.atState._
 
 trait IMapState {
 
-  def fromMap[F[_]: Monad, K, V]: IMapAlg.Aux[StateT[F, Map[K, V], ?], StateT[F, V, ?], StateT[F, Option[V], ?], K, V] =
+  def fromMap[F[_]: Monad, K <: HList, V]: IMapAlg.Aux[StateT[F, Map[K, V], ?], StateT[F, V, ?], StateT[F, Option[V], ?], K, V] =
     IMapAlg[StateT[F, Map[K, V], ?], StateT[F, V, ?], StateT[F, Option[V], ?], K, V](
       λ[λ[x => K => StateT[F, V, x]] ~> λ[x => StateT[F, Map[K, V], List[x]]]] { sx =>
         StateT(_.toList

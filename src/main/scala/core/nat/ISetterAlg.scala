@@ -4,31 +4,41 @@ package nat
 
 import scalaz.{ Const, Monad, MonadState, ~> }
 
-trait ISetterAlg[P[_], I, A] extends raw.ISetterAlg[P, I, A]
+import shapeless._, ops.hlist._
+
+trait ISetterAlg[P[_], I <: HList, A] extends raw.ISetterAlg[P, I, A]
     with IOpticAlg[P, I, A, MonadState, Const[Unit, ?]] {
 
   def modify(f: A => A): P[Unit] = map(hom(_ => ev.modify(f)))(_.getConst)
 
-  def composeISetter[J, B](st: ISetterAlg[Q, J, B]): ISetterAlg.Aux[P, st.Q, (I, J), B] =
-    ISetterAlg(λ[λ[x => ((I, J)) => st.Q[x]] ~> λ[x => P[Const[Unit, x]]]] { iqx =>
-      map(hom(i => st.hom(j => iqx((i, j)))))(_ => Const(()))
+  def composeISetter[J <: HList, K <: HList, B](
+      st: ISetterAlg[Q, J, B])(implicit
+      ev0: Prepend.Aux[I, J, K]): ISetterAlg.Aux[P, st.Q, K, B] =
+    ISetterAlg(λ[λ[x => K => st.Q[x]] ~> λ[x => P[Const[Unit, x]]]] { iqx =>
+      map(hom(i => st.hom(j => iqx(i ++ j))))(_ => Const(()))
     })(this, st.ev)
 
-  def composeITraversal[J, B](tr: ITraversalAlg[Q, J, B]): ISetterAlg.Aux[P, tr.Q, (I, J), B] =
+  def composeITraversal[J <: HList, K <: HList, B](
+      tr: ITraversalAlg[Q, J, B])(implicit
+      ev0: Prepend.Aux[I, J, K]): ISetterAlg.Aux[P, tr.Q, K, B] =
     composeISetter(tr.asISetter)
 
-  def composeIOptional[J, B](op: IOptionalAlg[Q, J, B]): ISetterAlg.Aux[P, op.Q, (I, J), B] =
+  def composeIOptional[J <: HList, K <: HList, B](
+      op: IOptionalAlg[Q, J, B])(implicit
+      ev0: Prepend.Aux[I, J, K]): ISetterAlg.Aux[P, op.Q, K, B] =
     composeISetter(op.asISetter)
 
-  def composeILens[J, B](ln: ILensAlg[Q, J, B]): ISetterAlg.Aux[P, ln.Q, (I, J), B] =
+  def composeILens[J <: HList, K <: HList, B](
+      ln: ILensAlg[Q, J, B])(implicit
+      ev0: Prepend.Aux[I, J, K]): ISetterAlg.Aux[P, ln.Q, K, B] =
     composeISetter(ln.asISetter)
 }
 
 object ISetterAlg {
 
-  type Aux[P[_], Q2[_], I, A] = ISetterAlg[P, I, A] { type Q[x] = Q2[x] }
+  type Aux[P[_], Q2[_], I <: HList, A] = ISetterAlg[P, I, A] { type Q[x] = Q2[x] }
 
-  def apply[P[_], Q2[_], I, A](
+  def apply[P[_], Q2[_], I <: HList, A](
       hom2: λ[x => I => Q2[x]] ~> λ[x => P[Const[Unit, x]]])(implicit
       ev0: Monad[P],
       ev1: MonadState[Q2, A]): Aux[P, Q2, I, A] = new ISetterAlg[P, I, A] {

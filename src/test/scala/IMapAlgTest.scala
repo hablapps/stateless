@@ -5,6 +5,8 @@ import org.scalatest._
 
 import scalaz._, Scalaz._
 
+import shapeless.{ Id => _, _ }
+
 import smonocle.nat.all._
 
 class IMapAlgTest extends FlatSpec with Matchers {
@@ -14,9 +16,9 @@ class IMapAlgTest extends FlatSpec with Matchers {
   val doe = Person("John", "Doe", 40)
   val wick = Person("John", "Wick", 50)
 
-  val init = Map("0" -> doe, "1" -> wick)
+  val init = Map(("0" :: HNil) -> doe, ("1" :: HNil) -> wick)
 
-  val myMap = fromMap[Id, String, Person]
+  val myMap = fromMap[Id, String :: HNil, Person]
 
   "Map" should "getList" in {
     myMap.getList(init) shouldBe (init, init.toList)
@@ -47,25 +49,25 @@ class IMapAlgTest extends FlatSpec with Matchers {
 
   it should "add" in {
     val rambo = Person("John", "Rambo", 45)
-    myMap.add("2")(rambo)(init) shouldBe ((init + ("2" -> rambo), ()))
+    myMap.add("2" :: HNil)(rambo)(init) shouldBe ((init + (("2" :: HNil) -> rambo), ()))
   }
 
   it should "remove" in {
-    myMap.remove("1")(init) shouldBe ((init - "1", ()))
+    myMap.remove("1" :: HNil)(init) shouldBe ((init - ("1" :: HNil), ()))
   }
 
   it should "pick" in {
     val lennon = Person("John", "Lennon", 30)
-    myMap.pick("0")(State.put(lennon.some))(init) shouldBe
-      ((init.updated("0", lennon), ()))
-    myMap.pick("1")(State.modify(
+    myMap.pick("0" :: HNil)(State.put(lennon.some))(init) shouldBe
+      ((init.updated("0" :: HNil, lennon), ()))
+    myMap.pick("1" :: HNil)(State.modify(
         _.fold(Option.empty[Person])(_.copy(last = "McEnroe").some)))(init) shouldBe
-      ((init.updated("1", wick.copy(last = "McEnroe")), ()))
-    myMap.pick("2")(State.put(lennon.some))(init) shouldBe
-      ((init + ("2" -> lennon), ()))
+      ((init.updated("1" :: HNil, wick.copy(last = "McEnroe")), ()))
+    myMap.pick("2" :: HNil)(State.put(lennon.some))(init) shouldBe
+      ((init + (("2" :: HNil) -> lennon), ()))
   }
 
   it should "get" in {
-    myMap.get("1")(init) shouldBe (init, wick.some)
+    myMap.get("1" :: HNil)(init) shouldBe (init, wick.some)
   }
 }
