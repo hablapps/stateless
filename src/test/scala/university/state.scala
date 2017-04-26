@@ -33,7 +33,6 @@ import scalaz._, Scalaz._
 object StateTests {
   type Program[A] = StateT[Throwable \/ ?, SUniversity, A]
   type DProgram[A] = StateT[Throwable \/ ?, SDepartment, A]
-  type AProgram[A] = StateT[Throwable \/ ?, Option[SDepartment], A]
   type LProgram[A] = StateT[Throwable \/ ?, SLecturer, A]
 }
 
@@ -44,8 +43,8 @@ object StateTests {
 object SUniversity {
   import core.nat.LensAlg, core.nat.op.At
 
-  def model: University.Aux[Program, SUniversity, AProgram, SDepartment] =
-    University[Program, SUniversity, AProgram, DProgram, SDepartment](
+  def model: University.Aux[Program, SUniversity, SDepartment] =
+    University[Program, SUniversity, DProgram, SDepartment](
       asLensField[Throwable \/ ?, SUniversity, String](SUniversity.name),
       SDepartment.model,
       fromTraversal[Throwable \/ ?, SUniversity, SDepartment](

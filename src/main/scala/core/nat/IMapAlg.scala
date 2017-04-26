@@ -11,7 +11,7 @@ import op._, At.syntax._
 trait IMapAlg[P[_], R[_], I, A] extends raw.IMapAlg[P, I, A]
     with IOpticAlg[P, I, A, MonadState, List] {
 
-  implicit val ta: At[P, R, I, A]
+  implicit val ta: At.Aux[P, R, I, A]
 
   /* derived algebra */
 
@@ -20,13 +20,13 @@ trait IMapAlg[P[_], R[_], I, A] extends raw.IMapAlg[P, I, A]
   def modifyList(f: A => A): P[List[Unit]] = hom(_ => ev.modify(f))
 
   def updateOption(i: I)(oa: Option[A]): P[Unit] =
-    at(i) |> (ln => ln.hom(ln.ev.put(oa)))
+    ta.at(i) |> (ln => ln.hom(ln.ev.put(oa)))
 
   /* new algebra */
 
   def collect[O](qo: Q[O]): P[List[O]] = hom(_ => qo)
 
-  def pick[O](i: I)(ro: R[O]): P[O] = at(i).hom[O](ro)
+  def pick[O](i: I)(ro: R[O]): P[O] = ta.at(i).hom[O](ro)
 }
 
 object IMapAlg {
@@ -37,7 +37,7 @@ object IMapAlg {
       hom2: λ[x => I => Q2[x]] ~> λ[x => P[List[x]]])(implicit
       ev0: Monad[P],
       ev1: MonadState[Q2, A],
-      ev2: At[P, R, I, A]): Aux[P, Q2, R, I, A] = new IMapAlg[P, R, I, A] {
+      ev2: At.Aux[P, R, I, A]): Aux[P, Q2, R, I, A] = new IMapAlg[P, R, I, A] {
     type Q[x] = Q2[x]
     def point[X](x: => X) = ev0.point(x)
     def bind[X, Y](fx: P[X])(f: X => P[Y]): P[Y] = ev0.bind(fx)(f)

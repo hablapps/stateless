@@ -10,13 +10,12 @@ import smonocle.nat.all._
 
 trait University[U] {
   type P[_]
-  type AP[_]
   type D
 
   val name: LensField[P, String]
   val department: Department[D]
   val departments: TraversalAlg.Aux[P, department.P, D]
-  val ev: At[P, AP, String, D]
+  val ev: At[P, String, D]
 
   def create(name: String): U
 }
@@ -25,21 +24,19 @@ object University {
 
   type WithP[P2[_], U] = University[U] { type P[x] = P2[x] }
 
-  type Aux[P2[_], U, AP2[_], D2] = University[U] {
+  type Aux[P2[_], U, D2] = University[U] {
     type P[x] = P2[x]
-    type AP[x] = AP2[x]
     type D = D2
   }
 
-  def apply[P2[_], U, AP2[_], DP2[_], D2](
+  def apply[P2[_], U, DP2[_], D2](
       name2: LensField[P2, String],
       department2: Department.WithP[DP2, D2],
       departments2: TraversalAlg.Aux[P2, DP2, D2],
-      ev2: At[P2, AP2, String, D2],
-      create2: String => U): Aux[P2, U, AP2, D2] =
+      ev2: At[P2, String, D2],
+      create2: String => U): Aux[P2, U, D2] =
     new University[U] {
       type P[x] = P2[x]
-      type AP[x] = AP2[x]
       type D = D2
       val name = name2
       val department = department2
