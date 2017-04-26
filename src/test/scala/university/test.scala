@@ -11,7 +11,7 @@ trait MyTest[P[_], U] extends UniversitySpec[P] { self: FunSpec with Matchers =>
 
   implicit val Tester: StateTester[P, U, Throwable]
 
-  lazy val view: UniversityView[P] = UniversityView.fromData[P, U](uni)
+  lazy val view: UniversityView[P] = University.fromData[P, U](uni)
 
   describe("University") {
     it ("should execute basic bureaucracy") {
