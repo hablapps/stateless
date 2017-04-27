@@ -8,6 +8,6 @@ object all extends FoldState
     with OptionalState
     with SetterState
     with TraversalState
-    with IMapState
     with SLensState
+    with ITraversalState
     with op.AtState

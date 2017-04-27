@@ -2,13 +2,19 @@ package org.hablapps.stateless
 package core
 package raw
 
-import scalaz.Monad
+import scalaz.{ Monad, Monoid }
+import scalaz.syntax.foldable._
+import scalaz.std.list._
 
 trait ITraversalAlg[P[_], I, A] extends Monad[P] {
 
   def getList: P[List[(I, A)]]
 
   def modifyList(f: A => A): P[List[Unit]]
+
+  /* derived methods */
+
+  def foldMap[M: Monoid](f: A => M): P[M] = map(foci)(_.foldMap(f))
 
   def modify(f: A => A): P[Unit] = void(modifyList(f))
 
