@@ -45,7 +45,7 @@ trait IFoldAlg[P[_], I <: HList, A] extends raw.IFoldAlg[P, I, A]
 
   /* transforming algebras */
 
-  def asIndexed(implicit ev0: I === HNil): FoldAlg.Aux[P, Q, A] =
+  def asPlain(implicit ev0: I === HNil): FoldAlg.Aux[P, Q, A] =
     FoldAlg[P, Q, A](λ[Q ~> λ[x => P[List[x]]]](qx => hom(_ => qx)))(this, ev)
 }
 

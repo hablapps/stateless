@@ -4,6 +4,7 @@ package nat
 
 import scalaz.{ Monad, MonadState, ~> }
 import scalaz.Id.Id
+import scalaz.Leibniz.===
 import scalaz.syntax.functor._
 import scalaz.syntax.std.option._
 
@@ -64,6 +65,11 @@ trait ILensAlg[P[_], I <: HList, A] extends raw.ILensAlg[P, I, A]
   def asITraversal: ITraversalAlg.Aux[P, Q, I, A] = asIOptional.asITraversal
 
   def asISetter: ISetterAlg.Aux[P, Q, I, A] = asITraversal.asISetter
+
+  def asPlain(implicit ev0: I === HNil): LensAlg.Aux[P, Q, A] =
+    LensAlg[P, Q, A](new (Q ~> P) {
+      def apply[X](qx: Q[X]): P[X] = hom[X](_ => qx)
+    })(this, ev)
 }
 
 object ILensAlg {

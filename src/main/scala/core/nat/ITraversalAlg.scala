@@ -3,6 +3,7 @@ package core
 package nat
 
 import scalaz.{ Const, Monad, MonadState, ~> }
+import scalaz.Leibniz.===
 import scalaz.syntax.monad._
 import scalaz.std.list._
 
@@ -57,6 +58,9 @@ trait ITraversalAlg[P[_], I <: HList, A] extends raw.ITraversalAlg[P, I, A]
     ISetterAlg(λ[λ[x => I => Q[x]] ~> λ[x => P[Const[Unit, x]]]] { qx =>
       map(hom(qx))(_ => Const(()))
     })(this, ev)
+
+  def asPlain(implicit ev0: I === HNil): TraversalAlg.Aux[P, Q, A] =
+    TraversalAlg[P, Q, A](λ[Q ~> λ[x => P[List[x]]]](qx => hom(_ => qx)))(this, ev)
 }
 
 object ITraversalAlg {

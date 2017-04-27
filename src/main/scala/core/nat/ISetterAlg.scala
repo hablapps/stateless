@@ -3,6 +3,7 @@ package core
 package nat
 
 import scalaz.{ Const, Monad, MonadState, ~> }
+import scalaz.Leibniz.===
 
 import shapeless._, ops.hlist._
 
@@ -32,6 +33,13 @@ trait ISetterAlg[P[_], I <: HList, A] extends raw.ISetterAlg[P, I, A]
       ln: ILensAlg[Q, J, B])(implicit
       ev0: Prepend.Aux[I, J, K]): ISetterAlg.Aux[P, ln.Q, K, B] =
     composeISetter(ln.asISetter)
+
+  /* transforming algebras */
+
+  def asPlain(implicit ev0: I === HNil): SetterAlg.Aux[P, Q, A] =
+    SetterAlg[P, Q, A](λ[Q ~> λ[x => P[Const[Unit, x]]]] { qx =>
+      hom(_ => qx)
+    })(this, ev)
 }
 
 object ISetterAlg {

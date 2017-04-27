@@ -3,6 +3,7 @@ package core
 package nat
 
 import scalaz.{ Monad, MonadState, ~> }
+import scalaz.Leibniz.===
 import scalaz.syntax.monad._
 import scalaz.std.option._
 
@@ -59,6 +60,9 @@ trait IOptionalAlg[P[_], I <: HList, A] extends raw.IOptionalAlg[P, I, A]
   def asISetter: ISetterAlg.Aux[P, Q, I, A] = asITraversal.asISetter
 
   def asIFold: IFoldAlg.Aux[P, Q, I, A] = asITraversal.asIFold
+
+  def asPlain(implicit ev0: I === HNil): OptionalAlg.Aux[P, Q, A] =
+    OptionalAlg[P, Q, A](λ[Q ~> λ[x => P[Option[x]]]](qx => hom(_ => qx)))(this, ev)
 }
 
 object IOptionalAlg {

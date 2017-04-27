@@ -3,6 +3,7 @@ package core
 package nat
 
 import scalaz.{ Monad, MonadReader, ~> }
+import scalaz.Leibniz.===
 import scalaz.Id.Id
 import scalaz.syntax.functor._
 
@@ -48,6 +49,11 @@ trait IGetterAlg[P[_], I <: HList, A] extends raw.IGetterAlg[P, I, A]
   def asIFold: IFoldAlg.Aux[P, Q, I, A] =
     IFoldAlg(λ[λ[x => I => Q[x]] ~> λ[x => P[List[x]]]] { qx =>
       map(hom(qx))(List(_))
+    })(this, ev)
+
+  def asPlain(implicit ev0: I === HNil): GetterAlg.Aux[P, Q, A] =
+    GetterAlg[P, Q, A](new (Q ~> P) {
+      def apply[X](qx: Q[X]): P[X] = hom[X](_ => qx)
     })(this, ev)
 }
 
