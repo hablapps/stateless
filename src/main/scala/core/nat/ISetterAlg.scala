@@ -12,27 +12,27 @@ trait ISetterAlg[P[_], I <: HList, A] extends raw.ISetterAlg[P, I, A]
 
   def modify(f: A => A): P[Unit] = map(hom(_ => ev.modify(f)))(_.getConst)
 
-  def composeISetter[J <: HList, K <: HList, B](
+  def composeSetter[J <: HList, K <: HList, B](
       st: ISetterAlg[Q, J, B])(implicit
       ev0: Prepend.Aux[I, J, K]): ISetterAlg.Aux[P, st.Q, K, B] =
     ISetterAlg(λ[λ[x => K => st.Q[x]] ~> λ[x => P[Const[Unit, x]]]] { iqx =>
       map(hom(i => st.hom(j => iqx(i ++ j))))(_ => Const(()))
     })(this, st.ev)
 
-  def composeITraversal[J <: HList, K <: HList, B](
+  def composeTraversal[J <: HList, K <: HList, B](
       tr: ITraversalAlg[Q, J, B])(implicit
       ev0: Prepend.Aux[I, J, K]): ISetterAlg.Aux[P, tr.Q, K, B] =
-    composeISetter(tr.asISetter)
+    composeSetter(tr.asISetter)
 
-  def composeIOptional[J <: HList, K <: HList, B](
+  def composeOptional[J <: HList, K <: HList, B](
       op: IOptionalAlg[Q, J, B])(implicit
       ev0: Prepend.Aux[I, J, K]): ISetterAlg.Aux[P, op.Q, K, B] =
-    composeISetter(op.asISetter)
+    composeSetter(op.asISetter)
 
-  def composeILens[J <: HList, K <: HList, B](
+  def composeLens[J <: HList, K <: HList, B](
       ln: ILensAlg[Q, J, B])(implicit
       ev0: Prepend.Aux[I, J, K]): ISetterAlg.Aux[P, ln.Q, K, B] =
-    composeISetter(ln.asISetter)
+    composeSetter(ln.asISetter)
 
   /* transforming algebras */
 

@@ -15,7 +15,7 @@ trait MapAlg[P[_], K, V] {
 
   type Q[_]
 
-  val tr: ITraversalAlg.Aux[P, Q, K :: HNil, V]
+  val tr: ITraversalAlg.Aux[P, Q, K :: HNil, V] // TODO: extends ITraversalAlg
 
   val ev: At[P, K, V]
 

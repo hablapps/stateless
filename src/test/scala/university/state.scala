@@ -51,7 +51,7 @@ object SUniversity {
       MapAlg[Program, DProgram, String, SDepartment](
         asLensAlg[Throwable \/ ?, SUniversity, Map[String, SDepartment]](SUniversity.departments)
           .asIndexed
-          .composeITraversal(mapITraversal[Throwable \/ ?, String, SDepartment]),
+          .composeTraversal(mapITraversal[Throwable \/ ?, String, SDepartment]),
         fromAtStateT[Throwable \/ ?, SUniversity, String, SDepartment](
           asLensAlg[Throwable \/ ?, SUniversity, Map[String, SDepartment]](
             SUniversity.departments)))(StateT.stateTMonadState[SUniversity, Throwable \/ ?]),

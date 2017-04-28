@@ -18,37 +18,37 @@ trait IOptionalAlg[P[_], I <: HList, A] extends raw.IOptionalAlg[P, I, A]
 
   /* composing algebras */
 
-  def composeIFold[J <: HList, K <: HList, B](
+  def composeFold[J <: HList, K <: HList, B](
       fl: IFoldAlg[Q, J, B])(implicit
       ev0: Prepend.Aux[I, J, K]): IFoldAlg.Aux[P, fl.Q, K, B] =
-    asIFold.composeIFold(fl)
+    asIFold.composeFold(fl)
 
-  def composeIGetter[J <: HList, K <: HList, B](
+  def composeGetter[J <: HList, K <: HList, B](
       gt: IGetterAlg[Q, J, B])(implicit
       ev0: Prepend.Aux[I, J, K]): IFoldAlg.Aux[P, gt.Q, K, B] =
-    asIFold.composeIFold(gt.asIFold)
+    asIFold.composeFold(gt.asIFold)
 
-  def composeISetter[J <: HList, K <: HList, B](
+  def composeSetter[J <: HList, K <: HList, B](
       st: ISetterAlg[Q, J, B])(implicit
       ev0: Prepend.Aux[I, J, K]): ISetterAlg.Aux[P, st.Q, K, B] =
-    asISetter.composeISetter(st)
+    asISetter.composeSetter(st)
 
-  def composeITraversal[J <: HList, K <: HList, B](
+  def composeTraversal[J <: HList, K <: HList, B](
       tr: ITraversalAlg[Q, J, B])(implicit
       ev0: Prepend.Aux[I, J, K]): ITraversalAlg.Aux[P, tr.Q, K, B] =
-    asITraversal.composeITraversal(tr)
+    asITraversal.composeTraversal(tr)
 
-  def composeIOptional[J <: HList, K <: HList, B](
+  def composeOptional[J <: HList, K <: HList, B](
       op: IOptionalAlg[Q, J, B])(implicit
       ev0: Prepend.Aux[I, J, K]): IOptionalAlg.Aux[P, op.Q, K, B] =
     IOptionalAlg(λ[λ[x => K => op.Q[x]] ~> λ[x => P[Option[x]]]] { iqx =>
       map(hom(i => op.hom(j => iqx(i ++ j))))(_.join)
     })(this, op.ev)
 
-  def composeILens[J <: HList, K <: HList, B](
+  def composeLens[J <: HList, K <: HList, B](
       ln: ILensAlg[Q, J, B])(implicit
       ev0: Prepend.Aux[I, J, K]): IOptionalAlg.Aux[P, ln.Q, K, B] =
-    composeIOptional(ln.asIOptional)
+    composeOptional(ln.asIOptional)
 
   /* transforming algebras */
 
