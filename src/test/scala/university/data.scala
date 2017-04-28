@@ -71,13 +71,13 @@ object University {
 
     private val salaryTraversal =
       departments.tr
-        .composeTraversal(lecturers.asIndexed)
-        .composeLens(salary.asIndexed)
+        .composeTraversal(lecturers)
+        .composeLens(salary)
 
     private val headNameTraversal =
       departments.tr
-        .composeTraversal(lecturers.asIndexed)
-        .composeTraversal((first parLens last).asIndexed)
+        .composeTraversal(lecturers)
+        .composeTraversal(first parLens last)
         .composeOptional(asOptional(headOption[String, Char]).asIndexed)
   }
 }

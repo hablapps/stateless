@@ -26,22 +26,22 @@ trait IFoldAlg[P[_], I <: HList, A] extends raw.IFoldAlg[P, I, A]
   def composeGetter[J <: HList, K <: HList, B](
       gt: IGetterAlg[Q, J, B])(implicit
       ev0: Prepend.Aux[I, J, K]): IFoldAlg.Aux[P, gt.Q, K, B] =
-    composeFold(gt.asIFold)
+    composeFold(gt.asFold)
 
   def composeTraversal[J <: HList, K <: HList, B](
       tr: ITraversalAlg[Q, J, B])(implicit
       ev0: Prepend.Aux[I, J, K]): IFoldAlg.Aux[P, tr.Q, K, B] =
-    composeFold(tr.asIFold)
+    composeFold(tr.asFold)
 
   def composeOptional[J <: HList, K <: HList, B](
       op: IOptionalAlg[Q, J, B])(implicit
       ev0: Prepend.Aux[I, J, K]): IFoldAlg.Aux[P, op.Q, K, B] =
-    composeFold(op.asIFold)
+    composeFold(op.asFold)
 
   def composeLens[J <: HList, K <: HList, B](
       ln: ILensAlg[Q, J, B])(implicit
       ev0: Prepend.Aux[I, J, K]): IFoldAlg.Aux[P, ln.Q, K, B] =
-    composeFold(ln.asIFold)
+    composeFold(ln.asFold)
 
   /* transforming algebras */
 
@@ -63,4 +63,7 @@ object IFoldAlg {
     implicit val ev = ev1
     val hom = hom2
   }
+
+  implicit def toIndexed[P[_], A](fl: FoldAlg[P, A]): Aux[P, fl.Q, HNil, A] =
+    fl.asIndexed
 }

@@ -21,17 +21,17 @@ trait ITraversalAlg[P[_], I <: HList, A] extends raw.ITraversalAlg[P, I, A]
   def composeFold[J <: HList, K <: HList, B](
       fl: IFoldAlg[Q, J, B])(implicit
       ev0: Prepend.Aux[I, J, K]): IFoldAlg.Aux[P, fl.Q, K, B] =
-    asIFold.composeFold(fl)
+    asFold.composeFold(fl)
 
   def composeGetter[J <: HList, K <: HList, B](
       gt: IGetterAlg[Q, J, B])(implicit
       ev0: Prepend.Aux[I, J, K]): IFoldAlg.Aux[P, gt.Q, K, B] =
-    asIFold.composeFold(gt.asIFold)
+    asFold.composeFold(gt.asFold)
 
   def composeSetter[J <: HList, K <: HList, B](
       st: ISetterAlg[Q, J, B])(implicit
       ev0: Prepend.Aux[I, J, K]): ISetterAlg.Aux[P, st.Q, K, B] =
-    asISetter.composeSetter(st)
+    asSetter.composeSetter(st)
 
   def composeTraversal[J <: HList, K <: HList, B](
       tr: ITraversalAlg[Q, J, B])(implicit
@@ -43,18 +43,18 @@ trait ITraversalAlg[P[_], I <: HList, A] extends raw.ITraversalAlg[P, I, A]
   def composeOptional[J <: HList, K <: HList, B](
       op: IOptionalAlg[Q, J, B])(implicit
       ev0: Prepend.Aux[I, J, K]): ITraversalAlg.Aux[P, op.Q, K, B] =
-    composeTraversal(op.asITraversal)
+    composeTraversal(op.asTraversal)
 
   def composeLens[J <: HList, K <: HList, B](
       ln: ILensAlg[Q, J, B])(implicit
       ev0: Prepend.Aux[I, J, K]): ITraversalAlg.Aux[P, ln.Q, K, B] =
-    composeTraversal(ln.asITraversal)
+    composeTraversal(ln.asTraversal)
 
   /* transforming algebras */
 
-  def asIFold: IFoldAlg.Aux[P, Q, I, A] = IFoldAlg(hom)(this, ev)
+  def asFold: IFoldAlg.Aux[P, Q, I, A] = IFoldAlg(hom)(this, ev)
 
-  def asISetter: ISetterAlg.Aux[P, Q, I, A] =
+  def asSetter: ISetterAlg.Aux[P, Q, I, A] =
     ISetterAlg(λ[λ[x => I => Q[x]] ~> λ[x => P[Const[Unit, x]]]] { qx =>
       map(hom(qx))(_ => Const(()))
     })(this, ev)
@@ -77,4 +77,7 @@ object ITraversalAlg {
     implicit val ev = ev1
     val hom = hom2
   }
+
+  implicit def toIndexed[P[_], A](tr: TraversalAlg[P, A]): Aux[P, tr.Q, HNil, A] =
+    tr.asIndexed
 }

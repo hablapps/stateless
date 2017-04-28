@@ -22,17 +22,17 @@ trait ISetterAlg[P[_], I <: HList, A] extends raw.ISetterAlg[P, I, A]
   def composeTraversal[J <: HList, K <: HList, B](
       tr: ITraversalAlg[Q, J, B])(implicit
       ev0: Prepend.Aux[I, J, K]): ISetterAlg.Aux[P, tr.Q, K, B] =
-    composeSetter(tr.asISetter)
+    composeSetter(tr.asSetter)
 
   def composeOptional[J <: HList, K <: HList, B](
       op: IOptionalAlg[Q, J, B])(implicit
       ev0: Prepend.Aux[I, J, K]): ISetterAlg.Aux[P, op.Q, K, B] =
-    composeSetter(op.asISetter)
+    composeSetter(op.asSetter)
 
   def composeLens[J <: HList, K <: HList, B](
       ln: ILensAlg[Q, J, B])(implicit
       ev0: Prepend.Aux[I, J, K]): ISetterAlg.Aux[P, ln.Q, K, B] =
-    composeSetter(ln.asISetter)
+    composeSetter(ln.asSetter)
 
   /* transforming algebras */
 
@@ -56,4 +56,7 @@ object ISetterAlg {
     implicit val ev = ev1
     val hom = hom2
   }
+
+  implicit def toIndexed[P[_], A](st: SetterAlg[P, A]): Aux[P, st.Q, HNil, A] =
+    st.asIndexed
 }

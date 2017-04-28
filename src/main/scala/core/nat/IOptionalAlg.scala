@@ -21,22 +21,22 @@ trait IOptionalAlg[P[_], I <: HList, A] extends raw.IOptionalAlg[P, I, A]
   def composeFold[J <: HList, K <: HList, B](
       fl: IFoldAlg[Q, J, B])(implicit
       ev0: Prepend.Aux[I, J, K]): IFoldAlg.Aux[P, fl.Q, K, B] =
-    asIFold.composeFold(fl)
+    asFold.composeFold(fl)
 
   def composeGetter[J <: HList, K <: HList, B](
       gt: IGetterAlg[Q, J, B])(implicit
       ev0: Prepend.Aux[I, J, K]): IFoldAlg.Aux[P, gt.Q, K, B] =
-    asIFold.composeFold(gt.asIFold)
+    asFold.composeFold(gt.asFold)
 
   def composeSetter[J <: HList, K <: HList, B](
       st: ISetterAlg[Q, J, B])(implicit
       ev0: Prepend.Aux[I, J, K]): ISetterAlg.Aux[P, st.Q, K, B] =
-    asISetter.composeSetter(st)
+    asSetter.composeSetter(st)
 
   def composeTraversal[J <: HList, K <: HList, B](
       tr: ITraversalAlg[Q, J, B])(implicit
       ev0: Prepend.Aux[I, J, K]): ITraversalAlg.Aux[P, tr.Q, K, B] =
-    asITraversal.composeTraversal(tr)
+    asTraversal.composeTraversal(tr)
 
   def composeOptional[J <: HList, K <: HList, B](
       op: IOptionalAlg[Q, J, B])(implicit
@@ -48,18 +48,18 @@ trait IOptionalAlg[P[_], I <: HList, A] extends raw.IOptionalAlg[P, I, A]
   def composeLens[J <: HList, K <: HList, B](
       ln: ILensAlg[Q, J, B])(implicit
       ev0: Prepend.Aux[I, J, K]): IOptionalAlg.Aux[P, ln.Q, K, B] =
-    composeOptional(ln.asIOptional)
+    composeOptional(ln.asOptional)
 
   /* transforming algebras */
 
-  def asITraversal: ITraversalAlg.Aux[P, Q, I, A] =
+  def asTraversal: ITraversalAlg.Aux[P, Q, I, A] =
     ITraversalAlg(λ[λ[x => I => Q[x]] ~> λ[x => P[List[x]]]] { qx =>
       map(hom(qx))(_.toList)
     })(this, ev)
 
-  def asISetter: ISetterAlg.Aux[P, Q, I, A] = asITraversal.asISetter
+  def asSetter: ISetterAlg.Aux[P, Q, I, A] = asTraversal.asSetter
 
-  def asIFold: IFoldAlg.Aux[P, Q, I, A] = asITraversal.asIFold
+  def asFold: IFoldAlg.Aux[P, Q, I, A] = asTraversal.asFold
 
   def asPlain(implicit ev0: I === HNil): OptionalAlg.Aux[P, Q, A] =
     OptionalAlg[P, Q, A](λ[Q ~> λ[x => P[Option[x]]]](qx => hom(_ => qx)))(this, ev)
@@ -79,4 +79,7 @@ object IOptionalAlg {
     implicit val ev = ev1
     val hom = hom2
   }
+
+  implicit def toIndexed[P[_], A](op: OptionalAlg[P, A]): Aux[P, op.Q, HNil, A] =
+    op.asIndexed
 }

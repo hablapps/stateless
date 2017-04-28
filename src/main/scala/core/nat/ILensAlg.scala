@@ -22,27 +22,27 @@ trait ILensAlg[P[_], I <: HList, A] extends raw.ILensAlg[P, I, A]
   def composeFold[J <: HList, K <: HList, B](
       fl: IFoldAlg[Q, J, B])(implicit
       ev0: Prepend.Aux[I, J, K]): IFoldAlg.Aux[P, fl.Q, K, B] =
-    asIFold.composeFold(fl)
+    asFold.composeFold(fl)
 
   def composeGetter[J <: HList, K <: HList, B](
       gt: IGetterAlg[Q, J, B])(implicit
       ev0: Prepend.Aux[I, J, K]): IGetterAlg.Aux[P, gt.Q, K, B] =
-    asIGetter.composeGetter(gt)
+    asGetter.composeGetter(gt)
 
   def composeSetter[J <: HList, K <: HList, B](
       st: ISetterAlg[Q, J, B])(implicit
       ev0: Prepend.Aux[I, J, K]): ISetterAlg.Aux[P, st.Q, K, B] =
-    asISetter.composeSetter(st)
+    asSetter.composeSetter(st)
 
   def composeTraversal[J <: HList, K <: HList, B](
       tr: ITraversalAlg[Q, J, B])(implicit
       ev0: Prepend.Aux[I, J, K]): ITraversalAlg.Aux[P, tr.Q, K, B] =
-    asITraversal.composeTraversal(tr)
+    asTraversal.composeTraversal(tr)
 
   def composeOptional[J <: HList, K <: HList, B](
       op: IOptionalAlg[Q, J, B])(implicit
       ev0: Prepend.Aux[I, J, K]): IOptionalAlg.Aux[P, op.Q, K, B] =
-    asIOptional.composeOptional(op)
+    asOptional.composeOptional(op)
 
   def composeLens[J <: HList, K <: HList, B](
       ln: ILensAlg[Q, J, B])(implicit
@@ -54,17 +54,17 @@ trait ILensAlg[P[_], I <: HList, A] extends raw.ILensAlg[P, I, A]
 
   /* transforming algebras */
 
-  def asIGetter: IGetterAlg.Aux[P, Q, I, A] = IGetterAlg(hom)(this, ev)
+  def asGetter: IGetterAlg.Aux[P, Q, I, A] = IGetterAlg(hom)(this, ev)
 
-  def asIOptional: IOptionalAlg.Aux[P, Q, I, A] =
+  def asOptional: IOptionalAlg.Aux[P, Q, I, A] =
     IOptionalAlg(λ[λ[x => I => Q[x]] ~> λ[x => P[Option[x]]]](
       qx => map(hom(qx))(_.some)))(this, ev)
 
-  def asIFold: IFoldAlg.Aux[P, Q, I, A] = asIGetter.asIFold
+  def asFold: IFoldAlg.Aux[P, Q, I, A] = asGetter.asFold
 
-  def asITraversal: ITraversalAlg.Aux[P, Q, I, A] = asIOptional.asITraversal
+  def asTraversal: ITraversalAlg.Aux[P, Q, I, A] = asOptional.asTraversal
 
-  def asISetter: ISetterAlg.Aux[P, Q, I, A] = asITraversal.asISetter
+  def asSetter: ISetterAlg.Aux[P, Q, I, A] = asTraversal.asSetter
 
   def asPlain(implicit ev0: I === HNil): LensAlg.Aux[P, Q, A] =
     LensAlg[P, Q, A](new (Q ~> P) {
@@ -86,4 +86,7 @@ object ILensAlg {
     implicit val ev = ev1
     val hom = hom2
   }
+
+  implicit def toIndexed[P[_], A](ln: LensAlg[P, A]): Aux[P, ln.Q, HNil, A] =
+    ln.asIndexed
 }
