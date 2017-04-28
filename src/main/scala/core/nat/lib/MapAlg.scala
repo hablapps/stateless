@@ -15,7 +15,7 @@ trait MapAlg[P[_], K, V] {
 
   type Q[_]
 
-  val tr: ITraversalAlg.Aux[P, Q, K :: HNil, V] // TODO: extends ITraversalAlg
+  val tr: ITraversalAlg.Aux[P, Q, K :: HNil, V]
 
   val ev: At[P, K, V]
 
@@ -27,27 +27,9 @@ trait MapAlg[P[_], K, V] {
 
   def apply(k: K): LensAlg[P, Option[V]] = ev.at(k)
 
-  def getList: P[List[(K, V)]] = tr.hom(k => tr.ev.get.strengthL(k.head))
+  def add(k: K)(v: V): P[Unit] = apply(k).set(v.some)
 
-  def modifyList(f: V => V): P[List[Unit]] = tr.hom(_ => tr.ev.modify(f))
-
-  def updateOption(k: K)(ov: Option[V]): P[Unit] = apply(k).set(ov)
-
-  def modify(f: V => V): P[Unit] = modifyList(f).void
-
-  def setList(v: V): P[List[Unit]] = modifyList(_ => v)
-
-  def set(v: V): P[Unit] = setList(v).void
-
-  def indexes: P[List[K]] = getList.map(_.unzip._1)
-
-  def foci: P[List[V]] = getList.map(_.unzip._2)
-
-  def add(k: K)(v: V): P[Unit] = updateOption(k)(v.some)
-
-  def remove(k: K): P[Unit] = updateOption(k)(None)
-
-  def get(k: K): P[Option[V]] = getList.map(_.toMap.get(k))
+  def remove(k: K): P[Unit] = apply(k).set(None)
 }
 
 object MapAlg {
@@ -63,4 +45,8 @@ object MapAlg {
     val ev = ev2
     val M = M2
   }
+
+  implicit def toTraversal[P[_], K, V](
+      map: MapAlg[P, K, V]): ITraversalAlg.Aux[P, map.Q, K :: HNil, V] =
+    map.tr
 }
