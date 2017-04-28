@@ -64,7 +64,7 @@ object University {
       uni.departments(name).gets(_.nonEmpty)
 
     def getTotalSalary: P[Int] =
-      salaryTraversal.foldMap(identity)
+      salaryTraversal.foldMap(_._2)
 
     def getNameInitials: P[List[Char]] =
       headNameTraversal.foci
