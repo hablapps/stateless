@@ -10,6 +10,8 @@ trait SetterAlg[P[_], A] extends Monad[P] { self =>
 
   def modify(f: A => A): P[Unit]
 
+  /* derived methods */
+
   def set(a: A): P[Unit] = modify(_ => a)
 
   trait SetterAlgLaw {

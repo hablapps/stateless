@@ -5,7 +5,7 @@ package university
 import scalaz._, Scalaz._
 import monocle.function.all._
 
-import core.nat._, op.At
+import core.nat._, op.At, lib.MapAlg
 import smonocle.nat.all._
 
 trait University[U] {
@@ -14,8 +14,7 @@ trait University[U] {
 
   val name: LensField[P, String]
   val department: Department[D]
-  val departments: TraversalAlg.Aux[P, department.P, D]
-  val ev: At[P, String, D]
+  val departments: MapAlg.Aux[P, department.P, String, D]
 
   def create(name: String): U
 }
@@ -32,8 +31,7 @@ object University {
   def apply[P2[_], U, DP2[_], D2](
       name2: LensField[P2, String],
       department2: Department.WithP[DP2, D2],
-      departments2: TraversalAlg.Aux[P2, DP2, D2],
-      ev2: At[P2, String, D2],
+      departments2: MapAlg.Aux[P2, DP2, String, D2],
       create2: String => U): Aux[P2, U, D2] =
     new University[U] {
       type P[x] = P2[x]
@@ -41,7 +39,6 @@ object University {
       val name = name2
       val department = department2
       val departments = departments2
-      val ev = ev2
       def create(name: String) = create2(name)
     }
 
@@ -49,13 +46,13 @@ object University {
     import uni._, department.{ P => _, _ }, lecturer.{ P => _, _ }
 
     def removeDepartment(name: String): P[Unit] =
-      uni.ev.at(name).set(None)
+      uni.departments(name).set(None)
 
     def addDepartment(
         name: String,
         budget: Int,
         lecturers: List[(String, String, Int)]): P[Unit] =
-      uni.ev.at(name).set(uni.department.create(budget, lecturers).some)
+      uni.departments(name).set(uni.department.create(budget, lecturers).some)
 
     def updateSalary(f: Int => Int): P[Unit] =
       salaryTraversal.modify(f)
@@ -64,24 +61,24 @@ object University {
       headNameTraversal.modify(_.toUpper)
 
     def containsDepartment(name: String): P[Boolean] =
-      uni.ev.at(name).gets(_.nonEmpty)
+      uni.departments(name).gets(_.nonEmpty)
 
     def getTotalSalary: P[Int] =
-      salaryTraversal.foldMap(identity)
+      salaryTraversal.foldMap(_._2)
 
     def getNameInitials: P[List[Char]] =
-      headNameTraversal.getList
+      headNameTraversal.foci
 
     private val salaryTraversal =
-      departments
-        .composeTraversal(lecturers)
-        .composeLens(salary)
+      departments.tr
+        .composeITraversal(lecturers.asIndexed)
+        .composeILens(salary.asIndexed)
 
     private val headNameTraversal =
-      departments
-        .composeTraversal(lecturers)
-        .composeTraversal(first parLens last)
-        .composeOptional(asOptional(headOption))
+      departments.tr
+        .composeITraversal(lecturers.asIndexed)
+        .composeITraversal((first parLens last).asIndexed)
+        .composeIOptional(asOptional(headOption[String, Char]).asIndexed)
   }
 }
 

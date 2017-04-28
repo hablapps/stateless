@@ -9,6 +9,7 @@ import scalaz.{ MonadError, \/ }
 import monocle.macros.Lenses
 import monocle.function.all._
 
+import core.nat.lib.MapAlg
 import smonocle.nat.all._
 
 import org.hablapps.puretest, puretest._, puretest.Filter.Syntax._
@@ -47,11 +48,13 @@ object SUniversity {
     University[Program, SUniversity, DProgram, SDepartment](
       asLensField[Throwable \/ ?, SUniversity, String](SUniversity.name),
       SDepartment.model,
-      fromTraversal[Throwable \/ ?, SUniversity, SDepartment](
-        SUniversity.departments.composeTraversal(each)),
-      fromAtStateT[Throwable \/ ?, SUniversity, String, SDepartment](
-        asLensAlg[Throwable \/ ?, SUniversity, Map[String, SDepartment]](
-          SUniversity.departments)),
+      MapAlg[Program, DProgram, String, SDepartment](
+        asLensAlg[Throwable \/ ?, SUniversity, Map[String, SDepartment]](SUniversity.departments)
+          .asIndexed
+          .composeITraversal(mapITraversal[Throwable \/ ?, String, SDepartment]),
+        fromAtStateT[Throwable \/ ?, SUniversity, String, SDepartment](
+          asLensAlg[Throwable \/ ?, SUniversity, Map[String, SDepartment]](
+            SUniversity.departments)))(StateT.stateTMonadState[SUniversity, Throwable \/ ?]),
       name => new SUniversity(name, Map.empty))
 }
 
