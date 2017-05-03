@@ -53,10 +53,10 @@ trait UniversitySpec[P[_]] {
 
   def test3: P[Unit] =
     for {
-         _ <- prefix
-        v1 <- view.getTotalSalary
-         _ <- view.updateSalary(_ * 2) // not bad
-      true <- view.getTotalSalary.isEqual(v1 * 2)
+       _ <- prefix
+      v1 <- view.getTotalSalary
+       _ <- view.updateSalary(_ * 2) // not bad
+       _ <- view.getTotalSalary.assertEqual(v1 * 2)
     } yield ()
 
   // Test 4: formatting names
