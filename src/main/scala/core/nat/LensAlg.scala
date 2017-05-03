@@ -6,6 +6,8 @@ import scalaz.{ Const, Monad, MonadState, ~> }
 import scalaz.Id.Id
 import scalaz.syntax.std.option._
 
+import shapeless.HNil
+
 trait LensAlg[P[_], A] extends OpticAlg[P, A, MonadState, Id]
     with raw.LensAlg[P, A] {
 
@@ -33,6 +35,12 @@ trait LensAlg[P[_], A] extends OpticAlg[P, A, MonadState, Id]
   def composeLens[B](ln: LensAlg[Q, B]): LensAlg.Aux[P, ln.Q, B] =
     LensAlg(hom compose ln.hom)(this, ln.ev)
 
+  def parLens(ln: LensAlg.Aux[P, Q, A]): TraversalAlg.Aux[P, Q, A] =
+    TraversalAlg[P, Q, A](
+      λ[Q ~> λ[x => P[List[x]]]] { qx =>
+        bind(hom(qx))(a1 => map(ln.hom(qx))(a2 => List(a1, a2)))
+      })(this, ev)
+
   /* transforming algebras */
 
   def asGetter: GetterAlg.Aux[P, Q, A] = GetterAlg(hom)(this, ev)
@@ -46,9 +54,9 @@ trait LensAlg[P[_], A] extends OpticAlg[P, A, MonadState, Id]
 
   def asSetter: SetterAlg.Aux[P, Q, A] = asTraversal.asSetter
 
-  def asIndexed: ILensAlg.Aux[P, Q, Unit, A] =
-    ILensAlg(new (λ[x => Unit => Q[x]] ~> P) {
-      def apply[X](iqx: Unit => Q[X]): P[X] = hom[X](iqx(()))
+  def asIndexed: ILensAlg.Aux[P, Q, HNil, A] =
+    ILensAlg(new (λ[x => HNil => Q[x]] ~> P) {
+      def apply[X](iqx: HNil => Q[X]): P[X] = hom[X](iqx(HNil))
     })(this, ev)
 
   def asSymmetric: SLensAlg.Aux[P, Q, Q, A, A] =

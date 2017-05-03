@@ -7,6 +7,8 @@ import scalaz.syntax.monad._
 import scalaz.std.list._
 import scalaz.std.option._
 
+import shapeless.HNil
+
 trait OptionalAlg[P[_], A] extends OpticAlg[P, A, MonadState, Option]
     with raw.OptionalAlg[P, A] {
 
@@ -47,9 +49,9 @@ trait OptionalAlg[P[_], A] extends OpticAlg[P, A, MonadState, Option]
 
   def asFold: FoldAlg.Aux[P, Q, A] = asTraversal.asFold
 
-  def asIndexed: IOptionalAlg.Aux[P, Q, Unit, A] =
-    IOptionalAlg(λ[λ[x => Unit => Q[x]] ~> λ[x => P[Option[x]]]] { iqx =>
-      hom(iqx(()))
+  def asIndexed: IOptionalAlg.Aux[P, Q, HNil, A] =
+    IOptionalAlg(λ[λ[x => HNil => Q[x]] ~> λ[x => P[Option[x]]]] { iqx =>
+      hom(iqx(HNil))
     })(this, ev)
 
   def asSymmetric: SOptionalAlg.Aux[P, Q, Q, A, A] =

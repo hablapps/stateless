@@ -3,39 +3,57 @@ package core
 package nat
 
 import scalaz.{ Monad, MonadReader, ~> }
+import scalaz.Leibniz.===
 import scalaz.std.list._
 import scalaz.syntax.monad._
 
-trait IFoldAlg[P[_], I, A] extends raw.IFoldAlg[P, I, A]
+import shapeless._, ops.hlist._
+
+trait IFoldAlg[P[_], I <: HList, A] extends raw.IFoldAlg[P, I, A]
     with IOpticAlg[P, I, A, MonadReader, List] {
 
   def getList: P[List[(I, A)]] = hom(ev.ask.strengthL)
 
   /* composing algebras */
 
-  def composeIFold[J, B](fl: IFoldAlg[Q, J, B]): IFoldAlg.Aux[P, fl.Q, (I, J), B] =
-    IFoldAlg(λ[λ[x => ((I, J)) => fl.Q[x]] ~> λ[x => P[List[x]]]] { iqx =>
-      map(hom(i => fl.hom(j => iqx((i, j)))))(_.join)
+  def composeFold[J <: HList, K <: HList, B](
+      fl: IFoldAlg[Q, J, B])(implicit
+      ev0: Prepend.Aux[I, J, K]): IFoldAlg.Aux[P, fl.Q, K, B] =
+    IFoldAlg(λ[λ[x => K => fl.Q[x]] ~> λ[x => P[List[x]]]] { iqx =>
+      map(hom(i => fl.hom(j => iqx(i ++ j))))(_.join)
     })(this, fl.ev)
 
-  def composeIGetter[J, B](gt: IGetterAlg[Q, J, B]): IFoldAlg.Aux[P, gt.Q, (I, J), B] =
-    composeIFold(gt.asIFold)
+  def composeGetter[J <: HList, K <: HList, B](
+      gt: IGetterAlg[Q, J, B])(implicit
+      ev0: Prepend.Aux[I, J, K]): IFoldAlg.Aux[P, gt.Q, K, B] =
+    composeFold(gt.asFold)
 
-  def composeITraversal[J, B](tr: ITraversalAlg[Q, J, B]): IFoldAlg.Aux[P, tr.Q, (I, J), B] =
-    composeIFold(tr.asIFold)
+  def composeTraversal[J <: HList, K <: HList, B](
+      tr: ITraversalAlg[Q, J, B])(implicit
+      ev0: Prepend.Aux[I, J, K]): IFoldAlg.Aux[P, tr.Q, K, B] =
+    composeFold(tr.asFold)
 
-  def composeIOptional[J, B](op: IOptionalAlg[Q, J, B]): IFoldAlg.Aux[P, op.Q, (I, J), B] =
-    composeIFold(op.asIFold)
+  def composeOptional[J <: HList, K <: HList, B](
+      op: IOptionalAlg[Q, J, B])(implicit
+      ev0: Prepend.Aux[I, J, K]): IFoldAlg.Aux[P, op.Q, K, B] =
+    composeFold(op.asFold)
 
-  def composeILens[J, B](ln: ILensAlg[Q, J, B]): IFoldAlg.Aux[P, ln.Q, (I, J), B] =
-    composeIFold(ln.asIFold)
+  def composeLens[J <: HList, K <: HList, B](
+      ln: ILensAlg[Q, J, B])(implicit
+      ev0: Prepend.Aux[I, J, K]): IFoldAlg.Aux[P, ln.Q, K, B] =
+    composeFold(ln.asFold)
+
+  /* transforming algebras */
+
+  def asPlain(implicit ev0: I === HNil): FoldAlg.Aux[P, Q, A] =
+    FoldAlg[P, Q, A](λ[Q ~> λ[x => P[List[x]]]](qx => hom(_ => qx)))(this, ev)
 }
 
 object IFoldAlg {
 
-  type Aux[P[_], Q2[_], I, A] = IFoldAlg[P, I, A] { type Q[x] = Q2[x] }
+  type Aux[P[_], Q2[_], I <: HList, A] = IFoldAlg[P, I, A] { type Q[x] = Q2[x] }
 
-  def apply[P[_], Q2[_], I, A](
+  def apply[P[_], Q2[_], I <: HList, A](
       hom2: λ[x => I => Q2[x]] ~> λ[x => P[List[x]]])(implicit
       ev0: Monad[P],
       ev1: MonadReader[Q2, A]): Aux[P, Q2, I, A] = new IFoldAlg[P, I, A] {
@@ -45,4 +63,7 @@ object IFoldAlg {
     implicit val ev = ev1
     val hom = hom2
   }
+
+  implicit def toIndexed[P[_], A](fl: FoldAlg[P, A]): Aux[P, fl.Q, HNil, A] =
+    fl.asIndexed
 }

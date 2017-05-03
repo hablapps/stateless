@@ -6,6 +6,8 @@ import scalaz.{ Const, Monad, MonadState, ~> }
 import scalaz.syntax.monad._
 import scalaz.std.list._
 
+import shapeless.HNil
+
 trait TraversalAlg[P[_], A] extends OpticAlg[P, A, MonadState, List]
     with raw.TraversalAlg[P, A] {
 
@@ -44,9 +46,9 @@ trait TraversalAlg[P[_], A] extends OpticAlg[P, A, MonadState, List]
       map(hom(qx))(_ => Const(()))
     })(this, ev)
 
-  def asIndexed: ITraversalAlg.Aux[P, Q, Unit, A] =
-    ITraversalAlg(λ[λ[x => Unit => Q[x]] ~> λ[x => P[List[x]]]] { iqx =>
-      hom(iqx(()))
+  def asIndexed: ITraversalAlg.Aux[P, Q, HNil, A] =
+    ITraversalAlg(λ[λ[x => HNil => Q[x]] ~> λ[x => P[List[x]]]] { iqx =>
+      hom(iqx(HNil))
     })(this, ev)
 
   def asSymmetric: STraversalAlg.Aux[P, Q, Q, A, A] =

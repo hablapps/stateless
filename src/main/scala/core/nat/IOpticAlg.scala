@@ -3,8 +3,9 @@ package core
 package nat
 
 import scalaz.{ Monad, ~> }
+import shapeless.HList
 
-trait IOpticAlg[P[_], I, A, Ev[M[_], _] <: Monad[M], F[_]] extends Monad[P] {
+trait IOpticAlg[P[_], I <: HList, A, Ev[M[_], _] <: Monad[M], F[_]] extends Monad[P] {
 
   type Q[_]
 

@@ -28,9 +28,9 @@ trait PrismAlg[P[_], A] extends Monad[P] { self =>
 
   def nonEmpty: P[Boolean] = map(getOption)(_.nonEmpty)
 
-  def find(p: A => Boolean): P[Boolean] = map(getOption)(_.fold(false)(p))
+  def find(p: A => Boolean): P[Option[A]] = map(getOption)(_.find(p))
 
-  def exist(p: A => Boolean): P[Boolean] = map(getOption)(_.fold(false)(p))
+  def exist(p: A => Boolean): P[Boolean] = map(getOption)(_.exists(p))
 
   def all(p: A => Boolean): P[Boolean] = map(getOption)(_.fold(true)(p))
 

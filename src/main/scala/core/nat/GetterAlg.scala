@@ -5,6 +5,8 @@ package nat
 import scalaz.{ Monad, MonadReader, ~> }
 import scalaz.Id.Id
 
+import shapeless.HNil
+
 trait GetterAlg[P[_], A] extends OpticAlg[P, A, MonadReader, Id]
     with raw.GetterAlg[P, A] {
 
@@ -32,9 +34,9 @@ trait GetterAlg[P[_], A] extends OpticAlg[P, A, MonadReader, Id]
   def asFold: FoldAlg.Aux[P, Q, A] =
     FoldAlg(λ[Q ~> λ[x => P[List[x]]]](qx => map(hom(qx))(List(_))))(this, ev)
 
-  def asIndexed: IGetterAlg.Aux[P, Q, Unit, A] =
-    IGetterAlg(new (λ[x => Unit => Q[x]] ~> P) {
-      def apply[X](iqx: Unit => Q[X]): P[X] = hom[X](iqx(()))
+  def asIndexed: IGetterAlg.Aux[P, Q, HNil, A] =
+    IGetterAlg(new (λ[x => HNil => Q[x]] ~> P) {
+      def apply[X](iqx: HNil => Q[X]): P[X] = hom[X](iqx(HNil))
     })(this, ev)
 
   def asSymmetric: SGetterAlg.Aux[P, Q, Q, A, A] =

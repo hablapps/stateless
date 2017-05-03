@@ -4,10 +4,13 @@ package nat
 
 import scalaz.{ Monad, MonadState, ~> }
 import scalaz.Id.Id
+import scalaz.Leibniz.===
 import scalaz.syntax.functor._
 import scalaz.syntax.std.option._
 
-trait ILensAlg[P[_], I, A] extends raw.ILensAlg[P, I, A]
+import shapeless._, ops.hlist._
+
+trait ILensAlg[P[_], I <: HList, A] extends raw.ILensAlg[P, I, A]
     with IOpticAlg[P, I, A, MonadState, Id] {
 
   def get: P[(I, A)] = hom(ev.get.strengthL)
@@ -16,47 +19,64 @@ trait ILensAlg[P[_], I, A] extends raw.ILensAlg[P, I, A]
 
   /* composing algebras */
 
-  def composeIFold[J, B](fl: IFoldAlg[Q, J, B]): IFoldAlg.Aux[P, fl.Q, (I, J), B] =
-    asIFold.composeIFold(fl)
+  def composeFold[J <: HList, K <: HList, B](
+      fl: IFoldAlg[Q, J, B])(implicit
+      ev0: Prepend.Aux[I, J, K]): IFoldAlg.Aux[P, fl.Q, K, B] =
+    asFold.composeFold(fl)
 
-  def composeIGetter[J, B](gt: IGetterAlg[Q, J, B]): IGetterAlg.Aux[P, gt.Q, (I, J), B] =
-    asIGetter.composeIGetter(gt)
+  def composeGetter[J <: HList, K <: HList, B](
+      gt: IGetterAlg[Q, J, B])(implicit
+      ev0: Prepend.Aux[I, J, K]): IGetterAlg.Aux[P, gt.Q, K, B] =
+    asGetter.composeGetter(gt)
 
-  def composeISetter[J, B](st: ISetterAlg[Q, J, B]): ISetterAlg.Aux[P, st.Q, (I, J), B] =
-    asISetter.composeISetter(st)
+  def composeSetter[J <: HList, K <: HList, B](
+      st: ISetterAlg[Q, J, B])(implicit
+      ev0: Prepend.Aux[I, J, K]): ISetterAlg.Aux[P, st.Q, K, B] =
+    asSetter.composeSetter(st)
 
-  def composeITraversal[J, B](tr: ITraversalAlg[Q, J, B]): ITraversalAlg.Aux[P, tr.Q, (I, J), B] =
-    asITraversal.composeITraversal(tr)
+  def composeTraversal[J <: HList, K <: HList, B](
+      tr: ITraversalAlg[Q, J, B])(implicit
+      ev0: Prepend.Aux[I, J, K]): ITraversalAlg.Aux[P, tr.Q, K, B] =
+    asTraversal.composeTraversal(tr)
 
-  def composeIOptional[J, B](op: IOptionalAlg[Q, J, B]): IOptionalAlg.Aux[P, op.Q, (I, J), B] =
-    asIOptional.composeIOptional(op)
+  def composeOptional[J <: HList, K <: HList, B](
+      op: IOptionalAlg[Q, J, B])(implicit
+      ev0: Prepend.Aux[I, J, K]): IOptionalAlg.Aux[P, op.Q, K, B] =
+    asOptional.composeOptional(op)
 
-  def composeILens[J, B](ln: ILensAlg[Q, J, B]): ILensAlg.Aux[P, ln.Q, (I, J), B] =
-    ILensAlg(new (λ[x => ((I, J)) => ln.Q[x]] ~> P) {
-      def apply[X](iqx: ((I, J)) => ln.Q[X]): P[X] =
-        hom[X](i => ln.hom[X](j => iqx((i, j))))
+  def composeLens[J <: HList, K <: HList, B](
+      ln: ILensAlg[Q, J, B])(implicit
+      ev0: Prepend.Aux[I, J, K]): ILensAlg.Aux[P, ln.Q, K, B] =
+    ILensAlg(new (λ[x => K => ln.Q[x]] ~> P) {
+      def apply[X](iqx: K => ln.Q[X]): P[X] =
+        hom[X](i => ln.hom[X](j => iqx(i ++ j)))
     })(this, ln.ev)
 
   /* transforming algebras */
 
-  def asIGetter: IGetterAlg.Aux[P, Q, I, A] = IGetterAlg(hom)(this, ev)
+  def asGetter: IGetterAlg.Aux[P, Q, I, A] = IGetterAlg(hom)(this, ev)
 
-  def asIOptional: IOptionalAlg.Aux[P, Q, I, A] =
+  def asOptional: IOptionalAlg.Aux[P, Q, I, A] =
     IOptionalAlg(λ[λ[x => I => Q[x]] ~> λ[x => P[Option[x]]]](
       qx => map(hom(qx))(_.some)))(this, ev)
 
-  def asIFold: IFoldAlg.Aux[P, Q, I, A] = asIGetter.asIFold
+  def asFold: IFoldAlg.Aux[P, Q, I, A] = asGetter.asFold
 
-  def asITraversal: ITraversalAlg.Aux[P, Q, I, A] = asIOptional.asITraversal
+  def asTraversal: ITraversalAlg.Aux[P, Q, I, A] = asOptional.asTraversal
 
-  def asISetter: ISetterAlg.Aux[P, Q, I, A] = asITraversal.asISetter
+  def asSetter: ISetterAlg.Aux[P, Q, I, A] = asTraversal.asSetter
+
+  def asPlain(implicit ev0: I === HNil): LensAlg.Aux[P, Q, A] =
+    LensAlg[P, Q, A](new (Q ~> P) {
+      def apply[X](qx: Q[X]): P[X] = hom[X](_ => qx)
+    })(this, ev)
 }
 
 object ILensAlg {
 
-  type Aux[P[_], Q2[_], I, A] = ILensAlg[P, I, A] { type Q[x] = Q2[x] }
+  type Aux[P[_], Q2[_], I <: HList, A] = ILensAlg[P, I, A] { type Q[x] = Q2[x] }
 
-  def apply[P[_], Q2[_], I, A](
+  def apply[P[_], Q2[_], I <: HList, A](
       hom2: λ[x => I => Q2[x]] ~> P)(implicit
       ev0: Monad[P],
       ev1: MonadState[Q2, A]): Aux[P, Q2, I, A] = new ILensAlg[P, I, A] {
@@ -66,4 +86,7 @@ object ILensAlg {
     implicit val ev = ev1
     val hom = hom2
   }
+
+  implicit def toIndexed[P[_], A](ln: LensAlg[P, A]): Aux[P, ln.Q, HNil, A] =
+    ln.asIndexed
 }

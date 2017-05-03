@@ -6,6 +6,8 @@ import scalaz.{ Const, Monad, MonadState, ~> }
 import scalaz.syntax.monad._
 import scalaz.std.option._
 
+import shapeless.HNil
+
 trait SetterAlg[P[_], A] extends OpticAlg[P, A, MonadState, Const[Unit, ?]]
     with raw.SetterAlg[P, A] {
 
@@ -29,9 +31,9 @@ trait SetterAlg[P[_], A] extends OpticAlg[P, A, MonadState, Const[Unit, ?]]
 
   /* transforming algebras */
 
-  def asIndexed: ISetterAlg.Aux[P, Q, Unit, A] =
-    ISetterAlg(λ[λ[x => Unit => Q[x]] ~> λ[x => P[Const[Unit, x]]]] { iqx =>
-      hom(iqx(()))
+  def asIndexed: ISetterAlg.Aux[P, Q, HNil, A] =
+    ISetterAlg(λ[λ[x => HNil => Q[x]] ~> λ[x => P[Const[Unit, x]]]] { iqx =>
+      hom(iqx(HNil))
     })(this, ev)
 
   def asSymmetric: SSetterAlg.Aux[P, Q, Q, A, A] =

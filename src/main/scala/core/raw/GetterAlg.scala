@@ -5,13 +5,21 @@ package raw
 import scalaz.{ Equal, Monad, MonadReader }
 import scalaz.syntax.equal._
 import scalaz.syntax.monad._
+import scalaz.syntax.std.option._
 
 trait GetterAlg[P[_], A] extends MonadReader[P, A] { self =>
+
+  /* derived methods */
 
   def get: P[A] = ask
 
   // FIXME: dummy implementation
   def local[X](f: A => A)(px: P[X]) = px
+
+  def find(p: A => Boolean): P[Option[A]] =
+    map(get)(a => if (p(a)) a.some else None)
+
+  def exist(p: A => Boolean): P[Boolean] = asks(p)
 
   trait GetterAlgLaw {
     implicit val _: Monad[P] = self

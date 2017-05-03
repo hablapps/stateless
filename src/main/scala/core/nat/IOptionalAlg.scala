@@ -3,10 +3,13 @@ package core
 package nat
 
 import scalaz.{ Monad, MonadState, ~> }
+import scalaz.Leibniz.===
 import scalaz.syntax.monad._
 import scalaz.std.option._
 
-trait IOptionalAlg[P[_], I, A] extends raw.IOptionalAlg[P, I, A]
+import shapeless._, ops.hlist._
+
+trait IOptionalAlg[P[_], I <: HList, A] extends raw.IOptionalAlg[P, I, A]
     with IOpticAlg[P, I, A, MonadState, Option] {
 
   def getOption: P[Option[(I, A)]] = hom(ev.get.strengthL)
@@ -15,43 +18,58 @@ trait IOptionalAlg[P[_], I, A] extends raw.IOptionalAlg[P, I, A]
 
   /* composing algebras */
 
-  def composeIFold[J, B](fl: IFoldAlg[Q, J, B]): IFoldAlg.Aux[P, fl.Q, (I, J), B] =
-    asIFold.composeIFold(fl)
+  def composeFold[J <: HList, K <: HList, B](
+      fl: IFoldAlg[Q, J, B])(implicit
+      ev0: Prepend.Aux[I, J, K]): IFoldAlg.Aux[P, fl.Q, K, B] =
+    asFold.composeFold(fl)
 
-  def composeIGetter[J, B](gt: IGetterAlg[Q, J, B]): IFoldAlg.Aux[P, gt.Q, (I, J), B] =
-    asIFold.composeIFold(gt.asIFold)
+  def composeGetter[J <: HList, K <: HList, B](
+      gt: IGetterAlg[Q, J, B])(implicit
+      ev0: Prepend.Aux[I, J, K]): IFoldAlg.Aux[P, gt.Q, K, B] =
+    asFold.composeFold(gt.asFold)
 
-  def composeISetter[J, B](st: ISetterAlg[Q, J, B]): ISetterAlg.Aux[P, st.Q, (I, J), B] =
-    asISetter.composeISetter(st)
+  def composeSetter[J <: HList, K <: HList, B](
+      st: ISetterAlg[Q, J, B])(implicit
+      ev0: Prepend.Aux[I, J, K]): ISetterAlg.Aux[P, st.Q, K, B] =
+    asSetter.composeSetter(st)
 
-  def composeITraversal[J, B](tr: ITraversalAlg[Q, J, B]): ITraversalAlg.Aux[P, tr.Q, (I, J), B] =
-    asITraversal.composeITraversal(tr)
+  def composeTraversal[J <: HList, K <: HList, B](
+      tr: ITraversalAlg[Q, J, B])(implicit
+      ev0: Prepend.Aux[I, J, K]): ITraversalAlg.Aux[P, tr.Q, K, B] =
+    asTraversal.composeTraversal(tr)
 
-  def composeIOptional[J, B](op: IOptionalAlg[Q, J, B]): IOptionalAlg.Aux[P, op.Q, (I, J), B] =
-    IOptionalAlg(λ[λ[x => ((I, J)) => op.Q[x]] ~> λ[x => P[Option[x]]]] { iqx =>
-      map(hom(i => op.hom(j => iqx((i, j)))))(_.join)
+  def composeOptional[J <: HList, K <: HList, B](
+      op: IOptionalAlg[Q, J, B])(implicit
+      ev0: Prepend.Aux[I, J, K]): IOptionalAlg.Aux[P, op.Q, K, B] =
+    IOptionalAlg(λ[λ[x => K => op.Q[x]] ~> λ[x => P[Option[x]]]] { iqx =>
+      map(hom(i => op.hom(j => iqx(i ++ j))))(_.join)
     })(this, op.ev)
 
-  def composeILens[J, B](ln: ILensAlg[Q, J, B]): IOptionalAlg.Aux[P, ln.Q, (I, J), B] =
-    composeIOptional(ln.asIOptional)
+  def composeLens[J <: HList, K <: HList, B](
+      ln: ILensAlg[Q, J, B])(implicit
+      ev0: Prepend.Aux[I, J, K]): IOptionalAlg.Aux[P, ln.Q, K, B] =
+    composeOptional(ln.asOptional)
 
   /* transforming algebras */
 
-  def asITraversal: ITraversalAlg.Aux[P, Q, I, A] =
+  def asTraversal: ITraversalAlg.Aux[P, Q, I, A] =
     ITraversalAlg(λ[λ[x => I => Q[x]] ~> λ[x => P[List[x]]]] { qx =>
       map(hom(qx))(_.toList)
     })(this, ev)
 
-  def asISetter: ISetterAlg.Aux[P, Q, I, A] = asITraversal.asISetter
+  def asSetter: ISetterAlg.Aux[P, Q, I, A] = asTraversal.asSetter
 
-  def asIFold: IFoldAlg.Aux[P, Q, I, A] = asITraversal.asIFold
+  def asFold: IFoldAlg.Aux[P, Q, I, A] = asTraversal.asFold
+
+  def asPlain(implicit ev0: I === HNil): OptionalAlg.Aux[P, Q, A] =
+    OptionalAlg[P, Q, A](λ[Q ~> λ[x => P[Option[x]]]](qx => hom(_ => qx)))(this, ev)
 }
 
 object IOptionalAlg {
 
-  type Aux[P[_], Q2[_], I, A] = IOptionalAlg[P, I, A] { type Q[x] = Q2[x] }
+  type Aux[P[_], Q2[_], I <: HList, A] = IOptionalAlg[P, I, A] { type Q[x] = Q2[x] }
 
-  def apply[P[_], Q2[_], I, A](
+  def apply[P[_], Q2[_], I <: HList, A](
       hom2: λ[x => I => Q2[x]] ~> λ[y => P[Option[y]]])(implicit
       ev0: Monad[P],
       ev1: MonadState[Q2, A]): Aux[P, Q2, I, A] = new IOptionalAlg[P, I, A] {
@@ -61,4 +79,7 @@ object IOptionalAlg {
     implicit val ev = ev1
     val hom = hom2
   }
+
+  implicit def toIndexed[P[_], A](op: OptionalAlg[P, A]): Aux[P, op.Q, HNil, A] =
+    op.asIndexed
 }
