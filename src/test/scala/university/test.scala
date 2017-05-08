@@ -19,6 +19,7 @@ trait MyTest[P[_], U] extends UniversitySpec[P] { self: FunSpec with Matchers =>
       test2 should runWithoutErrors(from = uni.create("oxford"))
       test3 should runWithoutErrors(from = uni.create("oxford"))
       test4 should runWithoutErrors(from = uni.create("oxford"))
+      test5 should runWithoutErrors(from = uni.create("oxford"))
     }
   }
 }

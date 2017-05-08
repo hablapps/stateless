@@ -69,6 +69,9 @@ object University {
     def getNameInitials: P[List[Char]] =
       headNameTraversal.foci
 
+    def getBudget(name: String): P[Option[Int]] =
+      departments.pick(name)(budget.get)
+
     private val salaryTraversal =
       departments
         .composeTraversal(lecturers)
