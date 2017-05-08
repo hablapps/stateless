@@ -11,3 +11,4 @@ object all extends FoldState
     with SLensState
     with ITraversalState
     with op.AtState
+    with op.FilterIndexState

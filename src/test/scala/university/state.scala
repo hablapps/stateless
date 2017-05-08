@@ -49,12 +49,13 @@ object SUniversity {
       asLensField[Throwable \/ ?, SUniversity, String](SUniversity.name),
       SDepartment.model,
       MapAlg[Program, DProgram, String, SDepartment](
-        asLensAlg[Throwable \/ ?, SUniversity, Map[String, SDepartment]](SUniversity.departments)
-          .asIndexed
-          .composeTraversal(mapITraversal[Throwable \/ ?, String, SDepartment]),
         fromAtStateT[Throwable \/ ?, SUniversity, String, SDepartment](
           asLensAlg[Throwable \/ ?, SUniversity, Map[String, SDepartment]](
-            SUniversity.departments)))(StateT.stateTMonadState[SUniversity, Throwable \/ ?]),
+            SUniversity.departments)),
+        fromFilterIndexStateT[Throwable \/ ?, SUniversity, String, SDepartment](
+          asLensAlg[Throwable \/ ?, SUniversity, Map[String, SDepartment]](
+            SUniversity.departments))
+        )(StateT.stateTMonadState[SUniversity, Throwable \/ ?]),
       name => new SUniversity(name, Map.empty))
 }
 
