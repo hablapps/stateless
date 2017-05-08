@@ -67,4 +67,13 @@ trait UniversitySpec[P[_]] {
          _ <- view.upperCase
       true <- view.getNameInitials.map(_.forall(_.isUpper))
     } yield ()
+
+  // Test 5: picking department
+
+  def test5: P[Unit] =
+    for {
+             _ <- prefix
+      Some(45) <- view.getBudget("Computer Science")
+          None <- view.getBudget("Mathematics")
+    } yield ()
 }

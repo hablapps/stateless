@@ -20,4 +20,6 @@ trait UniversityView[P[_]] {
   def getTotalSalary: P[Int]
 
   def getNameInitials: P[List[Char]]
+
+  def getBudget(name: String): P[Option[Int]]
 }
