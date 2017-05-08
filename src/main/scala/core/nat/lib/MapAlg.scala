@@ -25,16 +25,7 @@ trait MapAlg[P[_], K, V] {
 
   /* derived methods */
 
-  lazy val tr: ITraversalAlg.Aux[P, Q, K :: HNil, V] =
-    ev1.filterIndex(const(true))
-
-  implicit lazy val MS: MonadState[tr.Q, V] = tr.ev
-
   def apply(k: K): LensAlg[P, Option[V]] = ev0.at(k)
-
-  def add(k: K)(v: V): P[Unit] = apply(k).set(v.some)
-
-  def remove(k: K): P[Unit] = apply(k).set(None)
 
   def pick[O](k: K)(qo: Q[O]): P[Option[O]] =
     ev1.filterIndex(_ == k).hom(_ => qo).map(_.headOption)
@@ -56,5 +47,5 @@ object MapAlg {
 
   implicit def toTraversal[P[_], K, V](
       map: MapAlg[P, K, V]): ITraversalAlg.Aux[P, map.Q, K :: HNil, V] =
-    map.tr
+    map.ev1.filterIndex(const(true))
 }
