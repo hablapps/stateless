@@ -27,8 +27,11 @@ trait MapAlg[P[_], K, V] {
 
   def apply(k: K): LensAlg[P, Option[V]] = ev0.at(k)
 
-  def pick[O](k: K)(qo: Q[O]): P[Option[O]] =
-    ev1.filterIndex(_ == k).hom(_ => qo).map(_.headOption)
+  def pick(k: K): ITraversalAlg.Aux[P, Q, K :: HNil, V] =
+    ev1.filterIndex(_ == k)
+
+  def pick[O](k: K, qo: Q[O]): P[Option[O]] =
+    pick(k).hom(_ => qo).map(_.headOption)
 }
 
 object MapAlg {

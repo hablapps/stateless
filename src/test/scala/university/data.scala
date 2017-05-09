@@ -70,7 +70,7 @@ object University {
       headNameTraversal.foci
 
     def getBudget(name: String): P[Option[Int]] =
-      departments.pick(name)(budget.get)
+      departments.pick(name, budget.get)
 
     private val salaryTraversal =
       departments
