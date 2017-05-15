@@ -4,8 +4,6 @@ package raw
 
 import scalaz._, Scalaz._
 
-import monocle.{ Traversal => MTraversal }
-
 import core.raw.TraversalAlg
 
 trait TraversalState {

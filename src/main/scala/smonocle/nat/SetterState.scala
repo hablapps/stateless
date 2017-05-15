@@ -2,15 +2,20 @@ package org.hablapps.stateless
 package smonocle
 package nat
 
-import scalaz.{ Const, Monad, State, StateT, ~> }
-import scalaz.syntax.functor._
-import scalaz.std.tuple._
+import scalaz._, Scalaz._
 
 import monocle.{ Lens, Setter }
 
 import core.nat.SetterAlg
 
 trait SetterState {
+
+  def fromFunctor[F[_]: Functor, A]
+      : SetterAlg.Aux[State[F[A], ?], State[A, ?], A] =
+    SetterAlg[State[F[A], ?], State[A, ?], A](
+      λ[State[A, ?] ~> λ[x => State[F[A], Const[Unit, x]]]] { sa =>
+        State(ta => (ta.map(sa.exec), Const(())))
+      })
 
   // XXX: can't provide an instance for `StateT` by using only a `Setter`
   def fromSetter[S, A](
