@@ -2,9 +2,11 @@ package org.hablapps.stateless
 package core
 package nat
 
-import scalaz.{ Const, Monad, MonadState, ~> }
+import scalaz.{ Equal, Const, Monad, MonadState, ~> }
 import scalaz.Id.Id
 import scalaz.syntax.std.option._
+import scalaz.syntax.monad._
+import scalaz.syntax.equal._
 
 import shapeless.HNil
 
@@ -61,6 +63,17 @@ trait LensAlg[P[_], A] extends OpticAlg[P, A, MonadState, Id]
 
   def asSymmetric: SLensAlg.Aux[P, Q, Q, A, A] =
     SLensAlg(hom, hom)(this, ev, ev)
+
+  trait NatLensAlgLaw extends LensAlgLaw {
+
+    // Monad homomorphism laws subsume natural transformation ones
+
+    def hom1[A](a: A)(implicit eq: Equal[P[A]]): Boolean =
+      hom(a.point[Q]) === a.point[P]
+
+    def hom2[A, B](qa: Q[A])(f: A => Q[B])(implicit eq: Equal[P[B]]): Boolean =
+      hom(qa >>= f) === (hom(qa) >>= (f andThen hom))
+  }
 }
 
 object LensAlg {
