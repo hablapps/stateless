@@ -75,6 +75,8 @@ trait LensAlg[P[_], A] extends OpticAlg[P, A, MonadState, Id]
     def hom2[A, B](qa: Q[A])(f: A => Q[B])(implicit eq: Equal[P[B]]): Boolean =
       hom(qa >>= f) === (hom(qa) >>= (f andThen hom))
   }
+
+  def natLensAlgLaw = new NatLensAlgLaw {}
 }
 
 object LensAlg {

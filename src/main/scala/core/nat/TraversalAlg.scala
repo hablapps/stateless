@@ -57,6 +57,8 @@ trait TraversalAlg[P[_], A] extends OpticAlg[P, A, MonadState, List]
   /* laws */
 
   trait NatTraversalAlgLaw extends TraversalAlgLaw with OpticAlgLaw
+
+  def natTraversalAlgLaw = new NatTraversalAlgLaw {}
 }
 
 object TraversalAlg {

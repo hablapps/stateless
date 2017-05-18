@@ -45,6 +45,8 @@ trait GetterAlg[P[_], A] extends OpticAlg[P, A, MonadReader, Id]
   /* laws */
 
   trait NatGetterAlgLaw extends GetterAlgLaw with OpticAlgLaw
+
+  def natGetterAlgLaw = new NatGetterAlgLaw {}
 }
 
 object GetterAlg {

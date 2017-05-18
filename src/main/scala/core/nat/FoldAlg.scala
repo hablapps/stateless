@@ -46,6 +46,8 @@ trait FoldAlg[P[_], A] extends OpticAlg[P, A, MonadReader, List]
   /* laws */
 
   trait NatFoldAlgLaw extends FoldAlgLaw with OpticAlgLaw
+
+  def natFoldAlgLaw = new NatFoldAlgLaw {}
 }
 
 object FoldAlg {
