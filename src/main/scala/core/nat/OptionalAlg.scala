@@ -59,7 +59,7 @@ trait OptionalAlg[P[_], A] extends OpticAlg[P, A, MonadState, Option]
 
   /* laws */
 
-  trait NatOptionalAlgLaw extends OptionalAlgLaw with OpticAlgLaw
+  trait NatOptionalAlgLaw extends OptionalAlgLaw
 
   def natOptionalAlgLaw = new NatOptionalAlgLaw {}
 }

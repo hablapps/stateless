@@ -41,7 +41,7 @@ trait SetterAlg[P[_], A] extends OpticAlg[P, A, MonadState, Const[Unit, ?]]
 
   /* laws */
 
-  trait NatSetterAlgLaw extends SetterAlgLaw with OpticAlgLaw
+  trait NatSetterAlgLaw extends SetterAlgLaw
 
   def natSetterAlgLaw = new NatSetterAlgLaw {}
 }
