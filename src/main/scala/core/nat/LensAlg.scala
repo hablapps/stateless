@@ -2,7 +2,7 @@ package org.hablapps.stateless
 package core
 package nat
 
-import scalaz.{ Equal, Const, Monad, MonadState, ~> }
+import scalaz.{ Const, Equal, Functor, Monad, MonadState, ~> }
 import scalaz.Id.Id
 import scalaz.syntax.std.option._
 import scalaz.syntax.monad._
@@ -80,6 +80,8 @@ object LensAlg {
 
   type Aux[P[_], Q2[_], A] = LensAlg[P, A] { type Q[x] = Q2[x] }
 
+  private val fev1 = Functor[Id]
+
   def apply[P[_], Q2[_], A](
       hom2: Q2 ~> P)(implicit
       ev0: Monad[P],
@@ -88,6 +90,7 @@ object LensAlg {
     def point[X](x: => X) = ev0.point(x)
     def bind[X, Y](fx: P[X])(f: X => P[Y]): P[Y] = ev0.bind(fx)(f)
     implicit val ev = ev1
+    implicit val fev = fev1
     val hom = hom2
   }
 }
