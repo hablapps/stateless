@@ -38,6 +38,10 @@ trait SetterAlg[P[_], A] extends OpticAlg[P, A, MonadState, Const[Unit, ?]]
 
   def asSymmetric: SSetterAlg.Aux[P, Q, Q, A, A] =
     SSetterAlg(hom, hom)(this, ev, ev)
+
+  /* laws */
+
+  trait NatSetterAlgLaw extends SetterAlgLaw with OpticAlgLaw
 }
 
 object SetterAlg {

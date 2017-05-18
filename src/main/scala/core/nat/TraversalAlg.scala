@@ -53,6 +53,10 @@ trait TraversalAlg[P[_], A] extends OpticAlg[P, A, MonadState, List]
 
   def asSymmetric: STraversalAlg.Aux[P, Q, Q, A, A] =
     STraversalAlg(hom, hom)(this, ev, ev)
+
+  /* laws */
+
+  trait NatTraversalAlgLaw extends TraversalAlgLaw with OpticAlgLaw
 }
 
 object TraversalAlg {

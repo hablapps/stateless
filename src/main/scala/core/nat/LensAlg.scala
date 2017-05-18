@@ -64,9 +64,10 @@ trait LensAlg[P[_], A] extends OpticAlg[P, A, MonadState, Id]
   def asSymmetric: SLensAlg.Aux[P, Q, Q, A, A] =
     SLensAlg(hom, hom)(this, ev, ev)
 
-  trait NatLensAlgLaw extends LensAlgLaw {
+  /* laws */
 
-    // Monad homomorphism laws subsume natural transformation ones
+  // Notice that monad homomorphism laws subsume natural transformation ones
+  trait NatLensAlgLaw extends LensAlgLaw with OpticAlgLaw {
 
     def hom1[A](a: A)(implicit eq: Equal[P[A]]): Boolean =
       hom(a.point[Q]) === a.point[P]

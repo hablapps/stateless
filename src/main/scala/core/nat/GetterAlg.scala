@@ -41,6 +41,10 @@ trait GetterAlg[P[_], A] extends OpticAlg[P, A, MonadReader, Id]
 
   def asSymmetric: SGetterAlg.Aux[P, Q, Q, A, A] =
     SGetterAlg(hom, hom)(this, ev, ev)
+
+  /* laws */
+
+  trait NatGetterAlgLaw extends GetterAlgLaw with OpticAlgLaw
 }
 
 object GetterAlg {
