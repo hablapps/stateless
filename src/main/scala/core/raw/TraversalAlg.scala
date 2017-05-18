@@ -53,4 +53,6 @@ trait TraversalAlg[P[_], A] extends Monad[P] { self =>
     def putPut(a1: A, a2: A)(implicit eq: Equal[P[List[Unit]]]): Boolean =
       (setList(a1) >> setList(a2)) === setList(a2)
   }
+
+  def traversalAlgLaw = new TraversalAlgLaw {}
 }

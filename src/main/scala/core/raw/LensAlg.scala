@@ -36,4 +36,6 @@ trait LensAlg[P[_], A] extends MonadState[P, A] { self =>
     def putPut(a1: A, a2: A)(implicit eq: Equal[P[Unit]]): Boolean =
       (put(a1) >> put(a2)) === put(a2)
   }
+
+  def lensAlgLaw = new LensAlgLaw {}
 }

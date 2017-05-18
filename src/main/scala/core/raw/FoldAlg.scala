@@ -39,4 +39,6 @@ trait FoldAlg[P[_], A] extends Monad[P] { self =>
       (getList >>= (as1 => getList >>= (as2 => (as1, as2).point[P]))) ===
         (getList >>= (as => (as, as).point[P]))
   }
+
+  def foldAlgLaw = new FoldAlgLaw {}
 }
