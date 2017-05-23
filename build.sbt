@@ -14,7 +14,8 @@ libraryDependencies ++= Seq(
   "com.chuusai" %% "shapeless" % "2.3.2",
   "com.github.julien-truffaut" %%  "monocle-core"  % "1.4.0",
   "com.github.julien-truffaut" %%  "monocle-macro" % "1.4.0",
-  "org.scalatest" %% "scalatest" % "3.0.1" % "test")
+  "org.scalatest" %% "scalatest" % "3.0.1" % "test",
+  "org.scalacheck" %% "scalacheck" % "1.13.4" % "test")
 
 addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.3")
 

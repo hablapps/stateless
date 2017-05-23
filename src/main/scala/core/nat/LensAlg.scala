@@ -69,11 +69,11 @@ trait LensAlg[P[_], A] extends OpticAlg[P, A, MonadState, Id]
   // Notice that monad homomorphism laws subsume natural transformation ones
   trait NatLensAlgLaw extends LensAlgLaw {
 
-    def hom1[A](a: A)(implicit eq: Equal[P[A]]): Boolean =
-      hom(a.point[Q]) === a.point[P]
+    def hom1[X](x: X)(implicit eq: Equal[P[X]]): Boolean =
+      hom(x.point[Q]) === x.point[P]
 
-    def hom2[A, B](qa: Q[A])(f: A => Q[B])(implicit eq: Equal[P[B]]): Boolean =
-      hom(qa >>= f) === (hom(qa) >>= (f andThen hom))
+    def hom2[X, Y](qx: Q[X])(f: X => Q[Y])(implicit eq: Equal[P[Y]]): Boolean =
+      hom(qx >>= f) === (hom(qx) >>= (f andThen hom))
   }
 
   def natLensAlgLaw = new NatLensAlgLaw {}

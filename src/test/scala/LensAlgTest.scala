@@ -2,6 +2,9 @@ package org.hablapps.stateless
 package test
 
 import org.scalatest._
+import org.scalatest.prop.Checkers
+
+import scalacheck.StatelessProperties._
 
 import scalaz.{ Lens => _, _ }, Scalaz._
 
@@ -10,7 +13,7 @@ import monocle.Traversal
 
 import smonocle.nat.all._
 
-class LensAlgTest extends FlatSpec with Matchers {
+class LensAlgTest extends FlatSpec with Matchers with Checkers {
 
   @Lenses
   case class Person(name: String, last: String, age: Int, address: Address)
@@ -18,7 +21,89 @@ class LensAlgTest extends FlatSpec with Matchers {
   @Lenses
   case class Address(street: String, city: String, number: Int)
 
-  val ageLn: Lens[Person, Int] = Person.age
+  implicit val ageLn: Lens[Person, Int] = Person.age
+
+  /***************************************/
+
+  import org.scalacheck._
+  import Prop.forAll
+  import Arbitrary.arbitrary
+  import Gen._
+
+  // XXX: This is particularly ugly, it's an adaptation of the standing `Eq`
+  // instance for `StateT` in cats. Can we do better?
+  implicit def eqState[S, A](implicit
+      as: Arbitrary[S],
+      eq1: Equal[S],
+      eq2: Equal[A]) = new Equal[State[S, A]] {
+    def equal(st1: State[S, A], st2: State[S, A]): Boolean = {
+      val samples = List.fill(50)(as.arbitrary.sample).collect {
+        case Some(a) => a
+        case None => sys.error("could not generate arbitrary values")
+      }
+      samples.forall { s =>
+        val (s1, a1) = st1(s)
+        val (s2, a2) = st2(s)
+        eq1.equal(s1, s2) && eq2.equal(a1, a2)
+      }
+    }
+  }
+
+  implicit val eqPerson = Equal.equal[Person](_ == _)
+
+  implicit val aAddress: Arbitrary[Address] =
+    Arbitrary(
+      for {
+        street <- arbitrary[String]
+        city <- arbitrary[String]
+        number <- arbitrary[Int]
+      } yield Address(street, city, number))
+
+  implicit val aPerson: Arbitrary[Person] =
+    Arbitrary(
+      for {
+        name <- arbitrary[String]
+        last <- arbitrary[String]
+        age <- arbitrary[Int]
+        address <- arbitrary[Address]
+      } yield Person(name, last, age, address))
+
+  // State program generator (quite ad hoc)
+
+  def genPut[S: Arbitrary]: Gen[State[S, _]] =
+    arbitrary[S].map(State.put)
+
+  def genGet[S]: Gen[State[S, _]] =
+    const(State.get[S])
+
+  def genGetPut[S]: Gen[State[S, _]] =
+    const(State.get[S] >>= State.put)
+
+  def oneOfPrimitive[S: Arbitrary]: Gen[State[S, _]] =
+    Gen.oneOf(genPut[S], genGet[S], genGetPut[S])
+
+  def genReturn[S, A: Arbitrary]: Gen[State[S, A]] =
+    arbitrary[A].map(_.point[State[S, ?]])
+
+  def genProgram[S: Arbitrary, A: Arbitrary]: Gen[State[S, A]] =
+    for {
+      p1 <- oneOfPrimitive[S]
+      p2 <- Gen.frequency((9, genProgram[S, A]), (1, genReturn[S, A]))
+    } yield p1 >> p2
+
+  implicit def aState[S: Arbitrary, A: Arbitrary]: Arbitrary[State[S, A]] =
+    Arbitrary(genProgram[S, A])
+
+  // so dummy!
+  implicit def aStateF[S: Arbitrary, A, B: Arbitrary]: Arbitrary[A => State[S, B]] =
+    Arbitrary(arbitrary[State[S, B]].map(p => _ => p))
+
+  "Lens2" should "check" in {
+    nat.lensAlg.laws[State[Person, ?], State[Int, ?], Int]
+      .properties.map(_._2).foreach(check(_))
+  }
+
+  /***************************************/
 
   val john = Person("John", "Doe", 40, Address("street", "city", 1))
 
