@@ -2,7 +2,7 @@ package org.hablapps.stateless
 package core
 package nat
 
-import scalaz.{ Monad, MonadReader, ~> }
+import scalaz.{ Functor, Monad, MonadReader, ~> }
 import scalaz.Id.Id
 
 import shapeless.HNil
@@ -41,11 +41,19 @@ trait GetterAlg[P[_], A] extends OpticAlg[P, A, MonadReader, Id]
 
   def asSymmetric: SGetterAlg.Aux[P, Q, Q, A, A] =
     SGetterAlg(hom, hom)(this, ev, ev)
+
+  /* laws */
+
+  trait NatGetterAlgLaw extends GetterAlgLaw
+
+  def natGetterAlgLaw = new NatGetterAlgLaw {}
 }
 
 object GetterAlg {
 
   type Aux[P[_], Q2[_], A] = GetterAlg[P, A] { type Q[x] = Q2[x] }
+
+  private val fev1 = Functor[Id]
 
   def apply[P[_], Q2[_], A](
       hom2: Q2 ~> P)(implicit
@@ -55,6 +63,7 @@ object GetterAlg {
     def point[X](x: => X) = ev0.point(x)
     def bind[X, Y](fx: P[X])(f: X => P[Y]): P[Y] = ev0.bind(fx)(f)
     implicit val ev = ev1
+    implicit val fev = fev1
     val hom = hom2
   }
 }

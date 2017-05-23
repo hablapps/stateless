@@ -28,4 +28,6 @@ trait GetterAlg[P[_], A] extends MonadReader[P, A] { self =>
       (get >>= (a1 => get >>= (a2 => (a1, a2).point[P]))) ===
         (get >>= (a => (a, a).point[P]))
   }
+
+  def getterAlgLaw = new GetterAlgLaw {}
 }

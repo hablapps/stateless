@@ -2,7 +2,7 @@ package org.hablapps.stateless
 package core
 package nat
 
-import scalaz.{ Monad, MonadReader, ~> }
+import scalaz.{ Functor, Monad, MonadReader, ~> }
 import scalaz.syntax.monad._
 import scalaz.std.list._
 
@@ -42,11 +42,19 @@ trait FoldAlg[P[_], A] extends OpticAlg[P, A, MonadReader, List]
 
   def asSymmetric: SFoldAlg.Aux[P, Q, Q, A, A] =
     SFoldAlg(hom, hom)(this, ev, ev)
+
+  /* laws */
+
+  trait NatFoldAlgLaw extends FoldAlgLaw
+
+  def natFoldAlgLaw = new NatFoldAlgLaw {}
 }
 
 object FoldAlg {
 
   type Aux[P[_], Q2[_], A] = FoldAlg[P, A] { type Q[x] = Q2[x] }
+
+  private val fev1 = Functor[List]
 
   def apply[P[_], Q2[_], A](
       hom2: Q2 ~> λ[x => P[List[x]]])(implicit
@@ -56,6 +64,7 @@ object FoldAlg {
     def point[X](x: => X) = ev0.point(x)
     def bind[X, Y](fx: P[X])(f: X => P[Y]): P[Y] = ev0.bind(fx)(f)
     implicit val ev = ev1
+    implicit val fev = fev1
     val hom = hom2
   }
 }

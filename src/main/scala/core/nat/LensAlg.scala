@@ -2,9 +2,11 @@ package org.hablapps.stateless
 package core
 package nat
 
-import scalaz.{ Const, Monad, MonadState, ~> }
+import scalaz.{ Const, Equal, Functor, Monad, MonadState, ~> }
 import scalaz.Id.Id
 import scalaz.syntax.std.option._
+import scalaz.syntax.monad._
+import scalaz.syntax.equal._
 
 import shapeless.HNil
 
@@ -61,11 +63,27 @@ trait LensAlg[P[_], A] extends OpticAlg[P, A, MonadState, Id]
 
   def asSymmetric: SLensAlg.Aux[P, Q, Q, A, A] =
     SLensAlg(hom, hom)(this, ev, ev)
+
+  /* laws */
+
+  // Notice that monad homomorphism laws subsume natural transformation ones
+  trait NatLensAlgLaw extends LensAlgLaw {
+
+    def hom1[A](a: A)(implicit eq: Equal[P[A]]): Boolean =
+      hom(a.point[Q]) === a.point[P]
+
+    def hom2[A, B](qa: Q[A])(f: A => Q[B])(implicit eq: Equal[P[B]]): Boolean =
+      hom(qa >>= f) === (hom(qa) >>= (f andThen hom))
+  }
+
+  def natLensAlgLaw = new NatLensAlgLaw {}
 }
 
 object LensAlg {
 
   type Aux[P[_], Q2[_], A] = LensAlg[P, A] { type Q[x] = Q2[x] }
+
+  private val fev1 = Functor[Id]
 
   def apply[P[_], Q2[_], A](
       hom2: Q2 ~> P)(implicit
@@ -75,6 +93,7 @@ object LensAlg {
     def point[X](x: => X) = ev0.point(x)
     def bind[X, Y](fx: P[X])(f: X => P[Y]): P[Y] = ev0.bind(fx)(f)
     implicit val ev = ev1
+    implicit val fev = fev1
     val hom = hom2
   }
 }

@@ -64,4 +64,6 @@ trait PrismAlg[P[_], A] extends Monad[P] { self =>
     def putPut(a1: A, a2: A)(implicit eq: Equal[P[Unit]]): Boolean =
       (set(a1) >> set(a2)) === set(a2)
   }
+
+  def prismAlgLaw = new PrismAlgLaw {}
 }

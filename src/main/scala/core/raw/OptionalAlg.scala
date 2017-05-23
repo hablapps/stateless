@@ -49,4 +49,6 @@ trait OptionalAlg[P[_], A] extends Monad[P] { self =>
     def putPut(a1: A, a2: A)(implicit eq: Equal[P[Option[Unit]]]): Boolean =
       (setOption(a1) >> setOption(a2)) === setOption(a2)
   }
+
+  def optionalAlgLaw = new OptionalAlgLaw {}
 }
