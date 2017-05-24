@@ -30,23 +30,13 @@ class LensAlgTest extends FlatSpec with Matchers with Checkers {
   import Arbitrary.arbitrary
   import Gen._
 
-  // XXX: This is particularly ugly, it's an adaptation of the standing `Eq`
-  // instance for `StateT` in cats. Can we do better?
   implicit def eqState[S, A](implicit
       as: Arbitrary[S],
       eq1: Equal[S],
-      eq2: Equal[A]) = new Equal[State[S, A]] {
-    def equal(st1: State[S, A], st2: State[S, A]): Boolean = {
-      val samples = List.fill(50)(as.arbitrary.sample).collect {
-        case Some(a) => a
-        case None => sys.error("could not generate arbitrary values")
-      }
-      samples.forall { s =>
-        val (s1, a1) = st1(s)
-        val (s2, a2) = st2(s)
-        eq1.equal(s1, s2) && eq2.equal(a1, a2)
-      }
-    }
+      eq2: Equal[A]) = Equal[State[S, A]] { (st1, st2) =>
+    listOfN(50, as.arbitrary).sample
+      .getOrElse(sys.error("could not generate arbitrary list of values"))
+      .forall(s => st1(s) ≟ st2(s))
   }
 
   implicit val eqPerson = Equal.equal[Person](_ == _)
