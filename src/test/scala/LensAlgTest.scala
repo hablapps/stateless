@@ -35,7 +35,7 @@ class LensAlgTest extends FlatSpec with Matchers with Checkers {
       eq1: Equal[S],
       eq2: Equal[A]) = Equal[State[S, A]] { (st1, st2) =>
     listOfN(50, as.arbitrary).sample
-      .getOrElse(sys.error("could not generate arbitrary list of values"))
+      .getOrElse(sys.error("could not generate arbitrary list of init states"))
       .forall(s => st1(s) ≟ st2(s))
   }
 
@@ -58,37 +58,10 @@ class LensAlgTest extends FlatSpec with Matchers with Checkers {
         address <- arbitrary[Address]
       } yield Person(name, last, age, address))
 
-  // State program generator (quite ad hoc)
+  implicit def aState[S: Arbitrary: Cogen, A: Arbitrary]: Arbitrary[State[S, A]] =
+    Arbitrary(resultOf[S => (S, A), State[S, A]](State.apply))
 
-  def genPut[S: Arbitrary]: Gen[State[S, _]] =
-    arbitrary[S].map(State.put)
-
-  def genGet[S]: Gen[State[S, _]] =
-    const(State.get[S])
-
-  def genGetPut[S]: Gen[State[S, _]] =
-    const(State.get[S] >>= State.put)
-
-  def oneOfPrimitive[S: Arbitrary]: Gen[State[S, _]] =
-    Gen.oneOf(genPut[S], genGet[S], genGetPut[S])
-
-  def genReturn[S, A: Arbitrary]: Gen[State[S, A]] =
-    arbitrary[A].map(_.point[State[S, ?]])
-
-  def genProgram[S: Arbitrary, A: Arbitrary]: Gen[State[S, A]] =
-    for {
-      p1 <- oneOfPrimitive[S]
-      p2 <- Gen.frequency((9, genProgram[S, A]), (1, genReturn[S, A]))
-    } yield p1 >> p2
-
-  implicit def aState[S: Arbitrary, A: Arbitrary]: Arbitrary[State[S, A]] =
-    Arbitrary(genProgram[S, A])
-
-  // so dummy!
-  implicit def aStateF[S: Arbitrary, A, B: Arbitrary]: Arbitrary[A => State[S, B]] =
-    Arbitrary(arbitrary[State[S, B]].map(p => _ => p))
-
-  "Lens2" should "check" in {
+  "Lens" should "check" in {
     nat.lensAlg.laws[State[Person, ?], State[Int, ?], Int]
       .properties.map(_._2).foreach(check(_))
   }
@@ -97,7 +70,7 @@ class LensAlgTest extends FlatSpec with Matchers with Checkers {
 
   val john = Person("John", "Doe", 40, Address("street", "city", 1))
 
-  "Lens" should "get" in {
+  it should "get" in {
     ageLn.get.apply(john) shouldBe (john, john.age)
   }
 
