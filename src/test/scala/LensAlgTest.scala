@@ -1,8 +1,7 @@
 package org.hablapps.stateless
 package test
 
-import org.scalatest._
-import org.scalatest.prop.Checkers
+import org.scalatest._, prop.Checkers
 
 import org.scalacheck.Arbitrary, Arbitrary.arbitrary
 
@@ -48,7 +47,7 @@ class LensAlgTest extends FlatSpec with Matchers with Checkers {
 
   val john = Person("John", "Doe", 40, Address("street", "city", 1))
 
-  "Lens" should "check" in {
+  "Lens" should "check laws" in {
     nat.lensAlg.laws[State[Person, ?], State[Int, ?], Int]
     .properties.map(_._2).foreach(check(_))
   }
