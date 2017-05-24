@@ -26,22 +26,43 @@ class LensAlgTest extends FlatSpec with Matchers with Checkers {
   /***************************************/
 
   import org.scalacheck._
-  import Prop.forAll
   import Arbitrary.arbitrary
   import Gen._
+
+  implicit def eqStateT[F[_], S, A](implicit
+      m: Monad[F],
+      as: Arbitrary[S],
+      eq1: Equal[S],
+      eq2: Equal[A],
+      eq3: Equal[F[(S, A)]]): Equal[StateT[F, S, A]] =
+    Equal[StateT[F, S, A]] { (st1, st2) =>
+      listOfN(50, as.arbitrary).sample
+        .getOrElse(sys.error("could not generate arbitrary list of init states"))
+        .forall(s => st1(s) ≟ st2(s))
+    }
 
   implicit def eqState[S, A](implicit
       as: Arbitrary[S],
       eq1: Equal[S],
-      eq2: Equal[A]) = Equal[State[S, A]] { (st1, st2) =>
-    listOfN(50, as.arbitrary).sample
-      .getOrElse(sys.error("could not generate arbitrary list of init states"))
-      .forall(s => st1(s) ≟ st2(s))
-  }
+      eq2: Equal[A]): Equal[State[S, A]] =
+    eqStateT[Id, S, A]
+
+  implicit def arbStateT[F[_], S, A](implicit
+      m: Monad[F],
+      as: Arbitrary[S],
+      afsa: Arbitrary[F[(S, A)]],
+      cs: Cogen[S]): Arbitrary[StateT[F, S, A]] =
+    Arbitrary(resultOf[S => F[(S, A)], StateT[F, S, A]](StateT.apply))
+
+  implicit def arbState[S, A](implicit
+      as: Arbitrary[S],
+      aa: Arbitrary[A],
+      cs: Cogen[S]): Arbitrary[State[S, A]] =
+    arbStateT[Id, S, A]
 
   implicit val eqPerson = Equal.equal[Person](_ == _)
 
-  implicit val aAddress: Arbitrary[Address] =
+  implicit val arbAddress: Arbitrary[Address] =
     Arbitrary(
       for {
         street <- arbitrary[String]
@@ -49,7 +70,7 @@ class LensAlgTest extends FlatSpec with Matchers with Checkers {
         number <- arbitrary[Int]
       } yield Address(street, city, number))
 
-  implicit val aPerson: Arbitrary[Person] =
+  implicit val arbPerson: Arbitrary[Person] =
     Arbitrary(
       for {
         name <- arbitrary[String]
@@ -57,9 +78,6 @@ class LensAlgTest extends FlatSpec with Matchers with Checkers {
         age <- arbitrary[Int]
         address <- arbitrary[Address]
       } yield Person(name, last, age, address))
-
-  implicit def aState[S: Arbitrary: Cogen, A: Arbitrary]: Arbitrary[State[S, A]] =
-    Arbitrary(resultOf[S => (S, A), State[S, A]](State.apply))
 
   "Lens" should "check" in {
     nat.lensAlg.laws[State[Person, ?], State[Int, ?], Int]
