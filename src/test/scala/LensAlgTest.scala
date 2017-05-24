@@ -4,6 +4,8 @@ package test
 import org.scalatest._
 import org.scalatest.prop.Checkers
 
+import org.scalacheck.Arbitrary, Arbitrary.arbitrary
+
 import scalacheck.StatelessProperties._
 
 import scalaz.{ Lens => _, _ }, Scalaz._
@@ -13,6 +15,8 @@ import monocle.Traversal
 
 import smonocle.nat.all._
 
+import org.hablapps.puretest._
+
 class LensAlgTest extends FlatSpec with Matchers with Checkers {
 
   @Lenses
@@ -20,45 +24,6 @@ class LensAlgTest extends FlatSpec with Matchers with Checkers {
 
   @Lenses
   case class Address(street: String, city: String, number: Int)
-
-  implicit val ageLn: Lens[Person, Int] = Person.age
-
-  /***************************************/
-
-  import org.scalacheck._
-  import Arbitrary.arbitrary
-  import Gen._
-
-  implicit def eqStateT[F[_], S, A](implicit
-      m: Monad[F],
-      as: Arbitrary[S],
-      eq1: Equal[S],
-      eq2: Equal[A],
-      eq3: Equal[F[(S, A)]]): Equal[StateT[F, S, A]] =
-    Equal[StateT[F, S, A]] { (st1, st2) =>
-      listOfN(50, as.arbitrary).sample
-        .getOrElse(sys.error("could not generate arbitrary list of init states"))
-        .forall(s => st1(s) ≟ st2(s))
-    }
-
-  implicit def eqState[S, A](implicit
-      as: Arbitrary[S],
-      eq1: Equal[S],
-      eq2: Equal[A]): Equal[State[S, A]] =
-    eqStateT[Id, S, A]
-
-  implicit def arbStateT[F[_], S, A](implicit
-      m: Monad[F],
-      as: Arbitrary[S],
-      afsa: Arbitrary[F[(S, A)]],
-      cs: Cogen[S]): Arbitrary[StateT[F, S, A]] =
-    Arbitrary(resultOf[S => F[(S, A)], StateT[F, S, A]](StateT.apply))
-
-  implicit def arbState[S, A](implicit
-      as: Arbitrary[S],
-      aa: Arbitrary[A],
-      cs: Cogen[S]): Arbitrary[State[S, A]] =
-    arbStateT[Id, S, A]
 
   implicit val eqPerson = Equal.equal[Person](_ == _)
 
@@ -79,14 +44,14 @@ class LensAlgTest extends FlatSpec with Matchers with Checkers {
         address <- arbitrary[Address]
       } yield Person(name, last, age, address))
 
-  "Lens" should "check" in {
-    nat.lensAlg.laws[State[Person, ?], State[Int, ?], Int]
-      .properties.map(_._2).foreach(check(_))
-  }
-
-  /***************************************/
+  implicit val ageLn: Lens[Person, Int] = Person.age
 
   val john = Person("John", "Doe", 40, Address("street", "city", 1))
+
+  "Lens" should "check" in {
+    nat.lensAlg.laws[State[Person, ?], State[Int, ?], Int]
+    .properties.map(_._2).foreach(check(_))
+  }
 
   it should "get" in {
     ageLn.get.apply(john) shouldBe (john, john.age)

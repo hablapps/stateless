@@ -9,7 +9,7 @@ organization := "org.hablapps"
 version := "0.1-SNAPSHOT"
 
 libraryDependencies ++= Seq(
-  "org.hablapps" %% "puretest" % "0.2-SNAPSHOT",
+  "org.hablapps" %% "puretest-scalaz" % "0.2-SNAPSHOT",
   "org.scalaz" %% "scalaz-core" % "7.2.8",
   "com.chuusai" %% "shapeless" % "2.3.2",
   "com.github.julien-truffaut" %%  "monocle-core"  % "1.4.0",
