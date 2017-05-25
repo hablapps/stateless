@@ -1,7 +1,11 @@
 package org.hablapps.stateless
 package test
 
-import org.scalatest._
+import org.scalatest._, prop.Checkers
+
+import org.scalacheck.Arbitrary, Arbitrary.arbitrary
+
+import scalacheck.StatelessProperties._
 
 import scalaz.{ Lens => _, _ }, Scalaz._
 
@@ -10,7 +14,9 @@ import monocle.Traversal
 
 import smonocle.nat.all._
 
-class LensAlgTest extends FlatSpec with Matchers {
+import org.hablapps.puretest._
+
+class LensAlgTest extends FlatSpec with Matchers with Checkers {
 
   @Lenses
   case class Person(name: String, last: String, age: Int, address: Address)
@@ -18,11 +24,35 @@ class LensAlgTest extends FlatSpec with Matchers {
   @Lenses
   case class Address(street: String, city: String, number: Int)
 
-  val ageLn: Lens[Person, Int] = Person.age
+  implicit val eqPerson = Equal.equal[Person](_ == _)
+
+  implicit val arbAddress: Arbitrary[Address] =
+    Arbitrary(
+      for {
+        street <- arbitrary[String]
+        city <- arbitrary[String]
+        number <- arbitrary[Int]
+      } yield Address(street, city, number))
+
+  implicit val arbPerson: Arbitrary[Person] =
+    Arbitrary(
+      for {
+        name <- arbitrary[String]
+        last <- arbitrary[String]
+        age <- arbitrary[Int]
+        address <- arbitrary[Address]
+      } yield Person(name, last, age, address))
+
+  implicit val ageLn: Lens[Person, Int] = Person.age
 
   val john = Person("John", "Doe", 40, Address("street", "city", 1))
 
-  "Lens" should "get" in {
+  "Lens" should "check laws" in {
+    nat.lensAlg.laws[State[Person, ?], State[Int, ?], Int]
+    .properties.map(_._2).foreach(check(_))
+  }
+
+  it should "get" in {
     ageLn.get.apply(john) shouldBe (john, john.age)
   }
 
