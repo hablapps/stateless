@@ -1,7 +1,5 @@
-\documentclass[a4paper]{article}
+\documentclass{article}
 
-\usepackage[toc,page]{appendix}
-\usepackage[a4paper]{geometry}
 \usepackage[utf8]{inputenc}
 \usepackage{listings}
 
@@ -34,18 +32,20 @@ Software industry as we know it lacks well-founded frameworks to program
 reactive systems in a modular way. This kind of systems hide an inner
 \emph{state} to their environment, showing therefore a black-box behaviour. Take
 a university information system as a guiding example. Universities are
-structured in departments, and each department is managed by a director. Even
-this simple definition does contain three kinds of entities: universities,
-departments and directors. Ideally, programming the evolving state of the whole
-system should be achieved by programming the state of each entity or subsystem,
-and finally composing them all.
+structured in departments, and each has a budget. Even this simple definition
+does contain three kinds of entities: universities, departments and budget.
+Ideally, programming the evolving state of the whole system should be achieved
+by programming the state of each entity or subsystem, and finally composing them
+all.
 
 In addition, composition should contemplate heterogeneity: departments could be
-stored in a local database while directors could be deployed as external
+stored in a local database while budget could be deployed as external
 microservices. Ultimately, any configuration should be supported, but it is
 essential for the system description to remain pure and decoupled from low-level
-details, irrelevant to the domain. Programming a declarative and modular system
-in this way is still a great challenge.
+details, irrelevant to the domain. Needless to say that it should never hamper
+optimal performance. Programming a declarative and modular system in this way is
+still a great challenge, but functional programming seems like a good starting
+point ~\cite{hughes1989functional}.
 
 % The problem: 2nd part
 
@@ -61,79 +61,86 @@ setting.
 Fortunately, industry has detected this issue and new abstract tools have
 emerged to fill the gap. In this sense, we could have avoided the aforementioned
 problem by programming department evolution with \emph{Slick}, a
-Functional-Relational Mapper that provides a common language which can be later
-interpreted into different databases. Similarly, we could find other situations
-where a common language could unify different state evolutions. Take
-\emph{optics} as an example. They could be seen as a language to achieve complex
-transformations over immutable in-memory data. In this scenario,
-\emph{Traversal} could be used as the glue to keep university and department
+Functional-Relational Mapper that provides an \emph{embedded domain specific
+language} ~\cite{hudak1996building} which can be later interpreted into
+different databases. Similarly, we could find other situations where a common
+language could unify different state evolutions. Take \emph{optics} as an
+example. They could be seen as a language to achieve complex transformations
+over immutable in-memory data. In this scenario, \emph{Traversal}
+~\cite{o2011functor} could be used as the glue to keep university and department
 related.
 
 We claim that many of these languages to access state could be further
-factorized, by providing a new language to unify them. Moreover, we claim that
-optic concepts are ideal to abstract technology-specific details away. However,
-prior to that, they have to be taken to a more general setting: \emph{optic
-algebras}.
+factorized, by providing a new language to unify them, while retaining
+reasonable levels of performance for a large class of applications. Moreover, we
+claim that optic concepts are ideal to abstract technology-specific details
+away. However, prior to that, they have to be taken to a more general setting:
+\emph{optic algebras}.
 
 % Deriving Optic algebras
 
 An optic algebra represents the essence of the state transformation associated
 to that optic. Generally speaking, optics were conceived to tackle a very
 specific problem, achieving complex transformations over immutable in-memory
-data structures. For instance, a \ewmph{lens} knows how to transform certain
-data structure ---the focus--- which is contextualized in a larger one ---the
-whole. Regarding our university, this abstraction could perfectly describe the
-existing relationship between a department and its inner director. Having said
-so, what do we mean by the essence of a lens?
+data structures. For instance, a \emph{lens} ~\cite{foster2005combinators} knows
+how to transform certain data structure ---the focus--- which is contextualized
+in a larger one ---the whole. Regarding our university, this abstraction could
+perfectly describe the existing relationship between a department and its
+associated budget. Having said so, what do we mean by the essence of a lens?
 
 The essence of a lens requires removing all those aspects which are specific to
 in-memory transformations. If we take into account the classic definition of a
-lens:
-
+lens in Scala ~\cite{morris2012asymmetric}:
 \begin{lstlisting}
-case class Lens[S, A](get: S => A, set: A => S => S)
+case class Lens[S, A](
+  get: S => A,
+  set: A => S => S)
 \end{lstlisting}
 one could easily identify several accesses to the in-memory state \emph{S}. If
 we abstract away from those aspects, ie. if we conceal the state, we end up with
 the optic algebra associated to lens:
 \begin{lstlisting}
-case class LensAlg[F[_], A](get: F[A], set: A => F[Unit])
+case class LensAlg[F[_], A](
+  get: F[A],
+  set: A => F[Unit])
 \end{lstlisting}
-This algebra determines the existence of a focus that could be either read or
-updated, but it keeps itself unaware of the details underneath \emph{F}. Similar
-derivations could be carried out over other optics, resulting in new optic
-algebras.
+This algebra ---which bears a strong resemblance to \emph{MonadState}
+~\cite{gibbons2012unifying}--- determines the existence of a focus that could be
+either read or updated, but it keeps itself unaware of the details underneath
+\emph{F}. Similar derivations could be carried out over other optics, resulting
+in new optic algebras.
 
 % Natural Composition and Heterogeneity
 
 Composing optic algebras ---as they were introduced in the previous paragraph---
 is not straightforward at all. In fact, the situation is very similar to the one
 that emerges when trying to compose optics in their classic representation. In
-this sense, Van Laarhoven and recently Profunctor optics have been postulated as
-alternative representations to improve composition. Taking them as inspiration,
-we created a new representation for optic algebras. Since it heavily relies on
-natural transformations, we refer to it as \emph{natural} representation. This
-representation not only improves the composition up, but also introduces the
-notion of heterogeneity, as we will see in further sections.
+this sense, Van Laarhoven and recently Profunctor optics
+~\cite{pickering2017profunctor} have been postulated as alternative
+representations to improve composition. Taking them as inspiration, we created a
+new representation for optic algebras. Since it heavily relies on natural
+transformations ~\cite{pierce1991basic}, we refer to it as \emph{natural}
+representation. This representation not only improves the composition up, but
+also introduces the notion of heterogeneity, as we will see in further sections.
 
-% Instances for Free
+% Instances for Free, move abstraction issue to the beginning!
 
 Optic algebra instances for the most widespread deployments should be provided.
 Given this scenario, by defining our system in terms of optic algebras, we
-should be able to get our logic running on a database, in immutable memory,
-behind a microservice, or even as a combination of many of them. It is worth
-mentioning that generally these instantiations are not going to be as optimal as
-an \emph{ad hoc} solution, but they may be good enough in most cases.
+should be able to get our logic implemented once and for all. Later, we could
+find it interpreted into a method call, a database access, a microservice
+invocation, or even as a combination of many of them.
 
 % So
 
 We claim that optic algebras in their natural representation lead to modular
 software designs. For instance, a traversal algebra could establish the
 connection between the university and each department. On the other hand, a lens
-algebra could describe the relationship between departments and directors. Then,
-we could compose both algebras to conform the whole system. Finally, optic
+algebra could describe the relationship between departments and budget. Then, we
+could compose both algebras to conform the whole system. Additionally, optic
 algebras will enable us to do it in an heterogeneous way, with many free
-instances ready to go.
+instances ready to go, offering a reasonable performance in the majority of
+cases.
 
 \section{Background}
 
@@ -146,5 +153,8 @@ instances ready to go.
 \section{Conclusions}
 
 \section{Acknowledgements}
+
+\bibliography{stateless}{}
+\bibliographystyle{apalike}
 
 \end{document}

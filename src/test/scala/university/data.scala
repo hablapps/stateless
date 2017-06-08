@@ -72,6 +72,12 @@ object University {
     def getBudget(name: String): P[Option[Int]] =
       departments.pick(name, budget.get)
 
+    def duplicateBudget: P[Unit] =
+      departments.composeLens(budget).modify(_ * 2)
+
+    def totalBudget: P[Int] =
+      departments.composeLens(budget).foldMap(identity)(Monoid[Int])
+
     private val salaryTraversal =
       departments
         .composeTraversal(lecturers)
