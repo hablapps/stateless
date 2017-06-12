@@ -1,7 +1,9 @@
 package org.hablapps.stateless
 
-import scalaz.{ Const, Monad, MonadState, MonadReader, StateT }
-import scalaz.syntax.monad._
+// import scalaz.{ Const, Monad, MonadState, MonadReader, StateT }
+// import scalaz.syntax.monad._
+
+import scalaz._, Scalaz._
 
 package object `core` {
 
@@ -11,7 +13,15 @@ package object `core` {
       def point[X](x: => X) = ms.point(x)
       def bind[X, Y](fx: F[X])(f: X => F[Y]): F[Y] = ms.bind(fx)(f)
       def ask = ms.get
-      def local[X](f: A => A)(fx: F[X]): F[X] = ms.bind(ms.modify(f))(_ => fx)
+      def local[X](f: A => A)(fx: F[X]): F[X] = {
+        implicit val ims: MonadState[F, A] = ms
+        for {
+          a <- ms.get
+          _ <- ms.put(f(a))
+          x <- fx
+          _ <- ms.put(a)
+        } yield x
+      }
     }
 
   implicit def stateTMonadReader[F[_]: Monad, A]: MonadReader[StateT[F, A, ?], A] =
