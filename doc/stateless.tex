@@ -190,14 +190,14 @@ any reference to that outer state. We do so with the following steps:
 
 \begin{proof}
   \improvement{This proof is not a proof at all, lier!}
-  Let $s, a$ be types representing the whole and the focus of certain  lens,
+  Let $s, a$ be types representing the whole and the focus of certain lens,
   respectively. So,
   \begin{align*}
     (get, set) \\
     &= (s \rightarrow a,\ a \rightarrow s \rightarrow s) &&\text{(expand definitions)} \\
     &= (() \rightarrow s \rightarrow a,\ a \rightarrow s \rightarrow s) &&\text{(homogenize input)} \\
-    &= (() \rightarrow s \rightarrow a,\ a \rightarrow s \rightarrow (s, ())) &&\text{(homogenize output)} \\
-    &= (() \rightarrow s \rightarrow (s, a),\ a \rightarrow s \rightarrow (s, ())) &&\text{(homogenize resulting state *)} \\
+    &= (() \rightarrow s \rightarrow a,\ a \rightarrow s \rightarrow (s,\ ())) &&\text{(homogenize output)} \\
+    &= (() \rightarrow s \rightarrow (s,\ a),\ a \rightarrow s \rightarrow (s,\ ())) &&\text{(homogenize resulting state *)} \\
     &= (() \rightarrow State\ s\ a,\ a \rightarrow State\ s\ ()) &&\text{(State isomorphism)} \\
     &\therefore (() \rightarrow f\ a,\ a \rightarrow f\ ()) &&\text{(Abstract away)}\qedhere
   \end{align*}
@@ -274,7 +274,7 @@ overall effect. It would be great if \emph{GetGet} could be derived from
   GetGet can be derived from XGet
   \begin{align*}
     GetGet \\
-    &= get >>= (a1 \rightarrow get >>= (a2 \rightarrow return\ (a1, a2))) = get >>= (a \rightarrow return\ (a, a)) &&\text{(GetGet)} \\
+    &= get >>= (a1 \rightarrow get >>= (a2 \rightarrow return\ (a1, a2))) =\\ &\ \ \ \ get >>= (a \rightarrow return\ (a, a)) &&\text{(GetGet)} \\
     &= get >>= (a1 \rightarrow get >>= (a2 \rightarrow return\ (a1, a2))) >> return\ () =\\&\ \ \ \ get >>= (a \rightarrow return\ (a, a)) >> return\ () &&\text{(Monad laws)} \\
     &= get >>= (a1 \rightarrow get >>= (a2 \rightarrow return\ ())) = get >>= (a \rightarrow return\ ()) &&\text{(Monad laws)} \\
     &= get >> get >> return\ () = get >> return\ () &&\text{(Syntax)} \\
@@ -283,23 +283,157 @@ overall effect. It would be great if \emph{GetGet} could be derived from
 \end{proof}
 
 By establishing this connection we can say that the adaptation of lens laws,
-including the one we generated in the abstraction process, corresponds directly
+including the one that emerged in the abstraction process, corresponds directly
 with \emph{MonadState} laws. Thereby, we claim that the algebraic essence of a
-lens is exactly \emph{MonadState}. In fact, this typeclass abstract away all those in-memory specific details while preserving the lens laws.
+lens is exactly \emph{MonadState}. In fact, this typeclass abstract away all
+those in-memory specific details while preserving the lens laws.
 
 \subsection{Getter Algebra}
 
+Next, we will derive the optic algebra associated to \emph{getter}. In fact, it
+is not hard to notice that this optic is a simplification of lens, where we are
+only interested in the \emph{getting} capabilities. The derivation process to
+obtain a getter algebra is therefore:
+
+\begin{proof}
+  Let $s, a$ be types representing the whole and the focus of certain getter,
+  respectively. So,
+  \begin{align*}
+    get \\
+    &= s \rightarrow a &&\text{(expand definitions)} \\
+    &= () \rightarrow s \rightarrow a &&\text{(homogenize input)} \\
+    &= () \rightarrow s \rightarrow (s,\ a) &&\text{(homogenize resulting state *)} \\
+    &= () \rightarrow State\ s\ a &&\text{(State isomorphism)} \\
+    &\therefore () \rightarrow f\ a &&\text{(Abstract away)}\qedhere
+  \end{align*}
+\end{proof}
+
+As one can see, the process is exactly the same as the one we applied over the
+first component of the pair of functions that represent a lens. What are the
+laws associated to this algebra? Since getter has no attached laws, the only one
+that should be associated to the new abstraction is \emph{XGet}, which emerged
+while homogenizing the resulting state.
+
+Is this algebra already known in the folklore? At first glance, we could think
+that \emph{MonadReader} is the closest one to match. However, this typeclass
+declares an additional method \emph{local} and consequently, new laws are
+required. It seems that we only need part of the definition of
+\emph{MonadReader}. Indeed, some functional programming libraries do reflect
+this separation, resulting in the \emph{MonadAsk}
+typeclass\footnote{https://github.com/purescript/purescript-transformers/blob/master/src/Control/Monad/Reader/Class.purs#L16},
+which perfectly fulfills our algebra. As expected, it has a unique law, which
+corresponds with our \emph{XGet}.
+
 \subsection{Setter Algebra}
+
+\emph{Setter} ignores the lens getting part and focuses on the setting one. As
+we saw previously, it is slightly more powerful, since it is defined in terms of
+a \emph{modify} method. As usual, we show now the derivation process:
+
+\begin{proof}
+  Let $s, a$ be types representing the whole and the focus of certain setter,
+  respectively. So,
+  \begin{align*}
+    set \\
+    &= (a \rightarrow a) \rightarrow s \rightarrow s &&\text{(expand definitions)} \\
+    &= (a \rightarrow a) \rightarrow s \rightarrow (s,\ ()) &&\text{(homogenize output)} \\
+    &= (a \rightarrow a) \rightarrow State\ s\ () &&\text{(State isomorphism)} \\
+    &\therefore (a \rightarrow a) \rightarrow f\ () &&\text{(Abstract away)}\qedhere
+  \end{align*}
+\end{proof}
+
+These steps do not generate new laws, so our resulting setter algebra laws will
+be just an adaptation of the setter optic ones. Since we have not found this
+algebra in the literature\footnote{There are references to \emph{MonadPut}
+though.}, we propose the next laws:
+
+\begin{align*}
+  & modify\ id = return\ () &&\textbf{ModId} \\
+  & modify\ f >> modify\ g = modify\ (g\ .\ f) &&\textbf{ModComp}
+\end{align*}
 
 \subsection{Fold Algebra}
 
-\subsection{Affine Algebra}
+Fold algebras slightly modify getter algebras, returning a list of $a$s instead
+of a single one. Thereby, derivation process is almost identical:
+
+\begin{proof}
+  Let $s, a$ be types representing the whole and the focus of certain fold,
+  respectively. So,
+  \begin{align*}
+    getList \\
+    &= s \rightarrow \left[a\right] &&\text{(expand definitions)} \\
+    &= () \rightarrow s \rightarrow \left[a\right] &&\text{(homogenize input)} \\
+    &= () \rightarrow s \rightarrow (s,\ \left[a\right]) &&\text{(homogenize resulting state *)} \\
+    &= () \rightarrow State\ s\ \left[a\right] &&\text{(State isomorphism)} \\
+    &\therefore () \rightarrow f\ \left[a\right] &&\text{(Abstract away)}\qedhere
+  \end{align*}
+\end{proof}
+
+As far as we are concerned, no mainstream typeclass matches the expected
+algebra. However, taking getter algebra law as template, fold algebra one is
+straightforward.
+
+\subsection{Affine Traversal Algebra}
+
+\begin{proof}
+  Let $s, a$ be types representing the whole and the focus of certain affine traversal, respectively. So,
+  \begin{align*}
+    (getMaybe, set) \\
+    &= (s \rightarrow Maybe\ a,\ a \rightarrow s \rightarrow s) &&\text{(expand definitions)} \\
+    &= (() \rightarrow s \rightarrow Maybe\ a,\ a \rightarrow s \rightarrow s) &&\text{(homogenize input)} \\
+    &= (() \rightarrow s \rightarrow Maybe\ a,\ a \rightarrow s \rightarrow (s,\ ())) &&\text{(homogenize output)} \\
+    &= (() \rightarrow s \rightarrow (s,\ Maybe\ a),\ a \rightarrow s \rightarrow (s,\ ())) &&\text{(homogenize resulting state *)} \\
+    &= (() \rightarrow State\ s\ (Maybe\ a),\ a \rightarrow State\ s\ ()) &&\text{(State isomorphism)} \\
+    &\therefore (() \rightarrow f\ (Maybe\ a),\ a \rightarrow f\ ()) &&\text{(Abstract away)}\qedhere
+  \end{align*}
+\end{proof}
+
+Laws for emerging algebra:
+
+\begin{align*}
+  & getMaybe >>= (maybe\ (return\ ())\ set) = return\ () &&\textbf{GetmSet} \\
+  & set\ a >> getMaybe = getMaybe\ \$> a &&\textbf{SetGetm} \\
+  & set\ a1 >> set\ a2 = set\ a2 &&\textbf{SetSet} \\
+  & getOption >> return\ () = return\ () &&\textbf{GetmGetm} \\
+\end{align*}
 
 \subsection{Traversal Algebra}
 
-\subsection{Prism Algebra}
+\improvement{Not a traversal, maybe we can call it \emph{Weak Traversal}}
+
+\begin{proof}
+  Let $s, a$ be types representing the whole and the focus of certain traversal,
+  respectively. So,
+  \begin{align*}
+    (getList, modify) \\
+    &= (s \rightarrow \left[a\right],\ (a \rightarrow\ a) \rightarrow s \rightarrow s) &&\text{(expand definitions)} \\
+    &= (() \rightarrow s \rightarrow \left[a\right],\ (a \rightarrow\ a) \rightarrow s \rightarrow s) &&\text{(homogenize input)} \\
+    &= (() \rightarrow s \rightarrow \left[a\right],\ (a \rightarrow\ a) \rightarrow s \rightarrow (s,\ ())) &&\text{(homogenize output)} \\
+    &= (() \rightarrow s \rightarrow (s,\ \left[a\right]),\ (a \rightarrow\ a) \rightarrow s \rightarrow (s,\ ())) &&\text{(homogenize resulting state *)} \\
+    &= (() \rightarrow State\ s\ \left[a\right],\ (a \rightarrow\ a) \rightarrow State\ s\ ()) &&\text{(State isomorphism)} \\
+    &\therefore (() \rightarrow f\ \left[a\right],\ (a \rightarrow\ a) \rightarrow f\ ()) &&\text{(Abstract away)}\qedhere
+  \end{align*}
+\end{proof}
+
+Laws for emerging algebra:
+\info{GetlMod makes no sense, it would have been different if we had \emph{setList} available}
+\info{These laws are our own! Remember, this isn't a standard Traversal.}
+\begin{align*}
+  & modify\ id = return\ () &&\textbf{ModId} \\
+  & modify\ f >> modify\ g = modify\ (g\ .\ f) &&\textbf{ModMod} \\
+  & modify\ f >> getList = getList >>!\ modify\ f >>= (return\ .\ map\ f) &&\textbf{ModGetl} \\
+  & getList >> return\ () = return\ () &&\textbf{GetlGetl} \\
+\end{align*}
+
+\subsection{Other Optic Algebras}
+
+\unsure{What does this bring us?} \unsure{Is Iso really an asymmetric optic?
+(connections with symmetric are obvious)} Iso \& Lens share algebra. Prism \&
+Affine share algebra.
 
 \section{Natural Composition and Heterogeneity}
+% This section must include transformation between optics
 
 \section{Instances for Free}
 

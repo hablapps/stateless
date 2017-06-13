@@ -15,6 +15,11 @@ trait OptionalAlg[P[_], A] extends Monad[P] { self =>
 
   /* derived methods */
 
+  def setOption2(a: A): P[Option[Unit]] =
+    bind(getOption) { oa =>
+      map(oa.fold(point(()))(_ => set(a)))(_ => oa.as(()))
+    }
+
   def modifyOption(f: A => A): P[Option[Unit]] =
     bind(getOption)(_.fold(point(Option.empty[Unit]))(setOption))
 
