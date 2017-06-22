@@ -18,6 +18,8 @@
 
 \begin{document}
 
+\lstset{language=Scala}
+
 \title{Stateless: an Optic Algebra Library}
 \author{
   Jesús López-González\\
@@ -46,11 +48,11 @@
 well-founded frameworks to program reactive systems in a modular way. This kind
 of systems hide an inner \emph{state} to their environment, showing therefore a
 black-box behaviour. Take a university information system as a guiding example.
-Universities are structured in departments, and each has a budget. Even this
-simple definition does contain three kinds of entities: universities,
-departments and budget. Ideally, programming the evolving state of the whole
-system should be achieved by programming the state of each entity or subsystem,
-and finally composing them all.
+Universities are structured in departments, and in turn, each department has a
+budget. Even this simple definition does contain three kinds of entities:
+universities, departments and budgets. Ideally, programming the evolving state
+of the whole system should be achieved by programming the state of each entity
+or subsystem, and finally composing them all.
 
 In addition, composition should contemplate heterogeneity: departments could be
 stored in a local database while budget could be deployed as external
@@ -58,84 +60,63 @@ microservices. Ultimately, any configuration should be supported, but it is
 essential for the system description to remain pure and decoupled from low-level
 details, irrelevant to the domain. Needless to say that it should never hamper
 optimal performance. Programming a declarative and modular system in this way is
-still a great challenge, but functional programming seems like a good starting
-point ~\cite{hughes1989functional}.
+still a great challenge, but functional programming is a good place to
+start~\cite{hughes1989functional}.
 
 % The problem: 2nd part
 
 There are plenty of technologies to develop reactive systems, but they are
-postulated as solutions to very specific problems, and consequently, difficult
-to be reused. Turning to the university example, we could have decided to
-program department evolution on a relational database, like \emph{MySQL}.
-However, if large volumes of data arose in time, migrating to a distributed
-database such as \emph{Redis} might become necessary. Given that situation, we
-would find it extremely difficult to adapt existing encodings to the new
-setting.
+postulated as solutions to specific problems, and consequently, difficult to be
+reused. Turning to the university example, we could have decided to program
+department evolution on a relational database, like \emph{MySQL}. However, if
+larger volumes of data arose in time, migrating to a distributed database such
+as \emph{Redis} might become necessary. Given that situation, we would find it
+extremely difficult to adapt existing encodings to the new setting.
 
 Fortunately, industry has detected this issue and new abstract tools have
 emerged to fill the gap. In this sense, we could have avoided the aforementioned
 problem by programming department evolution with \emph{Slick}, a
 Functional-Relational Mapper that provides an \emph{embedded domain specific
-language} ~\cite{hudak1996building} which can be later interpreted into
-different databases. Similarly, we could find other situations where a common
-language could unify different state evolutions. Take \emph{optics} as an
-example. They could be seen as a language to achieve complex transformations
-over immutable in-memory data. In this scenario, \emph{Traversal}
-~\cite{o2011functor} could be used as the glue to keep university and department
-related.
+language}~\cite{hudak1996building} that can be later interpreted into different
+databases. Even though this language is a great help in this scenario, it is
+still quite limited to deal with database technologies. What if we change our
+mind and decide to implement department as a microservice?
 
 We claim that many of these languages to access state could be further
 factorized, by providing a new language to unify them, while retaining
 reasonable levels of performance for a large class of applications. Moreover, we
-claim that optic concepts are ideal to abstract technology-specific details
-away. However, prior to that, they have to be taken to a more general setting:
-\emph{optic algebras}.
+claim that the fundamentals behind \emph{optics} ---being
+\emph{lens}~\cite{foster2005combinators} its main representative --- are ideal
+to abstract technology-specific details away. However, prior to that, they have
+to be taken to a more general setting: \emph{optic algebras}.
 
 % Deriving Optic algebras
 
-An optic algebra represents the essence of the state transformation associated
-to that optic. Generally speaking, optics were conceived to tackle a very
-specific problem, achieving complex transformations over immutable in-memory
-data structures. For instance, a \emph{lens} ~\cite{foster2005combinators} knows
-how to transform certain data structure ---the focus--- which is contextualized
-in a larger one ---the whole. Regarding our university, this abstraction could
-perfectly describe the existing relationship between a department and its
-associated budget. Having said so, what do we mean by the essence of a lens?
-
-\unsure{I'd like to avoid showing snippets in the intro!}The essence of a lens
-requires removing all those aspects which are specific to in-memory
-transformations. If we take into account the classic definition of a lens in
-Scala ~\cite{morris2012asymmetric}:
-\begin{align*}
-(s \rightarrow a,\ a \rightarrow s \rightarrow s)
-\end{align*}
-one could easily identify several accesses to the in-memory state \emph{S}. If
-we abstract away from those aspects, ie. if we conceal the state, we end up with
-the optic algebra associated to lens:
-\begin{align*}
-(s \rightarrow f\ a,\ a \rightarrow f\ ())
-\end{align*}
-This algebra ---which bears a strong resemblance to \emph{MonadState}
-~\cite{gibbons2012unifying}--- determines the existence of a focus that could be
-either read or updated, but it keeps itself unaware of the details underneath
-\emph{F}. Similar derivations could be carried out over other optics, resulting
-in new optic algebras.
+Optic algebras distill the algebraic essence of an optic. To better understand
+this concept, we need to see optics from a coalgebraic
+perspective~\cite{jacobs2016introduction}. In this view, optics are just
+machines ---that can possibly run forever~\cite{turner2004total}--- with buttons
+that can be pressed to observe or forward the machine
+state~\cite{jacobs1997tutorial}. In fact, what we mean by the algebraic essence
+is just the description of the machine interface in terms of its buttons, where
+any reference to the inner state has been abstracted away. The resulting
+interfaces are what we know as optic algebras and are postulated as the building
+blocks to program the state of our systems in a modular way.
 
 % Natural Composition and Heterogeneity
 
-Composing optic algebras ---as they were introduced in the previous paragraph---
-is not straightforward at all. In fact, the situation is very similar to the one
-that emerges when trying to compose optics in their classic representation. In
-this sense, Van Laarhoven and recently Profunctor optics
-~\cite{pickering2017profunctor} have been postulated as alternative
-representations to improve composition. Taking them as inspiration, we created a
-new representation for optic algebras. Since it heavily relies on natural
-transformations ~\cite{pierce1991basic}, we refer to it as \emph{natural}
-representation. This representation not only improves the composition up, but
-also introduces the notion of heterogeneity, as we will see in further sections.
+Since composability is one of the most striking features of
+optics~\cite{pickering2017profunctor}, one could imply similar abilities in
+their algebraic counterparts. However, as we will see in further sections, optic
+algebras in their \emph{raw} representation do not compose as expected. In order
+to avoid that problem, we propose an alternative \emph{natural} representation
+---since it relies on natural transformations~\cite{pierce1991basic}--- that
+enables composition, in a similar way as for plain optics. Furthermore, this
+representation is key to introduce the notion of heterogeneity.
 
-% Instances for Free, move abstraction issue to the beginning!
+% Instances for Free
 
+\todo{This paragraph is awful, it should contain more insights on instances!}
 Optic algebra instances for the most widespread deployments should be provided.
 Given this scenario, by defining our system in terms of optic algebras, we
 should be able to get our logic implemented once and for all. Later, we could
@@ -149,9 +130,14 @@ software designs. For instance, a traversal algebra could establish the
 connection between the university and each department. On the other hand, a lens
 algebra could describe the relationship between departments and budget. Then, we
 could compose both algebras to conform the whole system. Additionally, optic
-algebras will enable us to do it in an heterogeneous way, with many free
-instances ready to go, offering a reasonable performance in the majority of
+algebras will enable us to do it in an heterogeneous way, with several free
+instances ready to go, offering a reasonable performance for the majority of
 cases.
+
+% Paper organization
+
+The rest of the paper is organized as follows.\todo{Fulfill this paragraph when
+organization becomes clear}
 
 \section{Background}
 
@@ -160,7 +146,116 @@ cases.
 
 \subsection{Optics}
 \label{sub:background.optics}
+
+\subsubsection{Lens}
+\label{subsub: background.optics.lens}
+
+\begin{lstlisting}
+trait Lens[S, A] {
+  def get(s: S): A
+  def set(a: A): S => S
+}
+\end{lstlisting}
+
+\begin{align*}
+  & set(get(s))(s) = s &&\textbf{GetPut} \\
+  & get(set(a)(s)) = a &&\textbf{PutGet} \\
+  & set(a2)(set(a1)(s)) = set(a2)(s) &&\textbf{PutPut}
+\end{align*}
+
+\subsubsection{Getter}
+
+\begin{lstlisting}
+trait Getter[S, A] {
+  def get(s: S): A
+}
+\end{lstlisting}
+
+\subsubsection{Setter}
+
+\begin{lstlisting}
+trait Setter[S, A] {
+  def modify(f: A => A): S
+}
+\end{lstlisting}
+
+\begin{align*}
+  & modify(identity)(s) = s &&\textbf{ModId} \\
+  & modify(g)(modify(f)(s)) = modify(g compose f)(s) &&\textbf{ModComp} \\
+\end{align*}
+
+\subsubsection{Fold}
+
+\begin{lstlisting}
+trait Fold[S, A] {
+  def getList(s: S): List[A]
+}
+\end{lstlisting}
+
+\subsubsection{Traversal}
+
+\unsure{For a fixed N}
+\begin{lstlisting}
+trait Traversal[S, A] {
+  def getList(s: S): List[A]
+  def setList(as: List[A]): S => S
+}
+\end{lstlisting}
+
+\begin{align*}
+  & setList(getList(s))(s) = s &&\textbf{GetPut} \\
+  & getList(setList(as)(s)) = as &&\textbf{PutGet} \\
+  & setList(as2)(setList(as1)(s)) = setList(as2)(s) &&\textbf{PutPut}
+\end{align*}
+
+\subsubsection{Affine Traversal}
+
+\begin{lstlisting}
+trait Affine[S, A] {
+  def getOption(s: S): Option[A]
+  def set(a: A): S => S
+}
+\end{lstlisting}
+
+\change{This laws makes no sense, take a look at haskell file}
+\begin{align*}
+  & getOption(s).map(a => set(a)(s)) = s &&\textbf{GetSet} \\
+  & getOption(set(a)(s)) = getOption(s).as(a) &&\textbf{SetGet} \\
+  & set(a2)(set(a1)(s)) = set(a2)(s) &&\textbf{SetSet} \\
+\end{align*}
+
+\subsubsection{Prism}
+
+\begin{lstlisting}
+trait Prism[S, A] {
+  def getOption(s: S): Option[A]
+  def reverseGet(a: A): S
+}
+\end{lstlisting}
+
+\begin{align*}
+  & getOption(s).map(reverseGet) = s &&\textbf{GetRev} \\
+  & getOption(reverseGet(a)) = Some(a) &&\textbf{RevGet} \\
+\end{align*}
+
+\subsubsection{Iso}
+
+\begin{lstlisting}
+trait Iso[S, A] {
+  def get(s: S): A
+  def reverseGet(a: A): S
+}
+\end{lstlisting}
+
+\begin{align*}
+  & reverseGet(get(s)) = s &&\textbf{GetRev} \\
+  & get(reverseGet(a)) = a &&\textbf{RevGet} \\
+\end{align*}
+
 % State Module
+
+\subsection{Machines}
+% IOCoalgebras, extracting buttons
 
 \section{Deriving Optic Algebras}
 
@@ -320,7 +415,7 @@ declares an additional method \emph{local} and consequently, new laws are
 required. It seems that we only need part of the definition of
 \emph{MonadReader}. Indeed, some functional programming libraries do reflect
 this separation, resulting in the \emph{MonadAsk}
-typeclass\footnote{https://github.com/purescript/purescript-transformers/blob/master/src/Control/Monad/Reader/Class.purs#L16},
+typeclass\footnote{https://github.com/purescript/purescript-transformers/blob/master/src/Control/Monad/Reader/Class.purs\#L16},
 which perfectly fulfills our algebra. As expected, it has a unique law, which
 corresponds with our \emph{XGet}.
 
@@ -433,15 +528,40 @@ Laws for emerging algebra:
 Affine share algebra.
 
 \section{Natural Composition and Heterogeneity}
-% This section must include transformation between optics
+% This section must include transformation between optics (as a composition flavor)
+
+Once our optic algebras are defined, we could be interested in combining them,
+just as plain optics are combined. However, when we move to this scenario, the
+situation becomes more complicated. As we know, lenses compose when the
+\emph{focus} of the first lens matches the \emph{whole} of the second one.
+However, our optic algebras have a type constructor as weird \emph{whole} and a
+concrete type as \emph{focus}, which leads to an odd scenario.
+
+Therefore, we need to ask ourselves what does it mean to compose a pair of optic
+algebras. For instance, suppose we want to compose \emph{TraversalAlg f
+Department} with \emph{LensAlg g Int}, as we showed in the university example.
+The first one knows how to build \emph{f} programs to access all the
+departments. On the other hand, the second instance builds \emph{g} programs to
+access the budget. If we think of \emph{f} and \emph{g} as something
+encapsulating the university and the department states, respectively, we could
+determine that the composition of both algebras should be close to
+\emph{TraversalAlg f Int}, ie. a program over the whole university that has
+access to all the budgets.
+
+Unluckily, the aforementioned composition is not possible, since additional
+components are required to implement it. Particularly, a natural transformation
+${q \rightsquigarrow p}$ would serve us to embed focus programs into whole ones.
+Thereby, optic algebras cannot be composed as we compose plain optics, in an
+autonomous way.
 
 \section{Instances for Free}
 
 \section{Conclusions and Future Work}
 
 \section{Acknowledgements}
+% MINECO
 
 \bibliography{stateless}{}
-\bibliographystyle{apalike}
+\bibliographystyle{unsrt}
 
 \end{document}
