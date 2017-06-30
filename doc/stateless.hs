@@ -41,7 +41,7 @@ newtype Setter s a = Setter { runSetter :: s -> (a -> a) -> s }
 
 -- for a fixed size N
 newtype Traversal s a = Traversal { runTraversal :: s -> ([a], [a] -> s) }
---
+
 -- --------------------------------
 -- -- Classic Optics (with laws) --
 -- --------------------------------
@@ -85,7 +85,8 @@ newtype Traversal s a = Traversal { runTraversal :: s -> ([a], [a] -> s) }
 
 -- Natural Representation (Experimental, No Typeclasses)
 
--- XXX: what are the implications of type constraints?
+-- XXX: what are the implications of type constraints? I've used them because
+-- they justify distinguishing between Lens-Getter and Traversal-Fold
 
 type OpticAlg p q f = forall x. q x -> p (f x)
 
@@ -143,12 +144,18 @@ icompose :: (Functor p, HAppendList l1 l2) =>
             IOpticAlg (HList (HAppendListR l1 l2)) p r f
 icompose j iop1 iop2 f = j <$> iop1 (\i -> iop2 (f . hAppendList i))
 
+icomposeM :: (Functor p, Monad m, HAppendList l1 l2) =>
+             IOpticAlg (HList l1) p q m ->
+             IOpticAlg (HList l2) q r m ->
+             IOpticAlg (HList (HAppendListR l1 l2)) p r m
+icomposeM = icompose join
+
 -- XXX: `HAppendListR l '[]` is not returning `l`!
-(^^|->) :: (Monad p, Monad q, MonadState a q, MonadState b r, HAppendList l '[]) =>
+(~^|->) :: (Monad p, Monad q, MonadState a q, MonadState b r, HAppendList l '[]) =>
            ITraversalAlg (HList l) p q a ->
            LensAlg q r b ->
            ITraversalAlg (HList (HAppendListR l '[])) p r b
-(^^|->) itr ln = icompose (fmap runIdentity) itr (asIndexed ln)
+(~^|->) itr ln = icompose (fmap runIdentity) itr (asIndexed ln)
 
 -- functions
 
@@ -174,58 +181,108 @@ iview op = op (\i -> fmap ((,) i) get)
 iindex :: (Functor p, Functor f, MonadState a q) => IOpticAlg i p q f -> p (f i)
 iindex = fmap (fmap fst) . iview
 
+ifoci :: (Functor p, Functor f, MonadState a q) => IOpticAlg i p q f -> p (f a)
+ifoci = fmap (fmap snd) . iview
+
 ifold :: (Functor p, MonadState a q, Foldable f, Monoid m) =>
          IOpticAlg i p q f -> ((i, a) -> m) -> p m
 ifold iop f = fmap (foldMap f) (iview iop)
 
-imodi :: (MonadState a q) => IOpticAlg i p q f -> (a -> a) -> p (f ())
-imodi iop f = iop (const $ modify f)
+imodi :: (MonadState a q) => IOpticAlg i p q f -> (i -> a -> a) -> p (f ())
+imodi iop f = iop (modify . f)
 
 -- university
 
 class UniversityView p where
-  universityName :: p String
+  uniName :: p String
   departmentNames :: p [String]
   totalBudget :: p Int
   duplicateBudget :: p ()
+  totalSalary :: p Int
 
-class UniversityData p q d | p -> q, q -> p, q -> d where
+-- XXX: Yo dawg, I put a dependency in your dependency so you can depend on a
+-- dependency while you depend on dependencies. Meaning, do these dependencies
+-- make sense?
+class UniversityData p q r | p -> q, q -> r, r -> q, q -> p where
+  type D q :: *
+  type L r :: *
   name :: LensAlg p (State String) String
-  departments :: ITraversalAlg (HList '[String]) p q d
+  departments :: ITraversalAlg (HList '[String]) p q (D q)
   budget :: LensAlg q (State Int) Int
+  lecturers :: ITraversalAlg (HList '[String]) q r (L r)
+  first :: LensAlg r (State String) String
+  last :: LensAlg r (State String) String
+  salary :: LensAlg r (State Int) Int
 
 -- XXX: requires undecidable and ambiguous
-instance (Monad p, Monad q, MonadState d q, UniversityData p q d) => UniversityView p where
-  universityName = runIdentity <$> view name
+instance (Monad p, Monad q, Monad r,
+          MonadState (D q) q, MonadState (L r) r,
+          UniversityData p q r) => UniversityView p where
+  uniName = runIdentity <$> view name
   departmentNames = fmap hHead <$> iindex departments
-  totalBudget = getSum <$> ifold (departments ^^|-> budget) (Sum . snd)
-  duplicateBudget = void $ imodi (departments ^^|-> budget) (* 2)
+  totalBudget = getSum <$> ifold (departments ~^|-> budget) (Sum . snd)
+  duplicateBudget = void $ imodi (departments ~^|-> budget) (const (* 2))
+  totalSalary = getSum <$> ifold (icomposeM departments lecturers ~^|-> salary) (Sum . snd)
 
 -- instantiating university
 
 data University = University { nm :: String, deps :: Map String Department } deriving Show
-newtype Department = Department { bud :: Int } deriving Show
+data Department = Department { bud :: Int, lecs :: Map String Lecturer } deriving Show
+data Lecturer = Lecturer { frt :: String, lst :: String, sly :: Int } deriving Show
 
-instance UniversityData (State University) (State Department) Department where
-  name sn = StateT (\u -> let (a, nm2) = runState sn (nm u) in
-    Identity (Identity a, u { nm = nm2 }))
+-- XXX: use `lens` to generate this boilerplate
+
+lensAsNat :: Lens s a -> (forall x. State a x -> State s (Identity x))
+lensAsNat ln sax =
+  StateT (\s -> let (out, a2) = runState sax (fst (runLens ln s)) in
+  Identity (Identity out, snd (runLens ln s) a2))
+
+universityName :: Lens University String
+universityName = Lens { runLens = \s -> (nm s, \a -> s { nm = a }) }
+
+departmentBudget :: Lens Department Int
+departmentBudget = Lens { runLens = \s -> (bud s, \a -> s { bud = a }) }
+
+lecturerFirst, lecturerLast :: Lens Lecturer String
+lecturerFirst = Lens { runLens = \s -> (frt s, \a -> s { frt = a }) }
+lecturerLast = Lens { runLens = \s -> (lst s, \a -> s { lst = a }) }
+
+lecturerSalary :: Lens Lecturer Int
+lecturerSalary = Lens { runLens = \s -> (sly s, \a -> s { sly = a }) }
+
+-- XXX: describe `TraversalAlg`s from `Traversal`, as we did with `Lens`
+instance UniversityData (State University) (State Department) (State Lecturer) where
+  type D (State Department) = Department
+  type L (State Lecturer) = Lecturer
+  name = lensAsNat universityName
   departments sd =
     StateT (\u ->
       let (as, deps2) = unzip $ fmap (\(k, d) -> fmap ((,) k) (runState (sd (k `HCons` HNil)) d)) (assocs $ deps u) in
         Identity (as, u { deps = fromList deps2 }))
-  budget sb = StateT (\d -> let (a, bud2) = runState sb (bud d) in
-    Identity (Identity a, d { bud = bud2 }))
+  budget = lensAsNat departmentBudget
+  lecturers sl =
+    StateT (\u ->
+      let (as, lecs2) = unzip $ fmap (\(k, d) -> fmap ((,) k) (runState (sl (k `HCons` HNil)) d)) (assocs $ lecs u) in
+        Identity (as, u { lecs = fromList lecs2 }))
+  first = lensAsNat lecturerFirst
+  last = lensAsNat lecturerLast
+  salary = lensAsNat lecturerSalary
 
 main :: IO ()
 main = do
-  putStrLn "URJC budget: "
-  let uni = University "URJC" (fromList [("CS", Department 1000), ("HS", Department 2000)])
+  let jperez = Lecturer "José" "Pérez" 3000
+  let mlopez = Lecturer "María" "López" 4000
+  let cs = Department 10000 $ fromList [("jperez", jperez)]
+  let hs = Department 20000 $ fromList [("mlopez", mlopez)]
+  let uni = University "URJC" (fromList [("CS", cs), ("HS", hs)])
   putStr "* Total budget: "
   print $ evalState totalBudget uni
   putStr "* After duplicating budget: "
   print $ runState duplicateBudget uni
   putStr "* Department names: "
   print $ evalState departmentNames uni
+  putStr "* Total salary: "
+  print $ evalState totalSalary uni
 
 -- End of experimental
 
