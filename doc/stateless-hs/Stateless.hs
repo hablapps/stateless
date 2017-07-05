@@ -1,8 +1,10 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 
 module Stateless where
 
@@ -22,15 +24,16 @@ type OpticAlg p q f = (Monad p, Monad q, Functor f) =>
 
 type LensAlg p q a = (MonadState a q) => OpticAlg p q Identity
 
-type GetterAlg p q a = (MonadReader a q) => OpticAlg p q Identity
-
 type TraversalAlg p q a = (MonadState a q) => OpticAlg p q []
-
-type FoldAlg p q a = (MonadReader a q) => OpticAlg p q []
 
 type AffineAlg p q a = (MonadState a q) => OpticAlg p q Maybe
 
 type SetterAlg p q a = (MonadState a q) => OpticAlg p q (Constant ())
+
+-- XXX: `MonadAsk` indeed
+type GetterAlg p q a = (MonadReader a q) => OpticAlg p q Identity
+
+type FoldAlg p q a = (MonadReader a q) => OpticAlg p q []
 
 -- indexed
 
@@ -157,7 +160,6 @@ class At i p q a | p -> q, q -> a where
 class FilterIndex i p q a | p -> q, q -> a where
   filterIndex :: (i -> Bool) -> ITraversalAlg i p q a
 
-
 -------------------------
 -- Optics as Machines! --
 -------------------------
@@ -176,6 +178,77 @@ newtype Setter s a = Setter { runSetter :: s -> (a -> a) -> s }
 
 -- for a fixed size N
 newtype Traversal s a = Traversal { runTraversal :: s -> ([a], [a] -> s) }
+
+-- Weak Traversal
+newtype WkTraversal s a = WkTraversal { runWkTraversal :: s -> ([a], (a -> a) -> s) }
+
+-- Lens Iso
+
+fromLn :: Lens s a -> LensAlg (State s) (State a) a
+fromLn ln sa = StateT (\s -> let (a, f)  = runLens ln s
+                                 (x, a2) = runState sa a
+                             in Identity (Identity x, f a2))
+
+toLn :: LensAlg (State s) (State a) a -> Lens s a
+toLn lna = Lens (\s -> (runIdentity $ evalState (lna get) s,
+                        \a -> execState (lna $ put a) s))
+
+-- Getter Iso
+
+fromGt :: Getter s a -> GetterAlg (Reader s) (Reader a) a
+fromGt gt ra = ReaderT (Identity . Identity . runReader ra .runGetter gt)
+
+toGt :: GetterAlg (Reader s) (Reader a) a -> Getter s a
+toGt gta = Getter (runIdentity . runReader (gta ask))
+
+-- Fold Iso
+
+fromFl :: Fold s a -> FoldAlg (Reader s) (Reader a) a
+fromFl fl ra = ReaderT (Identity . fmap (runReader ra) . runFold fl)
+
+toFl :: FoldAlg (Reader s) (Reader a) a -> Fold s a
+toFl fla = Fold (runReader (fla ask))
+
+-- Setter Iso
+
+fromSt :: Setter s a -> SetterAlg (State s) (State a) a
+fromSt st sa = StateT (\s -> Identity (Constant (), runSetter st s (execState sa)))
+
+toSt :: SetterAlg (State s) (State a) a -> Setter s a
+toSt sta = Setter (\s f -> execState (sta (modify f)) s)
+
+-- Affine Iso
+
+fromAf :: Affine s a -> AffineAlg (State s) (State a) a
+fromAf af sa = StateT (\s -> let (ma, f) = runAffine af s
+                                 mxa2 = fmap (runState sa) ma
+                             in Identity (fmap fst mxa2, maybe s (f . snd) mxa2))
+
+toAf :: AffineAlg (State s) (State a) a -> Affine s a
+toAf afa = Affine (\s -> (evalState (afa get) s,
+                          \a -> execState (afa $ put a) s))
+
+-- Traversal Iso can't be defined, `TraversalAlg` is weaker than `Traversal`
+
+fromTr :: Traversal s a -> TraversalAlg (State s) (State a) a
+fromTr tr sa = StateT (\s -> let (as, f) = runTraversal tr s
+                                 xa2s = fmap (runState sa) as
+                             in Identity (fmap fst xa2s, f (fmap snd xa2s)))
+
+-- XXX: `TraversalAlg` is weaker than `Traversal`!
+toTr :: TraversalAlg (State s) (State a) a -> Traversal s a
+toTr tra = Traversal (\s -> (evalState (tra get) s, undefined))
+
+-- Weak Travesal Iso
+
+fromWTr :: WkTraversal s a -> TraversalAlg (State s) (State a) a
+fromWTr tr sa = StateT (\s -> let (as, f) = runWkTraversal tr s
+                                  xs = fmap (evalState sa) as
+                              in Identity (xs, f (execState sa)))
+
+toWTr :: TraversalAlg (State s) (State a) a -> WkTraversal s a
+toWTr tra = WkTraversal (\s -> (evalState (tra get) s,
+                                \f -> execState (tra $ modify f) s))
 
 -- --------------------------------
 -- -- Classic Optics (with laws) --
