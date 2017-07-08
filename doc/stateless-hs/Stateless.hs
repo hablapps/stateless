@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeSynonymInstances #-}
@@ -249,6 +250,111 @@ fromWTr tr sa = StateT (\s -> let (as, f) = runWkTraversal tr s
 toWTr :: TraversalAlg (State s) (State a) a -> WkTraversal s a
 toWTr tra = WkTraversal (\s -> (evalState (tra get) s,
                                 \f -> execState (tra $ modify f) s))
+
+------------------
+-- Raw Algebras --
+------------------
+
+-- lens
+
+class (Monad p) => RawLensAlg p a | p -> a where
+  lnGet :: p a
+  lnPut :: a -> p ()
+
+data RawLensAlg' p a b where
+  LnGet :: RawLensAlg' p a a
+  LnPut :: a -> RawLensAlg' p a ()
+  LnBind :: p x -> (x -> p y) -> RawLensAlg' p a y
+  LnReturn :: x -> RawLensAlg' p a x
+
+-- getter
+
+class (Monad p) => RawGetterAlg p a | p -> a where
+  gtGet :: p a
+
+data RawGetterAlg' p a b where
+  GtGet :: RawGetterAlg' p a [a]
+  GtBind :: p x -> (x -> p y) -> RawGetterAlg' p a y
+  GtReturn :: x -> RawGetterAlg' p a x
+
+-- setter
+
+class (Monad p) => RawSetterAlg p a | p -> a where
+  stMod :: (a -> a) -> p ()
+
+data RawSetterAlg' p a b where
+  StMod :: (a -> a) -> RawSetterAlg' p a ()
+  StBind :: p x -> (x -> p y) -> RawSetterAlg' p a y
+  StReturn :: x -> RawSetterAlg' p a x
+
+-- traversal
+
+class (Monad p) => RawTraversalAlg p a | p -> a where
+  trGet :: p [a]
+  trMod :: (a -> a) -> p ()
+
+data RawTraversalAlg' p a b where
+  TrGet :: RawTraversalAlg' p a [a]
+  TrMod :: (a -> a) -> RawTraversalAlg' p a ()
+  TrBind :: p x -> (x -> p y) -> RawTraversalAlg' p a y
+  TrReturn :: x -> RawTraversalAlg' p a x
+
+-- fold
+
+class (Monad p) => RawFoldAlg p a | p -> a where
+  flGet :: p [a]
+
+data RawFoldAlg' p a b where
+  FlGet :: RawFoldAlg' p a (Maybe a)
+  FlBind :: p x -> (x -> p y) -> RawFoldAlg' p a y
+  FlReturn :: x -> RawFoldAlg' p a x
+
+-- affine
+
+class (Monad p) => RawAffineAlg p a | p -> a where
+  afGet :: p (Maybe a)
+  afPut :: a -> p ()
+
+data RawAffineAlg' p a b where
+  AfGet :: RawAffineAlg' p a (Maybe a)
+  AfPut :: a -> RawAffineAlg' p a ()
+  AfBind :: p x -> (x -> p y) -> RawAffineAlg' p a y
+  AfReturn :: x -> RawAffineAlg' p a x
+
+-- generic algebra
+
+class (Monad p, Functor f) => ReadOpticAlg p f a where
+  rOpGet :: p (f a)
+
+class (Monad p, Functor f) => WriteOpticAlg p f a where
+  wOpMod :: (a -> a) -> p (f ())
+
+class (Monad p, Functor f) => ReadWriteOpticAlg p f a where
+  rwOpGet :: p (f a)
+  rwOpMod :: (a -> a) -> p (f ())
+
+-- generic algebra instances
+
+instance (RawGetterAlg p a) => ReadOpticAlg p Identity a where
+  rOpGet = fmap Identity gtGet
+
+instance (RawFoldAlg p a) => ReadOpticAlg p [] a where
+  rOpGet = flGet
+
+instance (RawSetterAlg p a) => WriteOpticAlg p (Constant ()) a where
+  wOpMod = fmap Constant . stMod
+
+instance (RawLensAlg p a) => ReadWriteOpticAlg p Identity a where
+  rwOpGet = fmap Identity lnGet
+  rwOpMod f = lnGet >>= (fmap Identity . lnPut . f)
+
+instance (RawAffineAlg p a) => ReadWriteOpticAlg p Maybe a where
+  rwOpGet = afGet
+  rwOpMod f = afGet >>= maybe (return Nothing) (fmap Just . afPut . f)
+
+instance (RawTraversalAlg p a) => ReadWriteOpticAlg p [] a where
+  rwOpGet = trGet
+  rwOpMod f = trMod f >> fmap void trGet
 
 -- --------------------------------
 -- -- Classic Optics (with laws) --
