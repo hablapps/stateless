@@ -97,6 +97,11 @@ icomposeM = icompose join
 view :: (Monad p, MonadState a q, Functor f) => OpticAlg p q f -> p (f a)
 view op = op get
 
+-- XXX: this redundancy could be removed if we had `MonadState` depending on
+-- `MonadAsk` and `MonadPut`
+view' :: (Monad p, MonadReader a q, Functor f) => OpticAlg p q f -> p (f a)
+view' op = op ask
+
 set :: (Monad p, MonadState a q, Functor f) => OpticAlg p q f -> a -> p (f ())
 set op a = op $ put a
 
@@ -154,6 +159,8 @@ xcompose :: (Monad q, Functor g) =>
 xcompose j iop op rx = j <$> iop (op . rx)
 
 -- Ops
+
+data At' i p q a = At' { runAt' :: i -> LensAlg p q (Maybe a) }
 
 class At i p q a | p -> q, q -> a where
   at :: i -> LensAlg p q (Maybe a)
