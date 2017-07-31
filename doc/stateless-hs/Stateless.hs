@@ -160,7 +160,7 @@ xcompose j iop op rx = j <$> iop (op . rx)
 
 -- Ops
 
-data At' i p q a = At' { runAt' :: i -> LensAlg p q (Maybe a) }
+newtype At' i p q a = At' { runAt' :: i -> LensAlg p q (Maybe a) }
 
 class At i p q a | p -> q, q -> a where
   at :: i -> LensAlg p q (Maybe a)
