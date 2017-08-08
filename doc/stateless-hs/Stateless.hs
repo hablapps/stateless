@@ -34,6 +34,7 @@ type SetterAlg p q a = (MonadState a q) => OpticAlg p q (Constant ())
 -- XXX: `MonadAsk` indeed
 type GetterAlg p q a = (MonadReader a q) => OpticAlg p q Identity
 
+
 type FoldAlg p q a = (MonadReader a q) => OpticAlg p q []
 
 -- indexed
@@ -121,7 +122,7 @@ iview :: (Monad p, MonadState a q, Functor f) =>
 iview op = op (\i -> fmap ((,) i) get)
 
 iindex :: (Monad p, MonadState a q, Functor f) => IOpticAlg i p q f -> p (f i)
-iindex = fmap (fmap fst) . iview
+iindex op = op return
 
 ifoci :: (Monad p, MonadState a q, Functor f) => IOpticAlg i p q f -> p (f a)
 ifoci = fmap (fmap snd) . iview
