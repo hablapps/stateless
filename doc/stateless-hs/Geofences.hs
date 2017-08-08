@@ -74,22 +74,22 @@ data GeoDL p q q' r g a =
 fromDL :: (Monad p, MonadState a r, MonadState g q, MonadState (Maybe g) q') =>
           GeoDL p q q' r g a -> NetworkView p
 fromDL dl = NetworkView {
-    pur3    = return
-  , bind    = (>>=)
-  , add     = \r -> do
+    pur3 = return
+  , bind = (>>=)
+  , add = \r -> do
       -- XXX: using natural transformations in a beautiful way
       gid <- fmap runIdentity $ cnt dl $ modify (+1) >> get
       set (runAt' (geofence dl) gid) (Just (initG dl r))
       return gid
-  , remove  = \gid -> do
+  , remove = \gid -> do
       modi (alarm dl `composeM` alarms dl) (filterWithKey (\(gid', _) _ -> gid == gid'))
       void $ set (runAt' (geofence dl) gid) Nothing
-  , a7      = \i pos -> do
+  , a7 = \i pos -> do
       -- XXX: here we are collecting all the events from geofences. It would be
       -- nice to have a middle-api to rely on, since this is pretty monolithic.
       -- Anyway, we show again that having a complex transformation makes a lot of
       -- sense, so using the natural transformation directly seems to be a nice
-      -- pattern.
+      -- pattern.    AlarmStateIO $ lift $ run conn "DELETE from Current" []
       evs <- geofences dl (\gid -> do
         -- updating regions
         reg <- runIdentity <$> view (region dl)
@@ -118,7 +118,7 @@ fromDL dl = NetworkView {
         _ -> return ()) evs
       -- we're done!
       return $ Prelude.foldr (\(gid, mev) b -> maybe b (\o -> (gid, o) : b) mev) [] evs
-  , tick    = \t -> do
+  , tick = \t -> do
       set (alarm dl `composeM` current dl) t
       runIdentity <$> view' (alarm dl `composeM` wentOff dl)
   , destroy = do
@@ -199,9 +199,9 @@ instance MonadState Alarms AlarmStateIO where
     return $ Alarms alarms current
   put a = do
     conn <- AlarmStateIO get
-    r <- AlarmStateIO $ lift $ run conn "UPDATE Current SET time = ?" [toSql (_current a)]
-    AlarmStateIO $ lift $ run conn "DELETE * from Current" []
-    stmt <- AlarmStateIO $ lift $ prepare conn "INSERT INTO Alarms VALUES (?, ?, ?)"
+    r <- AlarmStateIO $ lift $ run conn "UPDATE Current SET time=?" [toSql (_current a)]
+    AlarmStateIO $ lift $ run conn "DELETE from Alarm" []
+    stmt <- AlarmStateIO $ lift $ prepare conn "INSERT INTO Alarm VALUES (?, ?, ?)"
     AlarmStateIO $ lift $ executeMany stmt (fmap (\((g, d), t) -> [toSql g, toSql d, toSql t]) (Map.toList $ _alarms a))
     AlarmStateIO $ lift $ commit conn
 
@@ -223,11 +223,11 @@ instance MonadState Geofence GeofenceStateIO where
     return $ Geofence reg ins
   put (Geofence (r, (x, y)) ins) = do
     (gid, conn) <- GeofenceStateIO get
-    GeofenceStateIO $ lift $ run conn "DELETE * from Inside where gid=?" [toSql gid]
+    GeofenceStateIO $ lift $ run conn "DELETE from Inside where gid=?" [toSql gid]
     stmt <- GeofenceStateIO $ lift $ prepare conn "INSERT INTO Inside VALUES (?, ?)"
     GeofenceStateIO $ lift $ executeMany stmt (fmap (\d -> [toSql gid, toSql d]) (Set.toList ins))
     GeofenceStateIO $ lift $ run conn "UPDATE Region SET radius=?, x=?, y=? where gid=?"
-      [toSql r, toSql x, toSql y]
+      [toSql gid, toSql r, toSql x, toSql y]
     GeofenceStateIO $ lift $ commit conn
     return ()
 
@@ -247,8 +247,8 @@ hdbcDL = GeoDL {
           ins = Set.fromList $ fmap (\[d] -> fromSql d) r
           mg = fmap (\reg -> Geofence reg ins) mreg
           (x, mg2) = runState sa mg
-      lift $ run conn "DELETE * from INSIDE where gid=?" [toSql gid]
-      lift $ run conn "DELETE * from Region where gid=?" [toSql gid]
+      lift $ run conn "DELETE from Inside where gid=?" [toSql gid]
+      lift $ run conn "DELETE from Region where gid=?" [toSql gid]
       case mg2 of
         Nothing -> return ()
         Just (Geofence (r, (x, y)) ins) -> do
@@ -290,7 +290,7 @@ hdbcDL = GeoDL {
       return (Identity x)
   , wentOff = \ra -> do
       a <- get
-      let x = runReader ra (Map.toList (_alarms a))
+      let x = runReader ra (Prelude.filter (\((_, _), t) -> t <= _current a) $ Map.toList $ _alarms a)
       return (Identity x)
   -- XXX: this is too heavy, we're bringing all `did`s as well.
   , region = \sr -> do
