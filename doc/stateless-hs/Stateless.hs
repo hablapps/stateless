@@ -87,11 +87,17 @@ icomposeM :: (Functor p, Monad q, Monad m, HAppendList l1 l2) =>
 icomposeM = icompose join
 
 -- XXX: `HAppendListR l '[]` is not returning `l`!
-(~^|->) :: (Monad p, Monad q, MonadState a q, MonadState b r, HAppendList l '[]) =>
+(~^|->) :: (Monad p, MonadState a q, MonadState b r, HAppendList l '[]) =>
            ITraversalAlg (HList l) p q a ->
            LensAlg q r b ->
            ITraversalAlg (HList (HAppendListR l '[])) p r b
 (~^|->) itr ln = icompose (fmap runIdentity) itr (asIndexed ln)
+
+(~^|->>) :: (Monad p, MonadState a q, MonadState b r) =>
+            LensAlg p q a ->
+            ITraversalAlg i q r b ->
+            ITraversalAlg i p r b
+(~^|->>) ln itr f = fmap runIdentity $ ln (itr f)
 
 -- functions
 
@@ -139,6 +145,10 @@ imodi :: (Monad p, MonadState a q, Functor f) =>
          IOpticAlg i p q f -> (i -> a -> a) -> p (f ())
 imodi iop f = iop (modify . f)
 
+iset :: (Monad p, MonadState a q, Functor f) =>
+        IOpticAlg i p q f -> (i -> a) -> p (f ())
+iset iop f = imodi iop (\i _ -> f i)
+
 ifilter :: (Monad p, MonadState a q, Eq i, FilterIndex i p q a) =>
            (i -> Bool) -> q x -> p [x]
 ifilter p qx = filterIndex p (const qx)
@@ -166,8 +176,31 @@ newtype At' i p q a = At' { runAt' :: i -> LensAlg p q (Maybe a) }
 class At i p q a | p -> q, q -> a where
   at :: i -> LensAlg p q (Maybe a)
 
+newtype FilterIndex' i p q a = FilterIndex' {
+  runFilterIndex' :: (i -> Bool) -> ITraversalAlg i p q a
+}
+
 class FilterIndex i p q a | p -> q, q -> a where
   filterIndex :: (i -> Bool) -> ITraversalAlg i p q a
+
+-- standard library
+
+data MapAlg i p q q' a = MapAlg { itr :: ITraversalAlg i p q a
+                                , ati :: At' i p q' a }
+
+mapAdd :: (Monad p, MonadState a q, MonadState (Maybe a) q') =>
+          MapAlg i p q q' a -> i -> a -> p ()
+mapAdd m i a = void $ set (runAt' (ati m) i) (Just a)
+
+mapDel :: (Monad p, MonadState a q, MonadState (Maybe a) q') =>
+          MapAlg i p q q' a -> i -> p ()
+mapDel m i = void $ set (runAt' (ati m) i) Nothing
+
+mapDelBy :: (Monad p, MonadState a q, MonadState (Maybe a) q') =>
+            MapAlg i p q q' a -> (i -> Bool) -> p ()
+mapDelBy m p = do
+  is <- iindex (itr m)
+  void $ traverse (\i -> mapDel m i) is
 
 -------------------------
 -- Optics as Machines! --

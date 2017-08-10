@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
@@ -53,17 +54,12 @@ data NetworkView p = NetworkView {
 ----------------
 
 data GeoDL p q q' r g a =
-  GeoDL { geofence :: At' Gid p q' g
-        , geofences :: ITraversalAlg Gid p q g
-        , alarm :: LensAlg p r a
+  GeoDL { geofences :: MapAlg Gid p q q' g
+        , timer :: LensAlg p r a
         , cnt :: LensAlg p (State Gid) Gid
         -- alarm optics
         , current :: LensAlg r (State Time) Time
-        -- XXX: a map of millions of alarms... this is awful
-        , alarms :: LensAlg r (State (Map (Gid, Did) Time)) (Map (Gid, Did) Time)
-        -- XXX: I don't have an opinion about this `wentOff` yet. Its mission is
-        -- to avoid bringing the whole map to memory.
-        , wentOff :: GetterAlg r (Reader [((Gid, Did), Time)]) [((Gid, Did), Time)]
+        , alarms :: MapAlg (Gid, Did) r (State Time) (State (Maybe Time)) Time
         -- geofence optics
         -- XXX: this should be a `Getter` instead!
         , region :: LensAlg q (State Region) Region
@@ -71,27 +67,21 @@ data GeoDL p q q' r g a =
         -- initializers
         , initG :: Region -> g }
 
-fromDL :: (Monad p, MonadState a r, MonadState g q, MonadState (Maybe g) q') =>
+fromDL :: (Monad p, MonadState g q, MonadState (Maybe g) q', MonadState a r) =>
           GeoDL p q q' r g a -> NetworkView p
 fromDL dl = NetworkView {
     pur3 = return
   , bind = (>>=)
   , add = \r -> do
-      -- XXX: using natural transformations in a beautiful way
       gid <- fmap runIdentity $ cnt dl $ modify (+1) >> get
-      set (runAt' (geofence dl) gid) (Just (initG dl r))
+      mapAdd (geofences dl) gid (initG dl r)
       return gid
   , remove = \gid -> do
-      modi (alarm dl `composeM` alarms dl) (filterWithKey (\(gid', _) _ -> gid == gid'))
-      void $ set (runAt' (geofence dl) gid) Nothing
+      timer dl $ mapDelBy (alarms dl) ((== gid) . fst)
+      mapDelBy (geofences dl) (== gid)
   , a7 = \i pos -> do
-      -- XXX: here we are collecting all the events from geofences. It would be
-      -- nice to have a middle-api to rely on, since this is pretty monolithic.
-      -- Anyway, we show again that having a complex transformation makes a lot of
-      -- sense, so using the natural transformation directly seems to be a nice
-      -- pattern.    AlarmStateIO $ lift $ run conn "DELETE from Current" []
-      evs <- geofences dl (\gid -> do
-        -- updating regions
+      -- updating geofences
+      evs <- itr (geofences dl) (\gid -> do
         reg <- runIdentity <$> view (region dl)
         cnd1 <- (Set.member i . runIdentity) <$> view (inside dl)
         let cnd2 = posInRegion pos reg
@@ -105,27 +95,20 @@ fromDL dl = NetworkView {
           _ -> return (gid, Nothing))
       -- updating alarms
       traverse (\(gid, mev) -> case mev of
-        -- XXX: this manifests two different approaches to relate different
-        -- contexts: on the one hand (Enter) it is shown how to compose the inner
-        -- program and then pass it trough the natural transformation. On the
-        -- other hand (Exit), there's a composition of optics which is achieved
-        -- before invoking `modi`.
-        Just (Enter did) -> void $ alarm dl $ do
+        Just (Enter did) -> void $ timer dl $ do
           c <- runIdentity <$> view (current dl)
-          modi (alarms dl) (Map.insert (gid, did) (c + 3))
+          mapAdd (alarms dl) (gid, did) (c + 3)
         Just (Exit did) ->
-          void $ modi (alarm dl `composeM` alarms dl) (Map.delete (gid, did))
+          void $ timer dl $ mapDel (alarms dl) (gid, did)
         _ -> return ()) evs
       -- we're done!
       return $ Prelude.foldr (\(gid, mev) b -> maybe b (\o -> (gid, o) : b) mev) [] evs
   , tick = \t -> do
-      set (alarm dl `composeM` current dl) t
-      runIdentity <$> view' (alarm dl `composeM` wentOff dl)
+      set (timer dl `composeM` current dl) t
+      ifold (timer dl ~^|->> itr (alarms dl)) (\(i, t2) -> if t >= t2 then [(i, t)] else [])
   , destroy = do
-      -- XXX: there must be a better way of destroying existing geofences
-      is <- iindex $ geofences dl
-      traverse (\i -> set (runAt' (geofence dl) i) Nothing) is
-      void $ set (alarm dl `composeM` alarms dl) Map.empty
+      timer dl $ mapDelBy (alarms dl) (const True)
+      mapDelBy (geofences dl) (const True)
 }
 
 --------------------
@@ -137,32 +120,39 @@ data Network = Network { _n :: Gid
                        , _alarm :: Alarms } deriving Show
 
 data Geofence = Geofence { _region :: Region
-                         , _in :: Set Int } deriving Show
+                         , _in :: Set Did } deriving Show
 
 data Alarms = Alarms { _alarms :: Map (Gid, Did) Time
                      , _current :: Time } deriving Show
 
--- XXX: boilerplate, boilerplate everywhere! use *lens* to avoid it?
+-- XXX: boilerplate, boilerplate everywhere! use *lens* library to avoid it?
 stateDL :: GeoDL (State Network)
                  (State Geofence)
                  (State (Maybe Geofence))
                  (State Alarms)
                  Geofence Alarms
 stateDL = GeoDL {
-    geofence = At' $ \gid -> fromLn $
-      Lens (\s -> (Map.lookup gid (_geofences s),
-                   maybe (s { _geofences = Map.delete gid (_geofences s) })
-                         (\a -> s { _geofences = Map.insert gid a (_geofences s) })))
-  , geofences = \f -> StateT (\s -> let gs = Map.toList (_geofences s) in Identity (
-      fmap (\(k, v) -> runIdentity $ evalStateT (f k) v) gs,
-      s { _geofences = Map.fromList $ fmap (\(k, v) -> (k, execState (f k) v)) gs }))
-  , alarm = fromLn $ Lens (\s -> (_alarm s, \a -> s { _alarm = a }))
+    geofences = MapAlg {
+        itr = \f -> StateT (\s -> let gs = Map.toList (_geofences s) in Identity (
+          fmap (\(k, v) -> runIdentity $ evalStateT (f k) v) gs,
+          s { _geofences = Map.fromList $ fmap (\(k, v) -> (k, execState (f k) v)) gs }))
+      , ati = At' $ \gid -> fromLn $
+          Lens (\s -> (Map.lookup gid (_geofences s),
+                       maybe (s { _geofences = Map.delete gid (_geofences s) })
+                             (\a -> s { _geofences = Map.insert gid a (_geofences s) })))
+    }
+  , timer = fromLn $ Lens (\s -> (_alarm s, \a -> s { _alarm = a }))
   , cnt = fromLn $ Lens (\s -> (_n s, \a -> s { _n = a }))
   , current = fromLn $ Lens (\s -> (_current s, \a -> s { _current = a }))
-  , alarms = fromLn $ Lens (\s -> (_alarms s, \a -> s { _alarms = a }))
-  , wentOff = \ra -> StateT (\s -> Identity (runReaderT ra (
-      Prelude.filter (\((_, _), t) -> t <= _current s) $ Map.toList $ _alarms s),
-      s))
+  , alarms = MapAlg {
+      itr = \f -> StateT (\s -> let as = Map.toList (_alarms s) in Identity (
+        fmap (\(k, v) -> runIdentity $ evalStateT (f k) v) as,
+        s { _alarms = Map.fromList $ fmap (\(k, v) -> (k, execState (f k) v)) as }))
+    , ati = At' $ \k -> fromLn $
+        Lens (\s -> (Map.lookup k (_alarms s),
+                     maybe (s { _alarms = Map.delete k (_alarms s) })
+                           (\a -> s { _alarms = Map.insert k a (_alarms s) })))
+  }
   , region = fromLn $ Lens (\s -> (_region s, \a -> s { _region = a }))
   , inside = fromLn $ Lens (\s -> (_in s, \a -> s { _in = a }))
   , initG = \r -> Geofence r Set.empty }
@@ -176,9 +166,9 @@ loadScheme = do
   conn <- connectSqlite3 "geofences.db"
   run conn "CREATE table Counter (n INTEGER NOT NULL)" []
   run conn "CREATE table Current (time INTEGER NOT NULL)" []
-  run conn "CREATE table Region (gid INTEGER NOT NULL, radius INTEGER NOT NULL, x INTEGER NOT NULL, y INTEGER NOT NULL)" []
-  run conn "CREATE table Inside (gid INTEGER NOT NULL, did INTEGER NOT NULL)" []
-  run conn "CREATE table Alarm (gid INTEGER NOT NULL, did INTEGER NOT NULL, time INTEGER NOT NULL)" []
+  run conn "CREATE table Region (gid INTEGER PRIMARY KEY, radius INTEGER NOT NULL, x INTEGER NOT NULL, y INTEGER NOT NULL)" []
+  run conn "CREATE table Inside (gid INTEGER PRIMARY KEY, did INTEGER NOT NULL)" []
+  run conn "CREATE table Alarm (gid INTEGER, did INTEGER, time INTEGER NOT NULL, PRIMARY KEY (gid, did))" []
   run conn "INSERT INTO Counter VALUES (0)" []
   run conn "INSERT INTO Current VALUES (0)" []
   commit conn
@@ -233,41 +223,43 @@ instance MonadState Geofence GeofenceStateIO where
 
 hdbcDL :: GeoDL (StateT Connection IO)
                 GeofenceStateIO
-                (State (Maybe Geofence)) -- XXX: I hate this
+                (State (Maybe Geofence))
                 AlarmStateIO
                 Geofence Alarms
 hdbcDL = GeoDL {
-    geofence = At' $ \gid sa -> do
-      conn <- get
-      r <- lift $ quickQuery' conn "SELECT radius, x, y from Region where gid=?" [toSql gid]
-      let mreg :: Maybe Region
-          mreg = safeHead $ fmap (\[r, x, y] -> (fromSql r, (fromSql x, fromSql y))) r
-      r <- lift $ quickQuery' conn "SELECT did from INSIDE where gid=?" [toSql gid]
-      let ins :: Set Did
-          ins = Set.fromList $ fmap (\[d] -> fromSql d) r
-          mg = fmap (\reg -> Geofence reg ins) mreg
-          (x, mg2) = runState sa mg
-      lift $ run conn "DELETE from Inside where gid=?" [toSql gid]
-      lift $ run conn "DELETE from Region where gid=?" [toSql gid]
-      case mg2 of
-        Nothing -> return ()
-        Just (Geofence (r, (x, y)) ins) -> do
-          lift $ run conn "INSERT INTO Region VALUES (?, ?, ?, ?)" [toSql gid, toSql r, toSql x, toSql y]
-          stmt <- lift $ prepare conn "INSERT INTO Inside VALUES (?, ?)"
-          void $ lift $ executeMany stmt $ fmap (\did -> [toSql gid, toSql did]) (Set.toList ins)
-      lift $ commit conn
-      return (Identity x)
-  , geofences = \f -> do
-      conn <- get
-      r <- lift $ quickQuery' conn "SELECT * from Region" []
-      let regs :: [(Gid, Region)]
-          regs = fmap (\[gid, r, x, y] -> (fromSql gid, (fromSql r, (fromSql x, fromSql y)))) r
-      xs <- traverse (\(gid, reg) -> StateT (\conn ->
-        fmap (\(x, (_, conn)) -> (x, conn)) $
-          runStateT (runGeofenceStateIO $ f gid) (gid, conn))) regs
-      lift $ commit conn
-      return xs
-  , alarm = fmap Identity . runAlarmStateIO
+    geofences = MapAlg {
+        itr = \f -> do
+          conn <- get
+          r <- lift $ quickQuery' conn "SELECT * from Region" []
+          let regs :: [(Gid, Region)]
+              regs = fmap (\[gid, r, x, y] -> (fromSql gid, (fromSql r, (fromSql x, fromSql y)))) r
+          xs <- traverse (\(gid, reg) -> StateT (\conn ->
+            fmap (\(x, (_, conn)) -> (x, conn)) $
+              runStateT (runGeofenceStateIO $ f gid) (gid, conn))) regs
+          lift $ commit conn
+          return xs
+      , ati = At' $ \gid sa -> do
+          conn <- get
+          r <- lift $ quickQuery' conn "SELECT radius, x, y from Region where gid=?" [toSql gid]
+          let mreg :: Maybe Region
+              mreg = safeHead $ fmap (\[r, x, y] -> (fromSql r, (fromSql x, fromSql y))) r
+          r <- lift $ quickQuery' conn "SELECT did from INSIDE where gid=?" [toSql gid]
+          let ins :: Set Did
+              ins = Set.fromList $ fmap (\[d] -> fromSql d) r
+              mg = fmap (\reg -> Geofence reg ins) mreg
+              (x, mg2) = runState sa mg
+          lift $ run conn "DELETE from Inside where gid=?" [toSql gid]
+          lift $ run conn "DELETE from Region where gid=?" [toSql gid]
+          case mg2 of
+            Nothing -> return ()
+            Just (Geofence (r, (x, y)) ins) -> do
+              lift $ run conn "INSERT INTO Region VALUES (?, ?, ?, ?)" [toSql gid, toSql r, toSql x, toSql y]
+              stmt <- lift $ prepare conn "INSERT INTO Inside VALUES (?, ?)"
+              void $ lift $ executeMany stmt $ fmap (\did -> [toSql gid, toSql did]) (Set.toList ins)
+          lift $ commit conn
+          return (Identity x)
+    }
+  , timer = fmap Identity . runAlarmStateIO
   , cnt = \sa -> do
       conn <- get
       r <- lift $ quickQuery' conn "SELECT * from Counter" []
@@ -283,15 +275,31 @@ hdbcDL = GeoDL {
       AlarmStateIO $ lift $ run conn "UPDATE Current SET time=?" [toSql curr]
       AlarmStateIO $ lift $ commit conn
       return (Identity x)
-  , alarms = \sa -> do
-      a <- get
-      let (x, as) = runState sa (_alarms a)
-      put $ a { _alarms = as }
-      return (Identity x)
-  , wentOff = \ra -> do
-      a <- get
-      let x = runReader ra (Prelude.filter (\((_, _), t) -> t <= _current a) $ Map.toList $ _alarms a)
-      return (Identity x)
+  , alarms = MapAlg {
+        itr = \f -> AlarmStateIO $ do
+          conn <- get
+          r <- lift $ quickQuery' conn "SELECT * from Alarm" []
+          let as :: [((Gid, Did), Time)]
+              as = fmap (\[g, d, t] -> ((fromSql g, fromSql d), fromSql t)) r
+          xs <- traverse (\((gid, did), t) -> StateT (\conn -> do
+            let (x, t2) = runState (f (gid, did)) t
+            run conn "UPDATE Alarm SET time=? where gid=? and did=?" [toSql t2, toSql gid, toSql did]
+            return (x, conn))) as
+          lift $ commit conn
+          return xs
+      , ati = At' $ \(gid, did) smt -> AlarmStateIO $ do
+          conn <- get
+          r <- lift $ quickQuery' conn "SELECT time from Alarm where gid=? and did=?" [toSql gid, toSql did]
+          let mt :: Maybe Time
+              mt = safeHead $ fmap (\[t] -> fromSql t) r
+          let (x, mt2) = runState smt mt
+          maybe (lift $ run conn "DELETE from Alarm where gid=? and did=?" [toSql gid, toSql did])
+                (\t2 -> lift $ run conn "REPLACE into Alarm (gid, did, time) values (?, ?, ?)"
+                  [toSql gid, toSql did, toSql t2])
+                mt2
+          lift $ commit conn
+          return (Identity x)
+    }
   -- XXX: this is too heavy, we're bringing all `did`s as well.
   , region = \sr -> do
       g <- get
