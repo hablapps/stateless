@@ -5,6 +5,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TupleSections #-}
 
 module Geofences where
 
@@ -174,57 +175,57 @@ loadScheme = do
   commit conn
   disconnect conn
 
-newtype AlarmStateIO a = AlarmStateIO {
-  runAlarmStateIO :: StateT Connection IO a
+newtype AlarmReaderIO a = AlarmReaderIO {
+  runAlarmReaderIO :: ReaderT Connection IO a
 } deriving (Functor, Applicative, Monad)
 
-instance MonadState Alarms AlarmStateIO where
+instance MonadState Alarms AlarmReaderIO where
   get = do
-    conn <- AlarmStateIO get
-    r <- AlarmStateIO $ lift $ quickQuery' conn "SELECT * from Current" []
+    conn <- AlarmReaderIO ask
+    r <- AlarmReaderIO $ lift $ quickQuery' conn "SELECT * from Current" []
     let current = fromSql (head $ head r)
-    r <- AlarmStateIO $ lift $ quickQuery' conn "SELECT * from Alarm" []
+    r <- AlarmReaderIO $ lift $ quickQuery' conn "SELECT * from Alarm" []
     let alarms = Map.fromList $ fmap (\[g, d, t] -> ((fromSql g, fromSql d), fromSql t)) r
-    AlarmStateIO $ lift $ commit conn
+    AlarmReaderIO $ lift $ commit conn
     return $ Alarms alarms current
   put a = do
-    conn <- AlarmStateIO get
-    r <- AlarmStateIO $ lift $ run conn "UPDATE Current SET time=?" [toSql (_current a)]
-    AlarmStateIO $ lift $ run conn "DELETE from Alarm" []
-    stmt <- AlarmStateIO $ lift $ prepare conn "INSERT INTO Alarm VALUES (?, ?, ?)"
-    AlarmStateIO $ lift $ executeMany stmt (fmap (\((g, d), t) -> [toSql g, toSql d, toSql t]) (Map.toList $ _alarms a))
-    AlarmStateIO $ lift $ commit conn
+    conn <- AlarmReaderIO ask
+    r <- AlarmReaderIO $ lift $ run conn "UPDATE Current SET time=?" [toSql (_current a)]
+    AlarmReaderIO $ lift $ run conn "DELETE from Alarm" []
+    stmt <- AlarmReaderIO $ lift $ prepare conn "INSERT INTO Alarm VALUES (?, ?, ?)"
+    AlarmReaderIO $ lift $ executeMany stmt (fmap (\((g, d), t) -> [toSql g, toSql d, toSql t]) (Map.toList $ _alarms a))
+    AlarmReaderIO $ lift $ commit conn
 
-newtype GeofenceStateIO a = GeofenceStateIO {
-  runGeofenceStateIO :: StateT (Gid, Connection) IO a
+newtype GeofenceReaderIO a = GeofenceReaderIO {
+  runGeofenceReaderIO :: ReaderT (Gid, Connection) IO a
 } deriving (Functor, Applicative, Monad)
 
 -- XXX: what if `gid` is not available?
-instance MonadState Geofence GeofenceStateIO where
+instance MonadState Geofence GeofenceReaderIO where
   get = do
-    (gid, conn) <- GeofenceStateIO get
-    r <- GeofenceStateIO $ lift $ quickQuery' conn "SELECT * from Region where gid=?" [toSql gid]
+    (gid, conn) <- GeofenceReaderIO ask
+    r <- GeofenceReaderIO $ lift $ quickQuery' conn "SELECT * from Region where gid=?" [toSql gid]
     let reg :: Region
         reg = head $ fmap (\[_, r, x, y] -> (fromSql r, (fromSql x, fromSql y))) r
-    r <- GeofenceStateIO $ lift $ quickQuery' conn "SELECT did from Inside where gid=?" [toSql gid]
+    r <- GeofenceReaderIO $ lift $ quickQuery' conn "SELECT did from Inside where gid=?" [toSql gid]
     let ins :: Set Did
         ins = Set.fromList $ fmap (\[did] -> fromSql did) r
-    GeofenceStateIO $ lift $ commit conn
+    GeofenceReaderIO $ lift $ commit conn
     return $ Geofence reg ins
   put (Geofence (r, (x, y)) ins) = do
-    (gid, conn) <- GeofenceStateIO get
-    GeofenceStateIO $ lift $ run conn "DELETE from Inside where gid=?" [toSql gid]
-    stmt <- GeofenceStateIO $ lift $ prepare conn "INSERT INTO Inside VALUES (?, ?)"
-    GeofenceStateIO $ lift $ executeMany stmt (fmap (\d -> [toSql gid, toSql d]) (Set.toList ins))
-    GeofenceStateIO $ lift $ run conn "UPDATE Region SET radius=?, x=?, y=? where gid=?"
+    (gid, conn) <- GeofenceReaderIO ask
+    GeofenceReaderIO $ lift $ run conn "DELETE from Inside where gid=?" [toSql gid]
+    stmt <- GeofenceReaderIO $ lift $ prepare conn "INSERT INTO Inside VALUES (?, ?)"
+    GeofenceReaderIO $ lift $ executeMany stmt (fmap (\d -> [toSql gid, toSql d]) (Set.toList ins))
+    GeofenceReaderIO $ lift $ run conn "UPDATE Region SET radius=?, x=?, y=? where gid=?"
       [toSql gid, toSql r, toSql x, toSql y]
-    GeofenceStateIO $ lift $ commit conn
+    GeofenceReaderIO $ lift $ commit conn
     return ()
 
 hdbcDL :: GeoDL (StateT Connection IO)
-                GeofenceStateIO
+                GeofenceReaderIO
                 (State (Maybe Geofence))
-                AlarmStateIO
+                AlarmReaderIO
                 Geofence Alarms
 hdbcDL = GeoDL {
     geofences = MapAlg {
@@ -234,8 +235,7 @@ hdbcDL = GeoDL {
           let regs :: [(Gid, Region)]
               regs = fmap (\[gid, r, x, y] -> (fromSql gid, (fromSql r, (fromSql x, fromSql y)))) r
           xs <- traverse (\(gid, reg) -> StateT (\conn ->
-            fmap (\(x, (_, conn)) -> (x, conn)) $
-              runStateT (runGeofenceStateIO $ f gid) (gid, conn))) regs
+            fmap (\x -> (x, conn)) $ runReaderT (runGeofenceReaderIO $ f gid) (gid, conn))) regs
           lift $ commit conn
           return xs
       , ati = At' $ \gid sa -> do
@@ -259,7 +259,7 @@ hdbcDL = GeoDL {
           lift $ commit conn
           return (Identity x)
     }
-  , timer = fmap Identity . runAlarmStateIO
+  , timer = fmap Identity . readerToState . runAlarmReaderIO
   , cnt = \sa -> do
       conn <- get
       r <- lift $ quickQuery' conn "SELECT * from Counter" []
@@ -269,26 +269,26 @@ hdbcDL = GeoDL {
       return (Identity x)
   -- XXX: alternatively, we could have "get" alarms and return its `current`
   , current = \sa -> do
-      conn <- AlarmStateIO $ get
-      r <- AlarmStateIO $ lift $ quickQuery' conn "SELECT * from Current" []
+      conn <- AlarmReaderIO $ ask
+      r <- AlarmReaderIO $ lift $ quickQuery' conn "SELECT * from Current" []
       let (x, curr) = runState sa (fromSql (head $ head r))
-      AlarmStateIO $ lift $ run conn "UPDATE Current SET time=?" [toSql curr]
-      AlarmStateIO $ lift $ commit conn
+      AlarmReaderIO $ lift $ run conn "UPDATE Current SET time=?" [toSql curr]
+      AlarmReaderIO $ lift $ commit conn
       return (Identity x)
   , alarms = MapAlg {
-        itr = \f -> AlarmStateIO $ do
-          conn <- get
+        itr = \f -> AlarmReaderIO $ do
+          conn <- ask
           r <- lift $ quickQuery' conn "SELECT * from Alarm" []
           let as :: [((Gid, Did), Time)]
               as = fmap (\[g, d, t] -> ((fromSql g, fromSql d), fromSql t)) r
-          xs <- traverse (\((gid, did), t) -> StateT (\conn -> do
+          xs <- traverse (\((gid, did), t) -> ReaderT (\conn -> do
             let (x, t2) = runState (f (gid, did)) t
             run conn "UPDATE Alarm SET time=? where gid=? and did=?" [toSql t2, toSql gid, toSql did]
-            return (x, conn))) as
+            return x)) as
           lift $ commit conn
           return xs
-      , ati = At' $ \(gid, did) smt -> AlarmStateIO $ do
-          conn <- get
+      , ati = At' $ \(gid, did) smt -> AlarmReaderIO $ do
+          conn <- ask
           r <- lift $ quickQuery' conn "SELECT time from Alarm where gid=? and did=?" [toSql gid, toSql did]
           let mt :: Maybe Time
               mt = safeHead $ fmap (\[t] -> fromSql t) r
@@ -317,3 +317,6 @@ hdbcDL = GeoDL {
 safeHead :: [a] -> Maybe a
 safeHead [] = Nothing
 safeHead (a : _) = Just a
+
+readerToState :: Monad m => ReaderT a m x -> StateT a m x
+readerToState r = StateT (\s -> fmap (, s) $ runReaderT r s)
