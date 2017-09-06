@@ -29,7 +29,7 @@ trait Geofence[G] {
   type P[_]
 
   val regionLn: LensField[P, Region]
-  val insideTr: TraversalField[P, DID]
+  val insideLn: LensField[P, Set[DID]]
 }
 
 trait Timer[T] {
