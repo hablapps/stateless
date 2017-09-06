@@ -16,7 +16,7 @@ trait FilterIndexState {
       : FilterIndex.Aux[StateT[F, Map[K, V], ?], StateT[F, V, ?], K, V] =
     new FilterIndex[StateT[F, Map[K, V], ?], K, V] {
       type Q[x] = StateT[F, V, x]
-      def filterIndex(p: K => Boolean) =
+      def apply(p: K => Boolean) =
         ITraversalAlg[StateT[F, Map[K, V], ?], StateT[F, V, ?], K :: HNil, V](
           new (λ[x => (K :: HNil) => StateT[F, V, x]] ~> λ[x => StateT[F, Map[K, V], List[x]]]) {
             def apply[X](sx: (K :: HNil) => StateT[F, V, X]): StateT[F, Map[K, V], List[X]] = {
@@ -37,8 +37,8 @@ trait FilterIndexState {
       : FilterIndex.Aux[StateT[F, S, ?], StateT[F, V, ?], K, V] =
     new FilterIndex[StateT[F, S, ?], K, V] {
       type Q[x] = StateT[F, V, x]
-      def filterIndex(p: K => Boolean) =
-        ln.asIndexed.composeTraversal(fromFilterIndexStateT[F, K, V].filterIndex(p))
+      def apply(p: K => Boolean) =
+        ln.asIndexed.composeTraversal(fromFilterIndexStateT[F, K, V].apply(p))
     }
 }
 
