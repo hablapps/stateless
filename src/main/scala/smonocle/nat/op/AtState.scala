@@ -8,6 +8,8 @@ import scalaz._, Scalaz._
 import core.nat.LensAlg
 import core.nat.op.At
 
+import monocle.{ Lens => MLens }
+
 trait AtState extends AtStateInstances {
 
   implicit def fromAtState[K, V]
@@ -42,6 +44,10 @@ trait AtStateInstances {
       type Q[x] = StateT[F, Option[V], x]
       def at(k: K) = ln.composeLens(fromAtStateT[F, K, V].at(k))
     }
+
+  implicit def atFromMapMLens[F[_]: Monad, S, K, V](ln: MLens[S, Map[K, V]])
+      : At.Aux[StateT[F, S, ?], StateT[F, Option[V], ?], K, V] =
+    fromAtStateT[F, S, K, V](all.asLensAlg[F, S, Map[K, V]](ln))
 }
 
 object atState extends AtState
