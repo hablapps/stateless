@@ -61,9 +61,6 @@ trait LensAlg[P[_], A] extends OpticAlg[P, A, MonadState, Id]
       def apply[X](iqx: HNil => Q[X]): P[X] = hom[X](iqx(HNil))
     })(this, ev)
 
-  def asSymmetric: SLensAlg.Aux[P, Q, Q, A, A] =
-    SLensAlg(hom, hom)(this, ev, ev)
-
   /* laws */
 
   // Notice that monad homomorphism laws subsume natural transformation ones
