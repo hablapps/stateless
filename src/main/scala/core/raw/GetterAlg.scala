@@ -13,8 +13,8 @@ trait GetterAlg[P[_], A] extends MonadReader[P, A] { self =>
 
   def get: P[A] = ask
 
-  // FIXME: dummy implementation
-  def local[X](f: A => A)(px: P[X]) = px
+  // XXX: we should be extending `MonadAsk` instead
+  def local[X](f: A => A)(px: P[X]) = ???
 
   def find(p: A => Boolean): P[Option[A]] =
     map(get)(a => if (p(a)) a.some else None)

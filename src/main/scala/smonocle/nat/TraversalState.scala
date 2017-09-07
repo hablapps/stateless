@@ -12,6 +12,8 @@ trait TraversalState {
 
   type Traversal[S, A] = TraversalAlg.Aux[State[S, ?], State[A, ?], A]
 
+  type TraversalField[P[_], A] = TraversalAlg.Aux[P, State[A, ?], A]
+
   implicit def asTraversal[S, A](tr: MTraversal[S, A]): Traversal[S, A] =
     fromTraversal[Id, S, A](tr)
 

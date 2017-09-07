@@ -7,7 +7,7 @@ import shapeless._
 
 trait FilterIndex[P[_], I, A] {
   type Q[_]
-  def filterIndex(p: I => Boolean): ITraversalAlg.Aux[P, Q, I :: HNil, A]
+  def apply(p: I => Boolean): ITraversalAlg.Aux[P, Q, I :: HNil, A]
 }
 
 object FilterIndex {
@@ -19,7 +19,7 @@ object FilterIndex {
     def filterIndex[P[_], Q[_], I <: HList, A](
         p: I => Boolean)(implicit
         ev: Aux[P, Q, I, A]): ITraversalAlg.Aux[P, Q, I :: HNil, A] =
-      ev.filterIndex(p)
+      ev(p)
   }
 
   object syntax extends Syntax
