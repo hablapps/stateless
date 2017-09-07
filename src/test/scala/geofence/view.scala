@@ -24,7 +24,9 @@ trait GeofenceView[P[_]] {
 object GeofenceView {
 
   def fromData[S, P[_]](
-      sys: System.Aux[S, P])(implicit
+      sys: System.WithP[S, P])(implicit
+      // XXX: I don't understand why `ev0` requires extracting `sys.P[_]` as a
+      // type parameter, while `ev1` and `ev2` are perfectly valid evidences.
       ev0: Monad[P],
       ev1: Monad[sys.geofence.P],
       ev2: Monad[sys.timer.P]): GeofenceView[P] = new GeofenceView[sys.P] {

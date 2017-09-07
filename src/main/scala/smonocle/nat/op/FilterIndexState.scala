@@ -10,6 +10,8 @@ import shapeless._
 import core.nat.{ LensAlg, ITraversalAlg }
 import core.nat.op.FilterIndex
 
+import monocle.{ Lens => MLens }
+
 trait FilterIndexState {
 
   implicit def fromFilterIndexStateT[F[_]: Monad, K, V]
@@ -40,6 +42,10 @@ trait FilterIndexState {
       def apply(p: K => Boolean) =
         ln.asIndexed.composeTraversal(fromFilterIndexStateT[F, K, V].apply(p))
     }
+
+  implicit def filterIndexFromMapMLens[F[_]: Monad, S, K, V](ln: MLens[S, Map[K, V]])
+      : FilterIndex.Aux[StateT[F, S, ?], StateT[F, V, ?], K, V] =
+    fromFilterIndexStateT[F, S, K, V](all.asLensAlg[F, S, Map[K, V]](ln))
 }
 
 object filterIndexState extends FilterIndexState

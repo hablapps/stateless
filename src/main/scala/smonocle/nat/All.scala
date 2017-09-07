@@ -12,3 +12,4 @@ object all extends FoldState
     with ITraversalState
     with op.AtState
     with op.FilterIndexState
+    with lib.MapState
