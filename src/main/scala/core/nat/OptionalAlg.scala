@@ -54,9 +54,6 @@ trait OptionalAlg[P[_], A] extends OpticAlg[P, A, MonadState, Option]
       hom(iqx(HNil))
     })(this, ev)
 
-  def asSymmetric: SOptionalAlg.Aux[P, Q, Q, A, A] =
-    SOptionalAlg(hom, hom)(this, ev, ev)
-
   /* laws */
 
   trait NatOptionalAlgLaw extends OptionalAlgLaw

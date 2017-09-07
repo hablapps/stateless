@@ -40,9 +40,6 @@ trait FoldAlg[P[_], A] extends OpticAlg[P, A, MonadReader, List]
       hom(iqx(HNil))
     })(this, ev)
 
-  def asSymmetric: SFoldAlg.Aux[P, Q, Q, A, A] =
-    SFoldAlg(hom, hom)(this, ev, ev)
-
   /* laws */
 
   trait NatFoldAlgLaw extends FoldAlgLaw

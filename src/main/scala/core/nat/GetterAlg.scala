@@ -39,9 +39,6 @@ trait GetterAlg[P[_], A] extends OpticAlg[P, A, MonadReader, Id]
       def apply[X](iqx: HNil => Q[X]): P[X] = hom[X](iqx(HNil))
     })(this, ev)
 
-  def asSymmetric: SGetterAlg.Aux[P, Q, Q, A, A] =
-    SGetterAlg(hom, hom)(this, ev, ev)
-
   /* laws */
 
   trait NatGetterAlgLaw extends GetterAlgLaw
