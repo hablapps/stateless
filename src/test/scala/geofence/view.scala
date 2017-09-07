@@ -83,7 +83,7 @@ object GeofenceView {
       for {
         _   <- timerLn.composeLens(currentLn).set(time)
         off <- timerLn.asIndexed.composeTraversal(alarmMp).foldMap {
-          case (i, t) => if (t <= time) List.empty else List((i.head, t))
+          case (i, t) => if (t > time) List.empty else List((i.head, t))
         }
       } yield off
 

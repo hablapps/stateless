@@ -19,6 +19,7 @@ trait System[S] {
   val counterLn: LensAlg[P, GID]
 
   def fromRegion(reg: Region): G
+  def empty: S
 }
 
 object System {
@@ -37,7 +38,8 @@ object System {
       timer2: Timer.WithP[T2, TP2],
       timerLn2: LensAlg.Aux[P2, TP2, T2],
       counterLn2: LensAlg[P2, GID],
-      fromRegion2: Region => G2): Aux[S, P2, G2, T2] = new System[S] {
+      fromRegion2: Region => G2,
+      empty2: S): Aux[S, P2, G2, T2] = new System[S] {
     type P[X] = P2[X]
     type G = G2
     type T = T2
@@ -47,6 +49,7 @@ object System {
     val timerLn = timerLn2
     val counterLn = counterLn2
     def fromRegion(reg: Region) = fromRegion2(reg)
+    def empty = empty2
   }
 }
 
