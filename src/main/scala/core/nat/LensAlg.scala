@@ -13,6 +13,8 @@ import shapeless.HNil
 trait LensAlg[P[_], A] extends OpticAlg[P, A, MonadState, Id]
     with raw.LensAlg[P, A] {
 
+  val fev: Functor[Id] = Functor[Id]
+
   override def get: P[A] = hom[A](ev.get)
 
   override def put(a: A): P[Unit] = hom(ev.put(a))
@@ -78,9 +80,72 @@ trait LensAlg[P[_], A] extends OpticAlg[P, A, MonadState, Id]
 
 object LensAlg {
 
-  type Aux[P[_], Q2[_], A] = LensAlg[P, A] { type Q[x] = Q2[x] }
+  /* BEGIN */
+  sealed abstract class ADT[P[_], Focus, Out] { type Q[_] } // TODO(jfuentes): Hide Focus
+  case class Get[P[_], Q2[_], F]() extends ADT[P, F, F] { type Q[X] = Q2[X] }
+  case class Put[P[_], Q2[_], F](a: F) extends ADT[P, F, Unit] { type Q[X] = Q2[X] }
+  case class Point[P[_], Q2[_], F, A](a: A) extends ADT[P, F, A] { type Q[X] = Q2[X] }
+  case class Bind[P[_], Q2[_], F, A, B](pa: P[A], f: A => P[B]) extends ADT[P, F, B] { type Q[X] = Q2[X] }
+  case class Hom[P[_], Q2[_], F, A](qa: Q2[A]) extends ADT[P, F, A] { type Q[X] = Q2[X] } // MonadState[Q, A] evidence
 
-  private val fev1 = Functor[Id]
+  object ADT {
+    type Aux[P[_], Q2[_], F, O] = ADT[P, F, O] { type Q[X] = Q2[X] }
+  }
+
+  implicit def lensIso[Q2[_]: MonadState[?[_], A], A]: Iso.Aux[LensAlg.Aux[?[_], Q2, A], ADT.Aux[?[_], Q2, A, ?]] =
+    new IsoClass[Q2, A]
+
+  class IsoClass[Q2[_]: MonadState[?[_], A], A] extends Iso[LensAlg.Aux[?[_], Q2, A]] {
+    type ADT[P[_], X] = LensAlg.ADT[P, A, X] { type Q[X] = Q2[X] }
+
+    def mapHK[P[_], Q[_]](nat: P ~> Q) = new (ADT[P, ?] ~> ADT[Q, ?]) {
+      def apply[X](px: ADT[P, X]): ADT[Q, X] = px match {
+        case _: Get[P, Q2, A] => Get[Q, Q2, A]()
+        case Put(a) => Put[Q, Q2, A](a)
+        case Point(a) => Point[Q, Q2, A, X](a)
+        case Bind(pa, f) =>
+          def go[I](pi: P[I]) = Bind[Q, Q2, A, I, X](nat(pi), f andThen nat)
+          go(pa)
+        case Hom(qa) =>
+          def go[I](qi: Q2[I]) = Hom[Q, Q2, A, I](qi)
+          go(qa)
+      }
+    }
+
+    def recover[P[_]: Monad](transf: λ[α=>(ADT[P, α], P[α])] ~> P) = λ[λ[α=>(ADT[P, α], P[α])] ~> P] { t => t._1 match {
+      case b: Bind[P, Q2, A, _, _] => b.pa flatMap b.f
+      case _ => transf(t)
+    }}
+
+    def to[P[_]](fp: LensAlg.Aux[P, Q2, A]): ADT[P, ?] ~> P =
+      new (ADT[P, ?] ~> P) {
+        def apply[X](adtX: ADT[P, X]): P[X] = adtX match {
+          case _: Get[P, Q2, A] => fp.get
+          case Put(a) => fp.put(a)
+          case Point(a) => fp.point(a) // ADT[P, Q, F, A]
+          case Bind(pa, f) => fp.bind(pa)(f) // ADT[P, Q, F, B]
+          case h: Hom[P, Q2, A, X] => fp.hom[X](h.qa) // ADT[P, Q, F, A] // MonadState[Q, A] evidence
+        }
+      }
+    def from[P[_]](gp: ADT[P, ?] ~> P): LensAlg.Aux[P, Q2, A] =
+      new LensAlg[P, A] {
+        type Q[X] = Q2[X]
+
+        override def get: P[A] = gp(Get[P, Q, A]())
+        override def put(a: A): P[Unit] = gp(Put[P, Q, A](a))
+
+        def point[X](a: => X): P[X] = gp(Point[P, Q, A, X](a))
+        def bind[X, Y](fa: P[X])(f: X => P[Y]): P[Y] = gp(Bind[P, Q, A, X, Y](fa, f))
+
+        val ev: MonadState[Q, A] = MonadState[Q, A]
+        val hom: Q ~> P = new (Q ~> P) {
+          def apply[X](qx: Q[X]) = gp(Hom[P, Q, A, X](qx))
+        }
+      }
+  }
+  /* END */
+
+  type Aux[P[_], Q2[_], A] = LensAlg[P, A] { type Q[x] = Q2[x] }
 
   def apply[P[_], Q2[_], A](
       hom2: Q2 ~> P)(implicit
@@ -90,7 +155,10 @@ object LensAlg {
     def point[X](x: => X) = ev0.point(x)
     def bind[X, Y](fx: P[X])(f: X => P[Y]): P[Y] = ev0.bind(fx)(f)
     implicit val ev = ev1
-    implicit val fev = fev1
     val hom = hom2
   }
+
+  import scalaz.{NaturalTransformation, StateT}
+  def state[A] = apply[StateT[Id, A, ?], StateT[Id, A, ?], A](NaturalTransformation.refl[StateT[Id, A, ?]])
+
 }
