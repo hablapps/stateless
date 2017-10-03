@@ -81,22 +81,22 @@ trait LensAlg[P[_], A] extends OpticAlg[P, A, MonadState, Id]
 object LensAlg {
 
   /* BEGIN */
-  sealed abstract class ADT[P[_], Focus, Out] { type Q[_] } // TODO(jfuentes): Hide Focus
-  case class Get[P[_], Q2[_], F]() extends ADT[P, F, F] { type Q[X] = Q2[X] }
-  case class Put[P[_], Q2[_], F](a: F) extends ADT[P, F, Unit] { type Q[X] = Q2[X] }
-  case class Point[P[_], Q2[_], F, A](a: A) extends ADT[P, F, A] { type Q[X] = Q2[X] }
-  case class Bind[P[_], Q2[_], F, A, B](pa: P[A], f: A => P[B]) extends ADT[P, F, B] { type Q[X] = Q2[X] }
-  case class Hom[P[_], Q2[_], F, A](qa: Q2[A]) extends ADT[P, F, A] { type Q[X] = Q2[X] } // MonadState[Q, A] evidence
+  sealed abstract class ADT[P[_], Out] { type Q[_] ; type F } // TODO(jfuentes): Hide Focus
+  case class Get[P[_], Q2[_], F2]() extends ADT[P, F2] { type Q[X] = Q2[X] ; type F = F2 }
+  case class Put[P[_], Q2[_], F2](a: F2) extends ADT[P, Unit] { type Q[X] = Q2[X] ; type F = F2 }
+  case class Point[P[_], Q2[_], F2, A](a: A) extends ADT[P, A] { type Q[X] = Q2[X] ; type F = F2 } // Let F existential
+  case class Bind[P[_], Q2[_], F2, A, B](pa: P[A], f: A => P[B]) extends ADT[P, B] { type Q[X] = Q2[X] ; type F = F2 } // Let F existential
+  case class Hom[P[_], Q2[_], F2, A](qa: Q2[A]) extends ADT[P, A] { type Q[X] = Q2[X] ; type F = F2 } // MonadState[Q, A] evidence // Let F existential
 
   object ADT {
-    type Aux[P[_], Q2[_], F, O] = ADT[P, F, O] { type Q[X] = Q2[X] }
+    type Aux[P[_], Q2[_], F2, O] = ADT[P, O] { type Q[X] = Q2[X] ; type F = F2 }
   }
 
   implicit def lensIso[Q2[_]: MonadState[?[_], A], A]: Iso.Aux[LensAlg.Aux[?[_], Q2, A], ADT.Aux[?[_], Q2, A, ?]] =
     new IsoClass[Q2, A]
 
   class IsoClass[Q2[_]: MonadState[?[_], A], A] extends Iso[LensAlg.Aux[?[_], Q2, A]] {
-    type ADT[P[_], X] = LensAlg.ADT[P, A, X] { type Q[X] = Q2[X] }
+    type ADT[P[_], X] = LensAlg.ADT[P, X] { type Q[X] = Q2[X] ; type F = A }
 
     def mapHK[P[_], Q[_]](nat: P ~> Q) = new (ADT[P, ?] ~> ADT[Q, ?]) {
       def apply[X](px: ADT[P, X]): ADT[Q, X] = px match {
@@ -116,6 +116,11 @@ object LensAlg {
       case b: Bind[P, Q2, A, _, _] => b.pa flatMap b.f
       case _ => transf(t)
     }}
+
+    def kind[P[_], X](adt: ADT[P, X]): Iso.Kind = adt match {
+      case Put(_) => Iso.Command
+      case _ => Iso.Query
+    }
 
     def to[P[_]](fp: LensAlg.Aux[P, Q2, A]): ADT[P, ?] ~> P =
       new (ADT[P, ?] ~> P) {

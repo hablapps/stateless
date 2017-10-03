@@ -32,19 +32,19 @@ object GeofenceExample extends App with LensWriter {
     // type Aux = "regionLn" ->> regionLn.type :+: "insideLn" ->> insideLn.type :+: CNil
     // or...
     sealed abstract class ADT[P[_], A]
-    case class RegionLn[P[_], A](internal: LensAlg.ADT[P, Region, A]) extends ADT[P, A]
-    case class InsideLn[P[_], A](internal: LensAlg.ADT[P, Set[DID], A]) extends ADT[P, A]
+    case class RegionLn[P[_], A](internal: LensAlg.ADT[P, A]) extends ADT[P, A]
+    case class InsideLn[P[_], A](internal: LensAlg.ADT[P, A]) extends ADT[P, A]
     case class AddInside[P[_]](did: DID) extends ADT[P, Unit]
     case class RemoveInside[P[_]](did: DID) extends ADT[P, Unit]
 
     implicit def geofenceIso(implicit
-        regionIso: Iso.Aux[LensAlg[?[_], Region], LensAlg.ADT[?[_], Region, ?]],
-        insideIso: Iso.Aux[LensAlg[?[_], Set[DID]], LensAlg.ADT[?[_], Set[DID], ?]]) =
+        regionIso: Iso.Aux[LensAlg[?[_], Region], LensAlg.ADT],
+        insideIso: Iso.Aux[LensAlg[?[_], Set[DID]], LensAlg.ADT]) =
       new GeofenceIsoClass
 
     class GeofenceIsoClass(implicit
-        regionIso: Iso.Aux[LensAlg[?[_], Region], LensAlg.ADT[?[_], Region, ?]],
-        insideIso: Iso.Aux[LensAlg[?[_], Set[DID]], LensAlg.ADT[?[_], Set[DID], ?]])
+        regionIso: Iso.Aux[LensAlg[?[_], Region], LensAlg.ADT],
+        insideIso: Iso.Aux[LensAlg[?[_], Set[DID]], LensAlg.ADT])
         extends Iso[Geofence] {
       type ADT[P2[_], X] = Geofence.ADT[P2, X]
 
@@ -55,6 +55,13 @@ object GeofenceExample extends App with LensWriter {
           case AddInside(did) => AddInside(did)
           case RemoveInside(did) => RemoveInside(did)
         }
+      }
+
+      def kind[P[_], X](adt: ADT[P, X]): Iso.Kind = adt match {
+        case RegionLn(internal) => regionIso.kind(internal)
+        case InsideLn(internal) => insideIso.kind(internal)
+        case AddInside(did) => Iso.Command
+        case RemoveInside(did) => Iso.Command
       }
 
       def recover[P[_]: Monad](transf: λ[α=>(ADT[P, α], P[α])] ~> P) = λ[λ[α=>(ADT[P, α], P[α])] ~> P] { t => t._1 match {
@@ -82,14 +89,14 @@ object GeofenceExample extends App with LensWriter {
       def from[P[_]](gp: ADT[P, ?] ~> P): Geofence[P] =
         new Geofence[P] {
           val regionLn: LensAlg[P, Region] =
-            regionIso.from[P](new (LensAlg.ADT[P, Region, ?] ~> P) {
-              def apply[X](l: LensAlg.ADT[P, Region, X]): P[X] =
+            regionIso.from[P](new (LensAlg.ADT[P, ?] ~> P) {
+              def apply[X](l: LensAlg.ADT[P, X]): P[X] =
                 gp(RegionLn[P, X](l))
             })
             // regionIso.from[P](λ[LensAlg.ADT[P, Region, ?] ~> P] { l => RegionLn(l) |> gp })
           val insideLn: LensAlg[P, Set[DID]] =
-            insideIso.from[P](new (LensAlg.ADT[P, Set[DID], ?] ~> P) {
-              def apply[X](l: LensAlg.ADT[P, Set[DID], X]): P[X] =
+            insideIso.from[P](new (LensAlg.ADT[P, ?] ~> P) {
+              def apply[X](l: LensAlg.ADT[P, X]): P[X] =
                 gp(InsideLn(l))
             })
 
@@ -109,25 +116,40 @@ object GeofenceExample extends App with LensWriter {
   val regionId: LensAlg[StateT[Id, SGeofence, ?], Region] = smonocle.nat.all.asLens(SGeofence.region)
   val insideId: LensAlg[StateT[Id, SGeofence, ?], Set[DID]] = smonocle.nat.all.asLens(SGeofence.inside)
 
-  // // WriterT Lenses
-  // implicit val nat = NaturalTransformation.refl[WriterT[Id, List[String], ?]]
-  // val region = fromLens[Id, WriterT[Id, List[String], ?], SGeofence, Region](regionId, l => s"regionLn.$l")
-  // val inside = fromLens[Id, WriterT[Id, List[String], ?], SGeofence, Set[DID]](insideId, l => s"insideLn.$l")
+  object AdHocInstantiation {
+    // WriterT Lenses
+    implicit val nat = NaturalTransformation.refl[WriterT[Id, List[String], ?]]
+    val region = fromLens[Id, WriterT[Id, List[String], ?], SGeofence, Region](regionId, l => s"regionLn.$l")
+    val inside = fromLens[Id, WriterT[Id, List[String], ?], SGeofence, Set[DID]](insideId, l => s"insideLn.$l")
 
-  // // Geofence entity
-  // type P[X] = StateT[WriterT[Id, List[String], ?], SGeofence, X]
-  // val geo = new Geofence[P] {
-  //   val regionLn: LensAlg[P, Region] = region
-  //   val insideLn: LensAlg[P, Set[DID]] = inside
-  // }
+    // Geofence entity
+    type P[X] = StateT[WriterT[Id, List[String], ?], SGeofence, X]
+    val geo = new Geofence[P] {
+      val regionLn: LensAlg[P, Region] = region
+      val insideLn: LensAlg[P, Set[DID]] = inside
+    }
+
+    implicit val _1 = IndexedStateT.stateTMonadState[SGeofence, WriterT[Id, List[String], ?]]
+    val prog = progGen(geo)
+
+    def run = {
+      val res = prog.eval(SGeofence(1, Set(2, 3, 4)))
+
+      println(s"RES: $res")
+      println(s"RES-VALUE: ${res.value}")
+      println(s"RES-WRITTEN: ${res.written}")
+    }
+
+  }
 
   /* EXAMPLE 2: GENERIC INSTANTIATION */
 
   object GenericInstantiation {
+    import GenWriter.ButtonPressed
 
     /* TYPES */
     type P[X] = StateT[Id, SGeofence, X]
-    type QW[X] = WriterT[Id, List[String], X]
+    type QW[X] = WriterT[Id, List[ButtonPressed], X]
     type Q[X] = StateT[QW, SGeofence, X]
 
     val geoAux = new Geofence[P] {
@@ -138,15 +160,67 @@ object GeofenceExample extends App with LensWriter {
     val iso: core.Iso.Aux[Geofence, Geofence.ADT] =
       Geofence.geofenceIso(
         LensAlg.lensIso[StateT[Id, Region, ?], Region]
-          .asInstanceOf[core.Iso.Aux[LensAlg[?[_], Region], LensAlg.ADT[?[_], Region, ?]]],
+          .asInstanceOf[core.Iso.Aux[LensAlg[?[_], Region], LensAlg.ADT]],
         LensAlg.lensIso[StateT[Id, Set[DID], ?], Set[DID]]
-          .asInstanceOf[core.Iso.Aux[LensAlg[?[_], Set[DID]], LensAlg.ADT[?[_], Set[DID], ?]]])
+          .asInstanceOf[core.Iso.Aux[LensAlg[?[_], Set[DID]], LensAlg.ADT]])
 
     val nat = λ[Q ~> P] { px =>
       StateT { sg => px.run(sg).value }
     }
 
     val geo: Geofence[Q] = GenWriter.forAPIStateTWriterT[Geofence, Id, SGeofence](iso, geoAux)(nat)
+
+    val prog = progGen2(geo)
+
+    def run = {
+      val res = prog.eval(SGeofence(1, Set(2, 3, 4)))
+
+      println(s"RES: $res")
+      println(s"RES-VALUE: ${res.value}")
+      println(s"RES-WRITTEN: ${res.written}")
+    }
+
+  }
+
+  /* EXAMPLE 3: WITH KAFKA */
+
+  object KafkaInstantiation {
+    import java.util.Properties
+    import kafka.nat.GenKafka
+    import org.apache.kafka.clients.producer.{Producer, KafkaProducer}
+    import scala.concurrent.Future
+    import scala.concurrent.ExecutionContext.Implicits.global
+    import scalaz.std.scalaFuture._
+
+    /* TYPES */
+    type Q[X] = StateT[Future, (Producer[Unit, String], SGeofence), X]
+
+    val geo: Geofence[Q] = GenKafka.stateT(
+      GenericInstantiation.iso,
+      GenericInstantiation.geo)
+
+    val prog = progGen2(geo)
+
+    def run = {
+      import scala.concurrent.Await
+      import scala.concurrent.duration._
+
+      val propsP: Properties = new Properties()
+      propsP.put("bootstrap.servers", "localhost:9092")
+      propsP.put("acks", "all")
+      propsP.put("retries", "0")
+      propsP.put("batch.size", "16384")
+      propsP.put("linger.ms", "1")
+      propsP.put("buffer.memory", "33554432")
+      propsP.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer")
+      propsP.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer")
+
+      val producer = new KafkaProducer[Unit, String](propsP)
+
+      val res = Await.result(prog.eval((producer, SGeofence(1, Set(2, 3, 4)))), 10 seconds)
+      println(s"RES: $res")
+    }
+
   }
 
   /* PROGRAMS */
@@ -172,16 +246,8 @@ object GeofenceExample extends App with LensWriter {
       res2 <- geo.insideLn.get
     } yield (res1, res2)
 
-  implicit val _1 = IndexedStateT.stateTMonadState[SGeofence, WriterT[Id, List[String], ?]]
-  implicit val _2 = WriterT.writerMonad[List[Any]]
-  implicit val _3 = IndexedStateT.stateTMonadState[SGeofence, WriterT[Id, List[Any], ?]]
-  // val prog = progGen(geo)
-  val prog2 = progGen2(GenericInstantiation.geo)
-
-  val res = prog2.eval(SGeofence(1, Set(2, 3, 4)))
-
-  println(s"RES: $res")
-  println(s"RES-VALUE: ${res.value}")
-  println(s"RES-WRITTEN: ${res.written}")
+  // AdHocInstantiation.run
+  // GenericInstantiation.run
+  KafkaInstantiation.run
 
 }

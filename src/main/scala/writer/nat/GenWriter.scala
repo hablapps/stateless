@@ -11,6 +11,8 @@ import scalaz.std.list._
 
 object GenWriter {
 
+  case class ButtonPressed(input: String, output: String)
+
   trait forAPIStateTWriterT[TC[_[_]], R[_], S] {
 
     /* EVIDENCES */
@@ -21,7 +23,7 @@ object GenWriter {
     /* TYPES */
 
     type  P[X] = StateT[R, S, X]
-    type  W    = List[String]
+    type  W    = List[ButtonPressed]
     type QF[X] = WriterT[R, W, X]
     type  Q[X] = StateT[QF, S, X]
 
@@ -53,7 +55,7 @@ object GenWriter {
   }
 
   object forAPIStateTWriterT {
-    type Q[R[_], S, X] = StateT[WriterT[R, List[String], ?], S, X]
+    type Q[R[_], S, X] = StateT[WriterT[R, List[ButtonPressed], ?], S, X]
     def apply[TC[_[_]], R[_]: Monad, S](
         iso2: core.Iso[TC],
         orig: TC[StateT[R, S, ?]])(
@@ -64,7 +66,7 @@ object GenWriter {
       } with forAPIStateTWriterT[TC, R, S]).go(orig, qToP)
   }
 
-  def forAPIGen[TC[_[_]], P[_], Q[_]: MonadTell[?[_], List[String]]](
+  def forAPIGen[TC[_[_]], P[_], Q[_]: MonadTell[?[_], List[ButtonPressed]]](
       internal: TC[P],
       iso: core.Iso[TC])(
       pToQ: P ~> Q,
@@ -74,7 +76,7 @@ object GenWriter {
 
     val transf = λ[λ[α=>(iso.ADT[Q, α], Q[α])] ~> Q] { case (adt, qx) =>
       qx flatMap { out =>
-        out.point[Q] :++> List(s"$adt : Output : $out")
+        out.point[Q] :++> List(ButtonPressed(adt.toString, out.toString))
       }
     }
 

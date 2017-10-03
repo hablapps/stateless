@@ -33,6 +33,8 @@ package object `core` {
     def mapHK[P[_], Q[_]](nat: P ~> Q): ADT[P, ?] ~> ADT[Q, ?]
     def recover[P[_]: Monad](transf: λ[α=>(ADT[P, α], P[α])] ~> P): λ[α=>(ADT[P, α], P[α])] ~> P
 
+    def kind[P[_], A](adt: ADT[P, A]): Iso.Kind
+
     def dimapHK[P[_], Q[_]: Monad](
         unlift: Q ~> P,
         lift: P ~> Q,
@@ -54,6 +56,10 @@ package object `core` {
 
   object Iso {
     type Aux[TC[_[_]], ADT2[_[_], _]] = Iso[TC] { type ADT[P[_], X] = ADT2[P, X] }
+
+    sealed abstract class Kind
+    case object Query extends Kind
+    case object Command extends Kind
   }
 
 }
