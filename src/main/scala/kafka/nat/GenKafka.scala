@@ -97,7 +97,7 @@ object GenKafka {
     consumer.assign(List(new TopicPartition("test", 0)).asJava)
     consumer.seek(new TopicPartition("test", 0), 0)
     val evts = consumer.poll(1000).records("test").asScala.map(_.value) // TODO(jfuentes): Read all evts, not only 1000
-    println(s"EVTS(${evts.size}):\n\t${evts.mkString("\n\t")}")
+    // println(s"EVTS(${evts.size}):\n\t${evts.mkString("\n\t")}")
     val evtsDeserialized =
       evts.map(_ |> parse |> (_.fold(throw _, identity)) |> (iso.fromJSON[P](_)))
 

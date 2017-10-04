@@ -82,12 +82,12 @@ trait LensAlg[P[_], A] extends OpticAlg[P, A, MonadState, Id]
 object LensAlg {
 
   /* BEGIN */
-  sealed abstract class ADT[P[_], Out] { type Q[_] ; type F } // TODO(jfuentes): Hide Focus
+  sealed abstract class ADT[P[_], Out] { type Q[_] ; type F }
   case class Get[P[_], Q2[_], F2]() extends ADT[P, F2] { type Q[X] = Q2[X] ; type F = F2 }
   case class Put[P[_], Q2[_], F2](a: F2) extends ADT[P, Unit] { type Q[X] = Q2[X] ; type F = F2 }
-  case class Point[P[_], Q2[_], F2, A](a: A) extends ADT[P, A] { type Q[X] = Q2[X] ; type F = F2 } // Let F existential
-  case class Bind[P[_], Q2[_], F2, A, B](pa: P[A], f: A => P[B]) extends ADT[P, B] { type Q[X] = Q2[X] ; type F = F2 } // Let F existential
-  case class Hom[P[_], Q2[_], F2, A](qa: Q2[A]) extends ADT[P, A] { type Q[X] = Q2[X] ; type F = F2 } // MonadState[Q, A] evidence // Let F existential
+  case class Point[P[_], Q2[_], F2, A](a: A) extends ADT[P, A] { type Q[X] = Q2[X] ; type F = F2 }
+  case class Bind[P[_], Q2[_], F2, A, B](pa: P[A], f: A => P[B]) extends ADT[P, B] { type Q[X] = Q2[X] ; type F = F2 }
+  case class Hom[P[_], Q2[_], F2, A](qa: Q2[A]) extends ADT[P, A] { type Q[X] = Q2[X] ; type F = F2 } // MonadState[Q, A] evidence
 
   object ADT {
     type Aux[P[_], Q2[_], F2, O] = ADT[P, O] { type Q[X] = Q2[X] ; type F = F2 }
@@ -186,7 +186,15 @@ object LensAlg {
     val hom = hom2
   }
 
-  import scalaz.{NaturalTransformation, StateT}
-  def state[A] = apply[StateT[Id, A, ?], StateT[Id, A, ?], A](NaturalTransformation.refl[StateT[Id, A, ?]])
+  import scalaz.State
+  def state[S, A](get: S => A, put: A => S => S) = apply[State[S, ?], State[A, ?], A] {
+    λ[State[A, ?] ~> State[S, ?]] { sa =>
+      State { s =>
+        val (a, o) = sa.run(get(s))
+        (put(a)(s), o)
+      }
+    }
+  }
+  def state2[A] = state[A, A](identity, a => _ => a)
 
 }
