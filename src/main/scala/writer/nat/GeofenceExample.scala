@@ -64,6 +64,39 @@ object GeofenceExample extends App with LensWriter {
         case RemoveInside(did) => Iso.Command
       }
 
+      import io.circe.Json
+      override def toJSON[P[_], A](adt: ADT[P, A]): Json = adt match {
+        case RegionLn(internal) =>
+          Json.obj(
+            "name" -> Json.fromString("RegionLn"),
+            "internal" -> regionIso.toJSON(internal))
+        case InsideLn(internal) =>
+          Json.obj(
+            "name" -> Json.fromString("InsideLn"),
+            "internal" -> insideIso.toJSON(internal))
+        case AddInside(did) =>
+          Json.obj(
+            "name" -> Json.fromString("AddInside"),
+            "did" -> Json.fromLong(did))
+        case RemoveInside(did) =>
+          Json.obj(
+            "name" -> Json.fromString("RemoveInside"),
+            "did" -> Json.fromLong(did))
+      }
+      def fromJSON[P[_]](json: Json): ADT[P, _] = json.hcursor.downField("name").as[String] match {
+        case Right("RegionLn") =>
+          (for {
+            internal <- json.hcursor.downField("internal").as[Json]
+          } yield RegionLn(regionIso.fromJSON[P](internal))).getOrElse(???)
+        case Right("InsideLn") =>
+          (for {
+            internal <- json.hcursor.downField("internal").as[Json]
+          } yield InsideLn(insideIso.fromJSON[P](internal))).getOrElse(???)
+        case Right("AddInside") => json.hcursor.downField("did").as[Long].map(AddInside[P](_)).getOrElse(???)
+        case Right("RemoveInside") => json.hcursor.downField("did").as[Long].map(RemoveInside[P](_)).getOrElse(???)
+        case _ => ??? // Deserialization error
+      }
+
       def recover[P[_]: Monad](transf: λ[α=>(ADT[P, α], P[α])] ~> P) = λ[λ[α=>(ADT[P, α], P[α])] ~> P] { t => t._1 match {
         case RegionLn(internal) =>
           regionIso.recover[P](
@@ -188,6 +221,7 @@ object GeofenceExample extends App with LensWriter {
     import java.util.Properties
     import kafka.nat.GenKafka
     import org.apache.kafka.clients.producer.{Producer, KafkaProducer}
+    import org.apache.kafka.clients.consumer.KafkaConsumer
     import scala.concurrent.Future
     import scala.concurrent.ExecutionContext.Implicits.global
     import scalaz.std.scalaFuture._
@@ -217,7 +251,20 @@ object GeofenceExample extends App with LensWriter {
 
       val producer = new KafkaProducer[Unit, String](propsP)
 
-      val res = Await.result(prog.eval((producer, SGeofence(1, Set(2, 3, 4)))), 10 seconds)
+      val propsC: Properties = new Properties()
+      propsC.put("bootstrap.servers", "localhost:9092")
+      propsC.put("enable.auto.commit", "true")
+      propsC.put("auto.commit.interval.ms", "1000")
+      propsC.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer")
+      propsC.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer")
+
+      val consumer = new KafkaConsumer[Unit, String](propsC)
+
+      val recoveredState = GenKafka.recover(
+        GenericInstantiation.iso,
+        GenericInstantiation.geoAux)(consumer)(SGeofence(1, Set(2, 3, 4)))
+
+      val res = Await.result(prog.eval((producer, recoveredState)), 10 seconds)
       println(s"RES: $res")
     }
 
@@ -238,7 +285,7 @@ object GeofenceExample extends App with LensWriter {
 
   def progGen2[P[_]: Monad](geo: Geofence[P]) =
     for {
-      _ <- geo.regionLn.modify(_ * 10)
+      _ <- geo.regionLn.modify(_ + 1)
       // _ <- geo.insideLn.modify(_ - 3)
       res1 <- geo.insideLn.get
       _ <- geo.removeInside(3)

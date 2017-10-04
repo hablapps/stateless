@@ -76,7 +76,7 @@ object GenWriter {
 
     val transf = λ[λ[α=>(iso.ADT[Q, α], Q[α])] ~> Q] { case (adt, qx) =>
       qx flatMap { out =>
-        out.point[Q] :++> List(ButtonPressed(adt.toString, out.toString))
+        out.point[Q] :++> List(ButtonPressed(iso.toJSON(adt).noSpaces, out.toString))
       }
     }
 

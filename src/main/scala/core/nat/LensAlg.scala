@@ -7,6 +7,7 @@ import scalaz.Id.Id
 import scalaz.syntax.std.option._
 import scalaz.syntax.monad._
 import scalaz.syntax.equal._
+import io.circe.{Json, Encoder, Decoder}
 
 import shapeless.HNil
 
@@ -92,10 +93,10 @@ object LensAlg {
     type Aux[P[_], Q2[_], F2, O] = ADT[P, O] { type Q[X] = Q2[X] ; type F = F2 }
   }
 
-  implicit def lensIso[Q2[_]: MonadState[?[_], A], A]: Iso.Aux[LensAlg.Aux[?[_], Q2, A], ADT.Aux[?[_], Q2, A, ?]] =
+  implicit def lensIso[Q2[_]: MonadState[?[_], A], A: Encoder: Decoder]: Iso.Aux[LensAlg.Aux[?[_], Q2, A], ADT.Aux[?[_], Q2, A, ?]] =
     new IsoClass[Q2, A]
 
-  class IsoClass[Q2[_]: MonadState[?[_], A], A] extends Iso[LensAlg.Aux[?[_], Q2, A]] {
+  class IsoClass[Q2[_]: MonadState[?[_], A], A: Encoder: Decoder] extends Iso[LensAlg.Aux[?[_], Q2, A]] {
     type ADT[P[_], X] = LensAlg.ADT[P, X] { type Q[X] = Q2[X] ; type F = A }
 
     def mapHK[P[_], Q[_]](nat: P ~> Q) = new (ADT[P, ?] ~> ADT[Q, ?]) {
@@ -121,6 +122,28 @@ object LensAlg {
       case Put(_) => Iso.Command
       case _ => Iso.Query
     }
+
+    def toJSON[P[_], X](adt: ADT[P, X]): Json = adt match {
+      case Put(a) =>
+        Json.obj(
+          "name" -> Json.fromString("Put"),
+          "a" -> Encoder[A].apply(a))
+      case _ =>
+        Json.Null
+        // s"Can not serialize $adt"
+        // throw new IllegalArgumentException(s"Can not serialize $adt")
+    }
+    def fromJSON[P[_]](json: Json): ADT[P, _] =
+      (for {
+        name <- json.hcursor.downField("name").as[String]
+        res <-  if (name == "Put")
+                  for {
+                    a1 <- json.hcursor.downField("a").as[Json]
+                    a2 <- Decoder[A].apply(a1.hcursor)
+                  } yield Put[P, Q2, A](a2)
+                else
+                  ???
+        } yield res).getOrElse(???)
 
     def to[P[_]](fp: LensAlg.Aux[P, Q2, A]): ADT[P, ?] ~> P =
       new (ADT[P, ?] ~> P) {

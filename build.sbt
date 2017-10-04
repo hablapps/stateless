@@ -14,6 +14,9 @@ libraryDependencies ++= Seq(
   "com.chuusai" %% "shapeless" % "2.3.2",
   "com.github.julien-truffaut" %%  "monocle-core"  % "1.4.0",
   "com.github.julien-truffaut" %%  "monocle-macro" % "1.4.0",
+  "org.apache.kafka" % "kafka-clients" % "0.11.0.0",
+  "io.circe" %% "circe-core" % "0.8.0",
+  "io.circe" %% "circe-parser" % "0.8.0",
   "org.scalatest" %% "scalatest" % "3.0.1" % "test",
   "org.scalacheck" %% "scalacheck" % "1.13.4" % "test")
 

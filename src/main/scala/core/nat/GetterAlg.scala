@@ -10,6 +10,8 @@ import shapeless.HNil
 trait GetterAlg[P[_], A] extends OpticAlg[P, A, MonadReader, Id]
     with raw.GetterAlg[P, A] {
 
+  val fev = Functor[Id]
+
   def ask: P[A] = hom[A](ev.ask)
 
   /* composing algebras */
@@ -50,8 +52,6 @@ object GetterAlg {
 
   type Aux[P[_], Q2[_], A] = GetterAlg[P, A] { type Q[x] = Q2[x] }
 
-  private val fev1 = Functor[Id]
-
   def apply[P[_], Q2[_], A](
       hom2: Q2 ~> P)(implicit
       ev0: Monad[P],
@@ -60,7 +60,13 @@ object GetterAlg {
     def point[X](x: => X) = ev0.point(x)
     def bind[X, Y](fx: P[X])(f: X => P[Y]): P[Y] = ev0.bind(fx)(f)
     implicit val ev = ev1
-    implicit val fev = fev1
     val hom = hom2
   }
+
+  import scalaz.Reader
+  def reader[S, A](f: S => A) = apply[Reader[S, ?], Reader[A, ?], A] {
+    λ[Reader[A, ?] ~> Reader[S, ?]] { r => Reader(f andThen r.run) }
+  }
+  def reader2[A] = reader(identity[A])
+
 }
