@@ -2,7 +2,10 @@ package org.hablapps.stateless
 package kafka
 package nat
 
+import io.circe.parser._
 import org.apache.kafka.clients.producer.{Producer, ProducerRecord}
+import org.apache.kafka.clients.consumer.Consumer
+import org.apache.kafka.common.TopicPartition
 import scala.concurrent.{blocking, Await, ExecutionContext, Future}
 import scala.concurrent.duration._
 import scalaz._
@@ -10,19 +13,19 @@ import scalaz.std.list._
 import scalaz.std.scalaFuture._
 import scalaz.syntax.id._
 
-object GenKafka {
+import writer.nat.GenWriter.ButtonPressed
 
-  type JSON = writer.nat.GenWriter.ButtonPressed
+object GenKafka {
 
   def stateT[TC[_[_]], S](
       iso: core.Iso[TC],
-      internal: TC[StateT[Writer[List[JSON], ?], S, ?]])(implicit
+      internal: TC[StateT[Writer[List[ButtonPressed], ?], S, ?]])(implicit
       EC: ExecutionContext): TC[StateT[Future, (Producer[Unit, String], S), ?]] = {
 
     import iso._
 
     type Env    = (Producer[Unit, String], S)
-    type W  [X] = Writer[List[JSON], X]
+    type W  [X] = Writer[List[ButtonPressed], X]
     type P  [X] = StateT[     W,   S, X]
     type Aux[X] = StateT[     W, Env, X]
     type Q  [X] = StateT[Future, Env, X]
@@ -86,9 +89,6 @@ object GenKafka {
     to[P](internal) |> (natPAux(_)) |> (natAuxQ(_)) |> from[Q]
   }
 
-  import org.apache.kafka.clients.consumer.Consumer
-  import org.apache.kafka.common.TopicPartition
-  import io.circe.parser._
   def recover[TC[_[_]], S](
       iso: core.Iso[TC],
       instance: TC[State[S, ?]])(consumer: Consumer[Unit, String])(initialState: S) = {

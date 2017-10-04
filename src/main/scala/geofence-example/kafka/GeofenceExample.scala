@@ -17,9 +17,9 @@ import geofence._, Programs._
 object GeofenceExample {
 
   type S = (Producer[Unit, String], SGeofence)
-  type Q[A] = StateT[Future, S, A]
+  type P[A] = StateT[Future, S, A]
 
-  val geo: Geofence[Q] = GenKafka.stateT(
+  val geo: Geofence[P] = GenKafka.stateT(
     writer.nat.GeofenceExample.iso,
     writer.nat.GeofenceExample.geo)
 

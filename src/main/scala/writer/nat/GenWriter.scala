@@ -3,11 +3,9 @@ package writer
 package nat
 
 import scalaz._
-import scalaz.Id.Id
-import scalaz.syntax.id._
-import scalaz.syntax.functor._
-import scalaz.syntax.monadTell._
 import scalaz.std.list._
+import scalaz.syntax.id._
+import scalaz.syntax.monadTell._
 
 object GenWriter {
 
