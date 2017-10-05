@@ -17,7 +17,7 @@ object GenWriter {
     /* EVIDENCES */
 
     val iso: core.Iso[TC]
-    val isoC: core.CirceIso[iso.ADT]
+    val ser: core.CirceSerializer[iso.ADT]
     implicit val monadR: Monad[R]
 
     /* TYPES */
@@ -52,7 +52,7 @@ object GenWriter {
         }
       }
 
-      forAPIGen[TC, P, Q](iso)(orig, isoC)(pToQ, qToP)(ev)
+      forAPIGen[TC, P, Q](iso)(orig, ser)(pToQ, qToP)(ev)
     }
   }
 
@@ -60,12 +60,12 @@ object GenWriter {
     type Q[R[_], S, X] = StateT[WriterT[R, List[ButtonPressed], ?], S, X]
     def apply[TC[_[_]], R[_]: Monad, S](
         iso2: core.Iso[TC])(
-        isoC2: core.CirceIso[iso2.ADT],
+        ser2: core.CirceSerializer[iso2.ADT],
         orig: TC[StateT[R, S, ?]])(
         qToP: Q[R, S, ?] ~> StateT[R, S, ?]) =
       (new {
         val iso: iso2.type = iso2
-        val isoC = isoC2
+        val ser = ser2
         val monadR = Monad[R]
       } with forAPIStateTWriterT[TC, R, S]).go(orig, qToP)
   }
@@ -73,7 +73,7 @@ object GenWriter {
   def forAPIGen[TC[_[_]], P[_], Q[_]: MonadTell[?[_], List[ButtonPressed]]](
       iso: core.Iso[TC])(
       internal: TC[P],
-      circeIso: core.CirceIso[iso.ADT])(
+      circeIso: core.CirceSerializer[iso.ADT])(
       pToQ: P ~> Q,
       qToP: Q ~> P): TC[Q] = {
 

@@ -27,7 +27,7 @@ package object `core` {
   implicit def stateTMonadReader[F[_]: Monad, A]: MonadReader[StateT[F, A, ?], A] =
     fromStateToReader[StateT[F, A, ?], A](MonadState[StateT[F, A, ?], A])
 
-  trait CirceIso[ADT[_[_], _]] {
+  trait CirceSerializer[ADT[_[_], _]] {
     import io.circe.Json
 
     def toJSON[P[_], A](adt: ADT[P, A]): Json

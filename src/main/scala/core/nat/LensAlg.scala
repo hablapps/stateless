@@ -2,7 +2,7 @@ package org.hablapps.stateless
 package core
 package nat
 
-import scalaz.{ Const, Equal, Functor, Monad, MonadState, ~> }
+import scalaz.{ Const, Equal, Functor, Monad, MonadState, State, ~> }
 import scalaz.Id.Id
 import scalaz.syntax.std.option._
 import scalaz.syntax.monad._
@@ -93,7 +93,7 @@ object LensAlg {
     type Aux[P[_], Q2[_], F2, O] = ADT[P, O] { type Q[X] = Q2[X] ; type F = F2 }
   }
 
-  implicit def lensCirceIso[Q[_], A: Encoder: Decoder] = new CirceIso[ADT.Aux[?[_], Q, A, ?]] {
+  implicit def lensCirceSerializer[Q[_], A: Encoder: Decoder] = new CirceSerializer[ADT.Aux[?[_], Q, A, ?]] {
 
     def toJSON[P[_], X](adt: ADT.Aux[P, Q, A, X]): Json = adt match {
       case Put(a: A @unchecked) => // TODO(jfuentes): fu***** Scala...
@@ -190,7 +190,6 @@ object LensAlg {
     val hom = hom2
   }
 
-  import scalaz.State
   def state[S, A](get: S => A, put: A => S => S) = apply[State[S, ?], State[A, ?], A] {
     λ[State[A, ?] ~> State[S, ?]] { sa =>
       State { s =>
@@ -199,6 +198,5 @@ object LensAlg {
       }
     }
   }
-  def state2[A] = state[A, A](identity, a => _ => a)
 
 }

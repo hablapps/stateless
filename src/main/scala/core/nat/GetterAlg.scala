@@ -2,7 +2,7 @@ package org.hablapps.stateless
 package core
 package nat
 
-import scalaz.{ Functor, Monad, MonadReader, ~> }
+import scalaz.{ Functor, Monad, MonadReader, Reader, ~> }
 import scalaz.Id.Id
 
 import shapeless.HNil
@@ -63,10 +63,8 @@ object GetterAlg {
     val hom = hom2
   }
 
-  import scalaz.Reader
   def reader[S, A](f: S => A) = apply[Reader[S, ?], Reader[A, ?], A] {
     λ[Reader[A, ?] ~> Reader[S, ?]] { r => Reader(f andThen r.run) }
   }
-  def reader2[A] = reader(identity[A])
 
 }
