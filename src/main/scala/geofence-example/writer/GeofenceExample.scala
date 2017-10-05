@@ -24,11 +24,18 @@ object GeofenceExample {
       LensAlg.lensIso[State[Set[DID], ?], Set[DID]]
         .asInstanceOf[core.Iso.Aux[LensAlg[?[_], Set[DID]], LensAlg.ADT]])
 
+  val circeIso: core.CirceIso[Geofence.ADT] =
+    Geofence.geofenceCirceIso(
+      LensAlg.lensCirceIso[State[Region, ?], Region]
+        .asInstanceOf[core.CirceIso[LensAlg.ADT]],
+      LensAlg.lensCirceIso[State[Set[DID], ?], Set[DID]]
+        .asInstanceOf[core.CirceIso[LensAlg.ADT]])
+
   val pToQ = λ[P ~> Q] { px =>
     StateT { sg => px.run(sg).value }
   }
 
-  val geo: Geofence[P] = GenWriter.forAPIStateTWriterT[Geofence, Id, SGeofence](iso, coreGeo)(pToQ)
+  val geo: Geofence[P] = GenWriter.forAPIStateTWriterT[Geofence, Id, SGeofence](iso)(circeIso, coreGeo)(pToQ)
 
 }
 

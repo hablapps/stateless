@@ -27,6 +27,13 @@ package object `core` {
   implicit def stateTMonadReader[F[_]: Monad, A]: MonadReader[StateT[F, A, ?], A] =
     fromStateToReader[StateT[F, A, ?], A](MonadState[StateT[F, A, ?], A])
 
+  trait CirceIso[ADT[_[_], _]] {
+    import io.circe.Json
+
+    def toJSON[P[_], A](adt: ADT[P, A]): Json
+    def fromJSON[P[_]](json: Json): ADT[P, _]
+  }
+
   trait Iso[TC[_[_]]] {
     type ADT[_[_], _] // Also: type NAT[P[_]] = ADT[P, ?] ~> P
 
@@ -34,10 +41,6 @@ package object `core` {
     def recover[P[_]: Monad](transf: λ[α=>(ADT[P, α], P[α])] ~> P): λ[α=>(ADT[P, α], P[α])] ~> P
 
     def kind[P[_], A](adt: ADT[P, A]): Iso.Kind
-
-    import io.circe.Json
-    def toJSON[P[_], A](adt: ADT[P, A]): Json
-    def fromJSON[P[_]](json: Json): ADT[P, _]
 
     def dimapHK[P[_], Q[_]: Monad](
         unlift: Q ~> P,

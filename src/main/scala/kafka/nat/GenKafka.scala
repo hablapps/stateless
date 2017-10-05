@@ -90,7 +90,8 @@ object GenKafka {
   }
 
   def recover[TC[_[_]], S](
-      iso: core.Iso[TC],
+      iso: core.Iso[TC])(
+      isoK: core.CirceIso[iso.ADT],
       instance: TC[State[S, ?]])(consumer: Consumer[Unit, String])(initialState: S) = {
     type P[A] = State[S, A]
     import scala.collection.JavaConverters._
@@ -99,7 +100,7 @@ object GenKafka {
     val evts = consumer.poll(1000).records("test").asScala.map(_.value) // TODO(jfuentes): Read all evts, not only 1000
     // println(s"EVTS(${evts.size}):\n\t${evts.mkString("\n\t")}")
     val evtsDeserialized =
-      evts.map(_ |> parse |> (_.fold(throw _, identity)) |> (iso.fromJSON[P](_)))
+      evts.map(_ |> parse |> (_.fold(throw _, identity)) |> (isoK.fromJSON[P](_)))
 
     evtsDeserialized.foldLeft(initialState) {
       case (s, adt) => iso.to[P](instance)(adt).exec(s)

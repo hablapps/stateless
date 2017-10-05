@@ -10,12 +10,14 @@ import scalaz.syntax.monadTell._
 object GenWriter {
 
   case class ButtonPressed(input: String, output: String)
+  // TODO(jfuentes): case class ButtonPressed[ADT[_[_], _], P[_], T](input: ADT[P, T], output: T)
 
   trait forAPIStateTWriterT[TC[_[_]], R[_], S] {
 
     /* EVIDENCES */
 
     val iso: core.Iso[TC]
+    val isoC: core.CirceIso[iso.ADT]
     implicit val monadR: Monad[R]
 
     /* TYPES */
@@ -33,6 +35,8 @@ object GenWriter {
         orig: TC[StateT[R, S, ?]],
         qToP: Q ~> P): TC[Q] = {
 
+      // TODO(jfuentes): qToP ???
+
       val pToQ: P ~> Q = new (P ~> Q) {
         def apply[A](pa: P[A]): Q[A] = StateT[QF, S, A] { s =>
           val res0: R[(S, A)] = pa.run(s)
@@ -48,37 +52,38 @@ object GenWriter {
         }
       }
 
-      forAPIGen[TC, P, Q](orig, iso)(pToQ, qToP)(ev)
+      forAPIGen[TC, P, Q](iso)(orig, isoC)(pToQ, qToP)(ev)
     }
   }
 
   object forAPIStateTWriterT {
     type Q[R[_], S, X] = StateT[WriterT[R, List[ButtonPressed], ?], S, X]
     def apply[TC[_[_]], R[_]: Monad, S](
-        iso2: core.Iso[TC],
+        iso2: core.Iso[TC])(
+        isoC2: core.CirceIso[iso2.ADT],
         orig: TC[StateT[R, S, ?]])(
         qToP: Q[R, S, ?] ~> StateT[R, S, ?]) =
       (new {
         val iso: iso2.type = iso2
+        val isoC = isoC2
         val monadR = Monad[R]
       } with forAPIStateTWriterT[TC, R, S]).go(orig, qToP)
   }
 
   def forAPIGen[TC[_[_]], P[_], Q[_]: MonadTell[?[_], List[ButtonPressed]]](
-      internal: TC[P],
       iso: core.Iso[TC])(
+      internal: TC[P],
+      circeIso: core.CirceIso[iso.ADT])(
       pToQ: P ~> Q,
       qToP: Q ~> P): TC[Q] = {
 
-    import iso.{to, from, dimapHK}
+    import iso.{to, from, dimapHK, recover}
 
     val transf = λ[λ[α=>(iso.ADT[Q, α], Q[α])] ~> Q] { case (adt, qx) =>
-      qx flatMap { out =>
-        out.point[Q] :++> List(ButtonPressed(iso.toJSON(adt).noSpaces, out.toString))
-      }
+      qx :++>> { out => List(ButtonPressed(circeIso.toJSON(adt).noSpaces, out.toString)) }
     }
 
-    to[P](internal) |> (iso.dimapHK[P, Q](qToP, pToQ, iso.recover(transf))(_)) |> from[Q]
+    to[P](internal) |> (dimapHK[P, Q](qToP, pToQ, recover(transf))(_)) |> from[Q]
   }
 
 }

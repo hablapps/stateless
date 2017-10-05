@@ -50,7 +50,8 @@ object GeofenceExampleRun extends App {
   val consumer = new KafkaConsumer[Unit, String](propsC)
 
   val recoveredState = GenKafka.recover(
-    writer.nat.GeofenceExample.iso,
+    writer.nat.GeofenceExample.iso)(
+    writer.nat.GeofenceExample.circeIso,
     core.nat.GeofenceExample.geo)(consumer)(SGeofence(1, Set(2, 3, 4)))
 
   val prog = progGen2(geo)(StateT.stateTMonadState[S, Future])
