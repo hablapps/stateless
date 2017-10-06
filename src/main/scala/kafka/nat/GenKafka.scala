@@ -39,7 +39,7 @@ object GenKafka {
     val pToQ = new (Aux ~> Q) {
       def apply[B](pb: Aux[B]): Q[B] = StateT[Future, Env, B] { case env =>
         val (w, ((p, s), o)) = pb.run(env).run
-        w.foldLeft(Future.successful(((p, s), o))) { case (acc, evt) =>
+        w.take(1).foldLeft(Future.successful(((p, s), o))) { case (acc, evt) => // TODO(jfuentes): take(1) ???
           for {
             res <- acc
             _ <- Future { blocking {

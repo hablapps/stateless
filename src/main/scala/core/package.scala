@@ -34,6 +34,10 @@ package object `core` {
     def fromJSON[P[_]](json: Json): ADT[P, _]
   }
 
+  trait FunctorHK[HKF[_[_], _]] {
+    def mapHK[P[_], Q[_]](nat: P ~> Q): HKF[P, ?] ~> HKF[Q, ?] // TODO(jfuentes): remove mapHK from Iso & use this instead
+  }
+
   trait Iso[TC[_[_]]] {
     type ADT[_[_], _] // Also: type NAT[P[_]] = ADT[P, ?] ~> P
 
