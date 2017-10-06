@@ -24,6 +24,7 @@ object Programs {
       _ <- geo.removeInside(3)
       _ <- geo.addInside(10)
       res2 <- geo.insideLn.get
-    } yield (res1, res2)
+      res3 <- geo.easyLn.get
+    } yield (res1, res2, res3)
 
 }

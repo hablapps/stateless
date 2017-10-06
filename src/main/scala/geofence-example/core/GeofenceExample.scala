@@ -10,11 +10,12 @@ object GeofenceExample {
 
   type P[A] = State[SGeofence, A]
 
-  case class SGeofence(region: Region, inside: Set[DID])
+  case class SGeofence(region: Region, inside: Set[DID], easy: Long = 0L)
 
   val geo = new Geofence[P] {
-    val regionLn: LensAlg[P, Region] = LensAlg.state[SGeofence, Region](_.region, r => _.copy(region = r))
+    val regionLnAux: LensAlg[P, Region] = LensAlg.state[SGeofence, Region](_.region, r => _.copy(region = r))
     val insideLn: LensAlg[P, Set[DID]] = LensAlg.state[SGeofence, Set[DID]](_.inside, i => _.copy(inside = i))
+    val easyLn: LensAlg[P, Long] = LensAlg.state[SGeofence, Long](_.easy, e => _.copy(easy = e))
   }
 
 }

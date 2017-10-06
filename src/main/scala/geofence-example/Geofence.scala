@@ -9,12 +9,38 @@ import core.nat.LensAlg
 trait Geofence[P[_]] {
 
   /* OPTICS */
-  val regionLn: LensAlg[P, Region]
+  protected val regionLnAux: LensAlg[P, Region]
   val insideLn: LensAlg[P, Set[DID]]
 
   /* DERIVED */
   def addInside(did: DID): P[Unit] = insideLn.modify(_ + did)
+  // import scalaz.syntax.monad._
+  // implicit val monadP: Monad[P] = ???
+  // def addInside(did: DID): P[Unit] = insideLn.modify(_ + did) >>= { _ =>
+  //   normal(did).modify(_.map(_ + 1).orElse(Option(1L)))
+  // }
   def removeInside(did: DID): P[Unit] = insideLn.modify(_ - did)
+
+  /* ANALYTICS */
+
+  /* EASY: Count how many times the region has been changed (Long) */
+  lazy val regionLn = new LensAlg[P, Region] {
+    type Q[X] = regionLnAux.Q[X]
+
+    override def put(r: Region): P[Unit] =
+      bind(regionLnAux.put(r)) { _ => easyLn.modify(_ + 1) }
+
+    def point[A](a: => A) = regionLnAux.point(a)
+    def bind[A, B](fa: P[A])(f: A => P[B]) = regionLnAux.bind(fa)(f)
+
+    val ev = regionLnAux.ev
+    val hom = regionLnAux.hom
+  }
+  val easyLn: LensAlg[P, Long] // TODO(jfuentes): Actually it should be private Setter, public Getter
+
+  /* NORMAL: Count how many times each entity has entered this geofence the region has been changed (Map[DID, Long]) */
+  // import core.nat.lib.MapAlg
+  // val normal: MapAlg[P, DID, Long] = ??? // TODO(jfuentes): Indexed Lens (IndexedMap)
 
 }
 
@@ -25,14 +51,16 @@ object Geofence {
   // type Aux = "regionLn" ->> regionLn.type :+: "insideLn" ->> insideLn.type :+: CNil
   // or...
   sealed abstract class ADT[P[_], A]
-  case class RegionLn[P[_], A](internal: LensAlg.ADT[P, A]) extends ADT[P, A]
+  case class RegionLn[P[_], A](internal: LensAlg.ADT[P, A]) extends ADT[P, A] // TODO(jfuentes): internal should have type LensAlg.ADT.WithF[P, Region, A] ???
   case class InsideLn[P[_], A](internal: LensAlg.ADT[P, A]) extends ADT[P, A]
   case class AddInside[P[_]](did: DID) extends ADT[P, Unit]
   case class RemoveInside[P[_]](did: DID) extends ADT[P, Unit]
+  case class EasyLn[P[_], A](internal: LensAlg.ADT[P, A]) extends ADT[P, A]
 
   def geofenceCirceSerializer(implicit
       regionIso: CirceSerializer[LensAlg.ADT],
-      insideIso: CirceSerializer[LensAlg.ADT]): CirceSerializer[Geofence.ADT] =
+      insideIso: CirceSerializer[LensAlg.ADT],
+      easyIso: CirceSerializer[LensAlg.ADT]): CirceSerializer[Geofence.ADT] =
     new  CirceSerializer[Geofence.ADT] {
 
       import io.circe.Json
@@ -53,6 +81,10 @@ object Geofence {
           Json.obj(
             "name" -> Json.fromString("RemoveInside"),
             "did" -> Json.fromLong(did))
+        case EasyLn(internal) =>
+          Json.obj(
+            "name" -> Json.fromString("EasyLn"),
+            "internal" -> easyIso.toJSON(internal))
       }
       def fromJSON[P[_]](json: Json): ADT[P, _] =
         json.hcursor.downField("name").as[String] match {
@@ -72,18 +104,24 @@ object Geofence {
             json.hcursor.downField("did").as[Long]
               .map(RemoveInside[P](_))
               .getOrElse(???)
+          case Right("EasyLn") =>
+            (for {
+              internal <- json.hcursor.downField("internal").as[Json]
+            } yield EasyLn(easyIso.fromJSON[P](internal))).getOrElse(???)
           case _ => ??? // Deserialization error
         }
     }
 
   implicit def geofenceIso(implicit
       regionIso: Iso.Aux[LensAlg[?[_], Region], LensAlg.ADT],
-      insideIso: Iso.Aux[LensAlg[?[_], Set[DID]], LensAlg.ADT]) =
-    new GeofenceIsoClass
+      insideIso: Iso.Aux[LensAlg[?[_], Set[DID]], LensAlg.ADT],
+      easyIso: Iso.Aux[LensAlg[?[_], Long], LensAlg.ADT]) =
+    new GeofenceIsoClass(regionIso, insideIso, easyIso)
 
-  class GeofenceIsoClass(implicit
+  class GeofenceIsoClass( // implicit
       regionIso: Iso.Aux[LensAlg[?[_], Region], LensAlg.ADT],
-      insideIso: Iso.Aux[LensAlg[?[_], Set[DID]], LensAlg.ADT])
+      insideIso: Iso.Aux[LensAlg[?[_], Set[DID]], LensAlg.ADT],
+      easyIso: Iso.Aux[LensAlg[?[_], Long], LensAlg.ADT])
       extends Iso[Geofence] {
     type ADT[P2[_], X] = Geofence.ADT[P2, X]
 
@@ -93,6 +131,7 @@ object Geofence {
         case InsideLn(internal) => InsideLn(internal |> insideIso.mapHK(nat).apply)
         case AddInside(did) => AddInside(did)
         case RemoveInside(did) => RemoveInside(did)
+        case EasyLn(internal) => EasyLn(internal |> easyIso.mapHK(nat).apply)
       }
     }
 
@@ -101,6 +140,7 @@ object Geofence {
       case InsideLn(internal) => insideIso.kind(internal)
       case AddInside(did) => Iso.Command
       case RemoveInside(did) => Iso.Command
+      case EasyLn(internal) => Iso.Query
     }
 
     def recover[P[_]: Monad](transf: λ[α=>(ADT[P, α], P[α])] ~> P) = λ[λ[α=>(ADT[P, α], P[α])] ~> P] { t => t._1 match {
@@ -123,11 +163,12 @@ object Geofence {
           case InsideLn(internal) => insideIso.to[P](fp.insideLn) |> { _(internal) }
           case AddInside(did) => fp.addInside(did)
           case RemoveInside(did) => fp.removeInside(did)
+          case EasyLn(internal) => easyIso.to[P](fp.easyLn) |> { _(internal) }
         }
       }
     def from[P[_]](gp: ADT[P, ?] ~> P): Geofence[P] =
       new Geofence[P] {
-        val regionLn: LensAlg[P, Region] =
+        val regionLnAux: LensAlg[P, Region] =
           regionIso.from[P](new (LensAlg.ADT[P, ?] ~> P) {
             def apply[X](l: LensAlg.ADT[P, X]): P[X] =
               gp(RegionLn[P, X](l))
@@ -141,6 +182,12 @@ object Geofence {
 
         override def addInside(did: DID): P[Unit] = gp(AddInside(did))
         override def removeInside(did: DID): P[Unit] = gp(RemoveInside(did))
+
+        val easyLn: LensAlg[P, Long] =
+          easyIso.from[P](new (LensAlg.ADT[P, ?] ~> P) {
+            def apply[X](l: LensAlg.ADT[P, X]): P[X] =
+              gp(EasyLn[P, X](l))
+          })
       }
   }
 
