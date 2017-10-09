@@ -2,26 +2,32 @@ package org.hablapps.stateless
 package core
 package raw
 
-import scalaz.{ Equal, Monad, MonadState }
+import scalaz.{ Equal, Monad }
 import scalaz.syntax.monad._
 import scalaz.syntax.equal._
 import scalaz.syntax.std.option._
 
-trait LensAlg[P[_], A] extends MonadState[P, A] { self =>
+trait LensAlg[P[_], A] {
+
+  /* EVIDENCES */
+  implicit val M: Monad[P]
+
+  def put(a: A): P[Unit]
+
+  def get: P[A]
 
   /* derived methods */
 
-  def set(a: A): P[Unit] = put(a)
-
-  def init: P[A] = get
-
   def find(p: A => Boolean): P[Option[A]] =
-    map(get)(a => if (p(a)) a.some else None)
+    get map { a => if (p(a)) a.some else None }
+
+  def gets[B](f: A => B): P[B] = get map f
 
   def exist(p: A => Boolean): P[Boolean] = gets(p)
 
+  def modify(f: A => A): P[Unit] = get >>= (f andThen put)
+
   trait LensAlgLaw {
-    implicit val _: Monad[P] = self
 
     def getGet(implicit eq: Equal[P[(A, A)]]): Boolean =
       (get >>= (a1 => get >>= (a2 => (a1, a2).point[P]))) ===

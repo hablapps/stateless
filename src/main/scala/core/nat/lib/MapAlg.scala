@@ -31,11 +31,11 @@ trait MapAlg[P[_], K, V] {
   def pick[O](k: K, qo: Q[O]): P[Option[O]] =
     pick(k).hom(_ => qo).map(_.headOption)
 
-  def destroy: P[Unit] =
-    for {
-      ks <- filterIndex(const(true)).indexes
-      _  <- ks.traverse(k => ev0.at(k.head).set(None))
-    } yield ()
+  // def destroy: P[Unit] =
+  //   for {
+  //     ks <- filterIndex(const(true)).indexes
+  //     _  <- ks.traverse(k => ev0.at(k.head).set(None))
+  //   } yield ()
 }
 
 object MapAlg {

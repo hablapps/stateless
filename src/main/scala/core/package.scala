@@ -27,50 +27,38 @@ package object `core` {
   implicit def stateTMonadReader[F[_]: Monad, A]: MonadReader[StateT[F, A, ?], A] =
     fromStateToReader[StateT[F, A, ?], A](MonadState[StateT[F, A, ?], A])
 
-  trait CirceSerializer[ADT[_[_], _]] {
+  trait CirceSerializer[ADT[_]] {
     import io.circe.Json
 
-    def toJSON[P[_], A](adt: ADT[P, A]): Json
-    def fromJSON[P[_]](json: Json): ADT[P, _]
+    def toJSON[A](adt: ADT[A]): Json
+    def fromJSON(json: Json): ADT[_]
   }
 
-  trait FunctorHK[HKF[_[_], _]] {
-    def mapHK[P[_], Q[_]](nat: P ~> Q): HKF[P, ?] ~> HKF[Q, ?] // TODO(jfuentes): remove mapHK from Iso & use this instead
+  trait CQRS[ADT[_]] {
+    def kind[A](adt: ADT[A]): CQRS.Kind
   }
 
-  trait Iso[TC[_[_]]] {
-    type ADT[_[_], _] // Also: type NAT[P[_]] = ADT[P, ?] ~> P
-
-    def mapHK[P[_], Q[_]](nat: P ~> Q): ADT[P, ?] ~> ADT[Q, ?] // TODO(jfuentes) return TC[P] => TC[Q] instead?
-    def recover[P[_]: Monad](transf: λ[α=>(ADT[P, α], P[α])] ~> P): λ[α=>(ADT[P, α], P[α])] ~> P
-
-    def kind[P[_], A](adt: ADT[P, A]): Iso.Kind
-
-    def dimapHK[P[_], Q[_]: Monad](
-        unlift: Q ~> P,
-        lift: P ~> Q,
-        transf: λ[α=>(ADT[Q, α], Q[α])] ~> Q)(orig: ADT[P, ?] ~> P): ADT[Q, ?] ~> Q =
-      new (ADT[Q, ?] ~> Q) {
-        def apply[A](adtQ: ADT[Q, A]): Q[A] = {
-          mapHK(unlift)(adtQ) |> { (adtP: ADT[P, A]) =>
-            orig(adtP) |> { (p: P[A]) =>
-              recover(transf).apply(adtQ, lift(p))
-            }
-          }
-          // (unlift andThen orig andThen lift)(adtQ)
-        }
-      }
-
-    def to[P[_]](fp: TC[P]): ADT[P, ?] ~> P
-    def from[P[_]](gp: ADT[P, ?] ~> P): TC[P]
-  }
-
-  object Iso {
-    type Aux[TC[_[_]], ADT2[_[_], _]] = Iso[TC] { type ADT[P[_], X] = ADT2[P, X] }
-
+  object CQRS {
     sealed abstract class Kind
     case object Query extends Kind
     case object Command extends Kind
+  }
+
+  trait Iso[TC[_[_]]] {
+    type ADT[_] // Also: type NAT[P[_]] = ADT[P, ?] ~> P
+    type Ev[_[_]]
+
+    def to[P[_]](fp: TC[P]): ADT ~> P
+    def from[P[_]: Ev](gp: ADT ~> P): TC[P]
+
+    /* DERIVED */
+    def mapHK[P[_], Q[_]](nat: P ~> Q)(adtP: ADT ~> P): ADT ~> Q =
+      λ[ADT ~> Q] { _ |> adtP |> nat }
+  }
+
+  object Iso {
+    type Aux[TC[_[_]], ADT2[_], Ev2[_[_]]] = Iso[TC] { type ADT[X] = ADT2[X] ; type Ev[P[_]] = Ev2[P] }
+    type WithEv[TC[_[_]], Ev2[_[_]]] = Iso[TC] { type Ev[P[_]] = Ev2[P] }
   }
 
 }

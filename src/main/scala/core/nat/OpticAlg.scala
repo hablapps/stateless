@@ -5,7 +5,7 @@ package nat
 import scalaz.{ Foldable, Functor, Monad, MonadReader, MonadState, Monoid, ~> }
 import scalaz.syntax.foldable._
 
-trait OpticAlg[P[_], A, Ev[M[_], _] <: Monad[M], F[_]] extends Monad[P] {
+trait OpticAlg[P[_], A, Ev[M[_], _] <: Monad[M], F[_]] {
 
   type Q[_]
 
@@ -20,8 +20,8 @@ trait MROpticAlg[P[_], A, F[_]] extends OpticAlg[P, A, MonadReader, F] {
 
   def view: P[F[A]] = hom(ev.ask)
 
-  def fold[M: Monoid](f: A => M)(implicit ev: Foldable[F]): P[M] =
-    map(view)(_.foldMap(f))
+  def fold[M: Monoid](f: A => M)(implicit ev: Foldable[F], F: Functor[P]): P[M] =
+    F.map(view)(_.foldMap(f))
 }
 
 trait MSOpticAlg[P[_], A, F[_]] extends OpticAlg[P, A, MonadState, F] {
@@ -32,6 +32,6 @@ trait MSOpticAlg[P[_], A, F[_]] extends OpticAlg[P, A, MonadState, F] {
 
   def modi(f: A => A): P[F[Unit]] = hom(ev.modify(f))
 
-  def fold[M: Monoid](f: A => M)(implicit ev: Foldable[F]): P[M] =
-    map(view)(_.foldMap(f))
+  def fold[M: Monoid](f: A => M)(implicit ev: Foldable[F], F: Functor[P]): P[M] =
+    F.map(view)(_.foldMap(f))
 }

@@ -7,12 +7,14 @@ import scalaz.Id.Id
 import scalaz.syntax.std.option._
 import scalaz.syntax.monad._
 import scalaz.syntax.equal._
-import io.circe.{Json, Encoder, Decoder}
+import io.circe.{Json, Encoder, Decoder, DecodingFailure}
 
 import shapeless.HNil
 
 trait LensAlg[P[_], A] extends OpticAlg[P, A, MonadState, Id]
     with raw.LensAlg[P, A] {
+
+  implicit val M: Monad[P]
 
   val fev: Functor[Id] = Functor[Id]
 
@@ -38,20 +40,20 @@ trait LensAlg[P[_], A] extends OpticAlg[P, A, MonadState, Id]
     asOptional.composeOptional(op)
 
   def composeLens[B](ln: LensAlg[Q, B]): LensAlg.Aux[P, ln.Q, B] =
-    LensAlg(hom compose ln.hom)(this, ln.ev)
+    LensAlg(hom compose ln.hom)(M, ln.ev)
 
   def parLens(ln: LensAlg.Aux[P, Q, A]): TraversalAlg.Aux[P, Q, A] =
     TraversalAlg[P, Q, A](
       λ[Q ~> λ[x => P[List[x]]]] { qx =>
-        bind(hom(qx))(a1 => map(ln.hom(qx))(a2 => List(a1, a2)))
-      })(this, ev)
+        hom(qx) >>= { a1 => ln.hom(qx) map { a2 => List(a1, a2) } }
+      })(M, ev)
 
   /* transforming algebras */
 
-  def asGetter: GetterAlg.Aux[P, Q, A] = GetterAlg(hom)(this, ev)
+  def asGetter: GetterAlg.Aux[P, Q, A] = GetterAlg(hom)(M, ev)
 
   def asOptional: OptionalAlg.Aux[P, Q, A] =
-    OptionalAlg(λ[Q ~> λ[x => P[Option[x]]]](qx => map(hom(qx))(_.some)))(this, ev)
+    OptionalAlg(λ[Q ~> λ[x => P[Option[x]]]](qx => hom(qx) map { _.some }))(M, ev)
 
   def asFold: FoldAlg.Aux[P, Q, A] = asGetter.asFold
 
@@ -62,7 +64,7 @@ trait LensAlg[P[_], A] extends OpticAlg[P, A, MonadState, Id]
   def asIndexed: ILensAlg.Aux[P, Q, HNil, A] =
     ILensAlg(new (λ[x => HNil => Q[x]] ~> P) {
       def apply[X](iqx: HNil => Q[X]): P[X] = hom[X](iqx(HNil))
-    })(this, ev)
+    })(M, ev)
 
   /* laws */
 
@@ -82,96 +84,81 @@ trait LensAlg[P[_], A] extends OpticAlg[P, A, MonadState, Id]
 object LensAlg {
 
   /* BEGIN */
-  sealed abstract class ADT[P[_], Out] { type Q[_] ; type F }
-  case class Get[P[_], Q2[_], F2]() extends ADT[P, F2] { type Q[X] = Q2[X] ; type F = F2 }
-  case class Put[P[_], Q2[_], F2](a: F2) extends ADT[P, Unit] { type Q[X] = Q2[X] ; type F = F2 }
-  case class Point[P[_], Q2[_], F2, A](a: A) extends ADT[P, A] { type Q[X] = Q2[X] ; type F = F2 }
-  case class Bind[P[_], Q2[_], F2, A, B](pa: P[A], f: A => P[B]) extends ADT[P, B] { type Q[X] = Q2[X] ; type F = F2 }
-  case class Hom[P[_], Q2[_], F2, A](qa: Q2[A]) extends ADT[P, A] { type Q[X] = Q2[X] ; type F = F2 } // MonadState[Q, A] evidence
+  sealed abstract class ADT[Out] { type Q[_] ; type F }
+  case class Get[Q2[_], F2]() extends ADT[F2] { type Q[X] = Q2[X] ; type F = F2 }
+  case class Put[Q2[_], F2](a: F2) extends ADT[Unit] { type Q[X] = Q2[X] ; type F = F2 }
+  case class Hom[Q2[_], F2, A](qa: Q2[A]) extends ADT[A] { type Q[X] = Q2[X] ; type F = F2 }
 
   object ADT {
-    type Aux[P[_], Q2[_], F2, O] = ADT[P, O] { type Q[X] = Q2[X] ; type F = F2 }
+    type Aux[Q2[_], F2, O] = ADT[O] { type Q[X] = Q2[X] ; type F = F2 }
   }
 
-  implicit def lensCirceSerializer[Q[_], A: Encoder: Decoder] = new CirceSerializer[ADT.Aux[?[_], Q, A, ?]] {
+  implicit def lensCirceSerializer[Q[_], A: Encoder: Decoder] = new CirceSerializer[ADT.Aux[Q, A, ?]] {
 
-    def toJSON[P[_], X](adt: ADT.Aux[P, Q, A, X]): Json = adt match {
+    def toJSON[X](adt: ADT.Aux[Q, A, X]): Json = adt match {
       case Put(a: A @unchecked) => // TODO(jfuentes): fu***** Scala...
         Json.obj(
           "name" -> Json.fromString("Put"),
           "a" -> Encoder[A].apply(a))
+      case Get() =>
+        Json.obj(
+          "name" -> Json.fromString("Get"))
       case _ =>
         Json.Null
         // s"Can not serialize $adt"
         // throw new IllegalArgumentException(s"Can not serialize $adt")
     }
-    def fromJSON[P[_]](json: Json): ADT.Aux[P, Q, A, _] =
+    def fromJSON(json: Json): ADT.Aux[Q, A, _] =
       (for {
         name <- json.hcursor.downField("name").as[String]
-        res <-  if (name == "Put")
-                  for {
-                    a1 <- json.hcursor.downField("a").as[Json]
-                    a2 <- Decoder[A].apply(a1.hcursor)
-                  } yield Put[P, Q, A](a2)
-                else
-                  ???
+        res <-  name match {
+                  case "Put" =>
+                    for {
+                      a1 <- json.hcursor.downField("a").as[Json]
+                      a2 <- Decoder[A].apply(a1.hcursor)
+                    } yield Put[Q, A](a2)
+                  case "Get" => Right[DecodingFailure, ADT.Aux[Q, A, _]](Get[Q, A]())
+                  case _ => ???
+                }
       } yield res).getOrElse(???)
 
   }
 
-  implicit def lensIso[Q2[_]: MonadState[?[_], A], A]: Iso.Aux[LensAlg.Aux[?[_], Q2, A], ADT.Aux[?[_], Q2, A, ?]] =
+  implicit val lensCQRS = new CQRS[ADT] {
+
+    def kind[X](adt: ADT[X]): CQRS.Kind = adt match {
+      case Put(_) => CQRS.Command
+      case _ => CQRS.Query
+    }
+  }
+
+  implicit def lensIso[Q2[_]: MonadState[?[_], A], A]: Iso.Aux[LensAlg.Aux[?[_], Q2, A], ADT.Aux[Q2, A, ?], Monad] =
     new IsoClass[Q2, A]
 
   class IsoClass[Q2[_]: MonadState[?[_], A], A] extends Iso[LensAlg.Aux[?[_], Q2, A]] {
-    type ADT[P[_], X] = LensAlg.ADT[P, X] { type Q[X] = Q2[X] ; type F = A }
+    type ADT[X] = LensAlg.ADT[X] { type Q[X] = Q2[X] ; type F = A }
+    type Ev[P[_]] = Monad[P]
 
-    def mapHK[P[_], Q[_]](nat: P ~> Q) = new (ADT[P, ?] ~> ADT[Q, ?]) {
-      def apply[X](px: ADT[P, X]): ADT[Q, X] = px match {
-        case _: Get[P, Q2, A] => Get[Q, Q2, A]()
-        case Put(a) => Put[Q, Q2, A](a)
-        case Point(a) => Point[Q, Q2, A, X](a)
-        case Bind(pa, f) =>
-          def go[I](pi: P[I]) = Bind[Q, Q2, A, I, X](nat(pi), f andThen nat)
-          go(pa)
-        case Hom(qa) =>
-          def go[I](qi: Q2[I]) = Hom[Q, Q2, A, I](qi)
-          go(qa)
-      }
-    }
-
-    def recover[P[_]: Monad](transf: λ[α=>(ADT[P, α], P[α])] ~> P) = λ[λ[α=>(ADT[P, α], P[α])] ~> P] { t => t._1 match {
-      case b: Bind[P, Q2, A, _, _] => b.pa flatMap b.f
-      case _ => transf(t)
-    }}
-
-    def kind[P[_], X](adt: ADT[P, X]): Iso.Kind = adt match {
-      case Put(_) => Iso.Command
-      case _ => Iso.Query
-    }
-
-    def to[P[_]](fp: LensAlg.Aux[P, Q2, A]): ADT[P, ?] ~> P =
-      new (ADT[P, ?] ~> P) {
-        def apply[X](adtX: ADT[P, X]): P[X] = adtX match {
-          case _: Get[P, Q2, A] => fp.get
+    def to[P[_]](fp: LensAlg.Aux[P, Q2, A]): ADT ~> P =
+      new (ADT ~> P) {
+        def apply[X](adtX: ADT[X]): P[X] = adtX match {
+          case _: Get[Q2, A] => fp.get
           case Put(a) => fp.put(a)
-          case Point(a) => fp.point(a) // ADT[P, Q, F, A]
-          case Bind(pa, f) => fp.bind(pa)(f) // ADT[P, Q, F, B]
-          case h: Hom[P, Q2, A, X] => fp.hom[X](h.qa) // ADT[P, Q, F, A] // MonadState[Q, A] evidence
+          case h: Hom[Q2, A, X] => fp.hom[X](h.qa) // ADT[P, Q, F, A] // MonadState[Q, A] evidence
         }
       }
-    def from[P[_]](gp: ADT[P, ?] ~> P): LensAlg.Aux[P, Q2, A] =
+    def from[P[_]: Monad](gp: ADT ~> P): LensAlg.Aux[P, Q2, A] =
       new LensAlg[P, A] {
         type Q[X] = Q2[X]
 
-        override def get: P[A] = gp(Get[P, Q, A]())
-        override def put(a: A): P[Unit] = gp(Put[P, Q, A](a))
+        val M = Monad[P]
 
-        def point[X](a: => X): P[X] = gp(Point[P, Q, A, X](a))
-        def bind[X, Y](fa: P[X])(f: X => P[Y]): P[Y] = gp(Bind[P, Q, A, X, Y](fa, f))
+        override def get: P[A] = gp(Get[Q, A]())
+        override def put(a: A): P[Unit] = gp(Put[Q, A](a))
 
         val ev: MonadState[Q, A] = MonadState[Q, A]
         val hom: Q ~> P = new (Q ~> P) {
-          def apply[X](qx: Q[X]) = gp(Hom[P, Q, A, X](qx))
+          def apply[X](qx: Q[X]) = gp(Hom[Q, A, X](qx))
         }
       }
   }
@@ -184,8 +171,7 @@ object LensAlg {
       ev0: Monad[P],
       ev1: MonadState[Q2, A]): Aux[P, Q2, A] = new LensAlg[P, A] {
     type Q[x] = Q2[x]
-    def point[X](x: => X) = ev0.point(x)
-    def bind[X, Y](fx: P[X])(f: X => P[Y]): P[Y] = ev0.bind(fx)(f)
+    val M = ev0
     implicit val ev = ev1
     val hom = hom2
   }

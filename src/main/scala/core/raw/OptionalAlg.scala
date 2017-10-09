@@ -7,7 +7,9 @@ import scalaz.syntax.monad._
 import scalaz.syntax.equal._
 import scalaz.std.option._
 
-trait OptionalAlg[P[_], A] extends Monad[P] { self =>
+trait OptionalAlg[P[_], A] {
+
+  implicit val M: Monad[P]
 
   def getOption: P[Option[A]]
 
@@ -16,29 +18,28 @@ trait OptionalAlg[P[_], A] extends Monad[P] { self =>
   /* derived methods */
 
   def setOption2(a: A): P[Option[Unit]] =
-    bind(getOption) { oa =>
-      map(oa.fold(point(()))(_ => set(a)))(_ => oa.as(()))
+    getOption >>= { oa =>
+      oa.fold(M.point(()))(_ => set(a)) map (_ => oa.void)
     }
 
   def modifyOption(f: A => A): P[Option[Unit]] =
-    bind(getOption)(_.fold(point(Option.empty[Unit]))(setOption))
+    getOption >>= (_.fold(M.point(Option.empty[Unit]))(setOption))
 
-  def set(a: A): P[Unit] = void(setOption(a))
+  def set(a: A): P[Unit] = setOption(a).void
 
-  def modify(f: A => A): P[Unit] = void(modifyOption(f))
+  def modify(f: A => A): P[Unit] = modifyOption(f).void
 
-  def isEmpty: P[Boolean] = map(getOption)(_.isEmpty)
+  def isEmpty: P[Boolean] = getOption map (_.isEmpty)
 
-  def nonEmpty: P[Boolean] = map(getOption)(_.nonEmpty)
+  def nonEmpty: P[Boolean] = getOption map (_.nonEmpty)
 
-  def find(p: A => Boolean): P[Option[A]] = map(getOption)(_.find(p))
+  def find(p: A => Boolean): P[Option[A]] = getOption map (_.find(p))
 
-  def exist(p: A => Boolean): P[Boolean] = map(getOption)(_.exists(p))
+  def exist(p: A => Boolean): P[Boolean] = getOption map (_.exists(p))
 
-  def all(p: A => Boolean): P[Boolean] = map(getOption)(_.fold(true)(p))
+  def all(p: A => Boolean): P[Boolean] = getOption map (_.fold(true)(p))
 
   trait OptionalAlgLaw {
-    implicit val _: Monad[P] = self
 
     def getGet(implicit eq: Equal[P[(Option[A], Option[A])]]): Boolean =
       (getOption >>= (oa1 => getOption >>= (oa2 => (oa1, oa2).point[P]))) ===

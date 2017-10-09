@@ -12,6 +12,8 @@ import shapeless.HNil
 trait OptionalAlg[P[_], A] extends OpticAlg[P, A, MonadState, Option]
     with raw.OptionalAlg[P, A] {
 
+  implicit val M: Monad[P]
+
   def getOption: P[Option[A]] = hom(ev.get)
 
   def setOption(a: A): P[Option[Unit]] = hom(ev.put(a))
@@ -32,8 +34,8 @@ trait OptionalAlg[P[_], A] extends OpticAlg[P, A, MonadState, Option]
 
   def composeOptional[B](op: OptionalAlg[Q, B]): OptionalAlg.Aux[P, op.Q, B] =
     OptionalAlg(λ[op.Q ~> λ[x => P[Option[x]]]] { rx =>
-      map(hom(op.hom(rx)))(_.join)
-    })(this, op.ev)
+      hom(op.hom(rx)) map (_.join)
+    })(M, op.ev)
 
   def composeLens[B](ln: LensAlg[Q, B]): OptionalAlg.Aux[P, ln.Q, B] =
     composeOptional(ln.asOptional)
@@ -42,8 +44,8 @@ trait OptionalAlg[P[_], A] extends OpticAlg[P, A, MonadState, Option]
 
   def asTraversal: TraversalAlg.Aux[P, Q, A] =
     TraversalAlg(λ[Q ~> λ[x => P[List[x]]]] { qx =>
-      map(hom(qx))(_.toList)
-    })(this, ev)
+      hom(qx) map (_.toList)
+    })(M, ev)
 
   def asSetter: SetterAlg.Aux[P, Q, A] = asTraversal.asSetter
 
@@ -52,7 +54,7 @@ trait OptionalAlg[P[_], A] extends OpticAlg[P, A, MonadState, Option]
   def asIndexed: IOptionalAlg.Aux[P, Q, HNil, A] =
     IOptionalAlg(λ[λ[x => HNil => Q[x]] ~> λ[x => P[Option[x]]]] { iqx =>
       hom(iqx(HNil))
-    })(this, ev)
+    })(M, ev)
 
   /* laws */
 
@@ -72,8 +74,7 @@ object OptionalAlg {
       ev0: Monad[P],
       ev1: MonadState[Q2, A]): Aux[P, Q2, A] = new OptionalAlg[P, A] {
     type Q[x] = Q2[x]
-    def point[X](x: => X) = ev0.point(x)
-    def bind[X, Y](fx: P[X])(f: X => P[Y]): P[Y] = ev0.bind(fx)(f)
+    val M = ev0
     implicit val ev = ev1
     implicit val fev = fev1
     val hom = hom2

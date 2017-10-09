@@ -32,8 +32,7 @@ object GenWriter {
     val monadQ: Monad[Q] = StateT.stateTMonadState[S, QF]
 
     def go(
-        orig: TC[StateT[R, S, ?]],
-        qToP: Q ~> P): TC[Q] = {
+        orig: TC[StateT[R, S, ?]])(implicit Ev: iso.Ev[Q]): TC[Q] = {
 
       // TODO(jfuentes): qToP ???
 
@@ -52,7 +51,7 @@ object GenWriter {
         }
       }
 
-      forAPIGen[TC, P, Q](iso)(orig, ser)(pToQ, qToP)(ev)
+      forAPIGen[TC, P, Q](iso)(orig, ser)(pToQ)(ev, Ev)
     }
   }
 
@@ -61,29 +60,28 @@ object GenWriter {
     def apply[TC[_[_]], R[_]: Monad, S](
         iso2: core.Iso[TC])(
         ser2: core.CirceSerializer[iso2.ADT],
-        orig: TC[StateT[R, S, ?]])(
-        qToP: Q[R, S, ?] ~> StateT[R, S, ?]) =
+        orig: TC[StateT[R, S, ?]])(implicit Ev: iso2.Ev[Q[R, S, ?]]) =
       (new {
         val iso: iso2.type = iso2
         val ser = ser2
         val monadR = Monad[R]
-      } with forAPIStateTWriterT[TC, R, S]).go(orig, qToP)
+      } with forAPIStateTWriterT[TC, R, S]).go(orig)
   }
 
   def forAPIGen[TC[_[_]], P[_], Q[_]: MonadTell[?[_], List[ButtonPressed]]](
       iso: core.Iso[TC])(
       internal: TC[P],
       circeIso: core.CirceSerializer[iso.ADT])(
-      pToQ: P ~> Q,
-      qToP: Q ~> P): TC[Q] = {
+      pToQ: P ~> Q)(implicit Ev: iso.Ev[Q]): TC[Q] = {
 
-    import iso.{to, from, dimapHK, recover}
+    import iso.ADT
 
-    val transf = λ[λ[α=>(iso.ADT[Q, α], Q[α])] ~> Q] { case (adt, qx) =>
-      qx :++>> { out => List(ButtonPressed(circeIso.toJSON(adt).noSpaces, out.toString)) }
-    }
+    def nat(adtP: ADT ~> P) =
+      λ[ADT ~> Q] { adt =>
+        (adtP(adt) |> pToQ) :++>> { out => List(ButtonPressed(circeIso.toJSON(adt).noSpaces, out.toString)) }
+      }
 
-    to[P](internal) |> (dimapHK[P, Q](qToP, pToQ, recover(transf))(_)) |> from[Q]
+    iso.to[P](internal) |> (nat(_)) |> (iso.from[Q](_))
   }
 
 }

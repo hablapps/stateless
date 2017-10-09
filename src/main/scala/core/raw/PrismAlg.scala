@@ -9,7 +9,9 @@ import scalaz.syntax.optional._
 import scalaz.syntax.std.option._
 import scalaz.std.option._
 
-trait PrismAlg[P[_], A] extends Monad[P] { self =>
+trait PrismAlg[P[_], A] { self =>
+
+  implicit val M: Monad[P]
 
   def getOption: P[Option[A]]
 
@@ -17,39 +19,36 @@ trait PrismAlg[P[_], A] extends Monad[P] { self =>
 
   /* derived methods */
 
-  def modify(f: A => A): P[Unit] = void(modifyOption(f))
+  def modify(f: A => A): P[Unit] = modifyOption(f).void
 
   def modifyOption(f: A => A): P[Option[Unit]] =
-    bind(getOption)(_.fold(point(Option.empty[Unit])) { a =>
-      map(set(a))(Option.apply)
+    getOption >>= (_.fold(M.point(Option.empty[Unit])) { a =>
+      set(a) map Option.apply
     })
 
-  def isEmpty: P[Boolean] = map(getOption)(_.isEmpty)
+  def isEmpty: P[Boolean] = getOption map (_.isEmpty)
 
-  def nonEmpty: P[Boolean] = map(getOption)(_.nonEmpty)
+  def nonEmpty: P[Boolean] = getOption map (_.nonEmpty)
 
-  def find(p: A => Boolean): P[Option[A]] = map(getOption)(_.find(p))
+  def find(p: A => Boolean): P[Option[A]] = getOption map (_.find(p))
 
-  def exist(p: A => Boolean): P[Boolean] = map(getOption)(_.exists(p))
+  def exist(p: A => Boolean): P[Boolean] = getOption map (_.exists(p))
 
-  def all(p: A => Boolean): P[Boolean] = map(getOption)(_.fold(true)(p))
+  def all(p: A => Boolean): P[Boolean] = getOption map (_.fold(true)(p))
 
   trait CompositionExperiment {
-    implicit val _: Monad[P] = self
     import scalaz.~>
 
     def composeLens[Q[_], B <: A](ln: LensAlg[Q, B])(nat: Q ~> P) = new OptionalAlg[P, B] {
-      def point[X](x: => X) = self.point(x)
-      def bind[X, Y](fx: P[X])(f: X => P[Y]) = self.bind(fx)(f)
+      implicit val M = self.M
       def getOption: P[Option[B]] =
         nat(ln.get) >>= (b => self.getOption.map(_.as(b)))
       def setOption(b: B): P[Option[Unit]] =
-        nat(ln.set(b)) >> map(self.set(b))(_.some)
+        nat(ln.put(b)) >> self.set(b) map (_.some)
     }
   }
 
   trait PrismAlgLaw {
-    implicit val _: Monad[P] = self
 
     def getGet(implicit eq: Equal[P[(Option[A], Option[A])]]): Boolean =
       (getOption >>= (oa1 => getOption >>= (oa2 => (oa1, oa2).point[P]))) ===
