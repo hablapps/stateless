@@ -8,8 +8,12 @@ organization := "org.hablapps"
 
 version := "0.1-SNAPSHOT"
 
+resolvers ++= Seq(
+  "Habla repo - releases" at "http://repo.hablapps.com/releases",
+  "Habla repo - snapshots" at "http://repo.hablapps.com/snapshots")
+
 libraryDependencies ++= Seq(
-  "org.hablapps" %% "puretest-scalaz" % "0.2-SNAPSHOT",
+  "org.hablapps" %% "puretest-scalaz" % "0.2",
   "org.scalaz" %% "scalaz-core" % "7.2.8",
   "com.chuusai" %% "shapeless" % "2.3.2",
   "com.github.julien-truffaut" %%  "monocle-core"  % "1.4.0",
@@ -20,6 +24,7 @@ libraryDependencies ++= Seq(
 addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.3")
 
 addCompilerPlugin("org.scalamacros" %% "paradise" % "2.1.0" cross CrossVersion.full)
+
 
 scalacOptions ++= Seq(
   "-unchecked",
