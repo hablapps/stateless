@@ -1,0 +1,109 @@
+\documentclass[final, twocolumn, 3p]{elsarticle}
+
+\usepackage{listings}
+
+\journal{Lambda Days 2018}
+
+\begin{document}
+
+\begin{frontmatter}
+
+\title{Optic Algebras: Beyond In-memory Data Structures}
+
+\author[rvt]{J.~Lopez-Gonzalez\corref{cor1}}
+\ead{j.lopezgo@alumnos.urjc.es}
+
+\cortext[cor1]{Jesus Lopez-Gonzalez}
+
+\begin{abstract}
+Abstract goes here!
+\end{abstract}
+
+\end{frontmatter}
+
+\lstset{language=Scala}
+
+\section{Introduction}
+
+Optics provide abstractions and patterns to access and update immutable
+in-memory data structures. Specifically, they access and update \emph{focus}
+values which are contextualized within a \emph{whole} data structure. There are
+different kinds of optics in the
+folklore\footnote{http://oleg.fi/gists/images/optics-hierarchy.svg}, each of
+them describing a particular type of transformation. Among them,
+\emph{lens}~\cite{foster2005combinators} has become the most prominent one.
+
+A lens do focus on a unique value that is always available from the whole data
+structure. Therefore, we can either \emph{get} the focus from the whole or
+\emph{set} a new focus into an existing whole ---returning a new version of it.
+Thereby, this is the concrete representation for this optic in
+Scala~\cite{odersky2004overview}:
+
+\begin{lstlisting}
+trait Lens[S, A] {
+  def get(s: S): A
+  def set(a: A): S => S
+}
+\end{lstlisting}
+
+Lenses are very useful to update nested data
+structures~\cite{morris2012asymmetric}. In fact, this is so practical that this
+optic stands out from the rest of them. To better illustrate the gain, suppose
+that we are dealing with these entities:
+
+\begin{lstlisting}
+@Lenses case class Person(
+  name: String,
+  address: Address)
+
+@Lenses case class Address(
+  city: String,
+  zip: Int)
+\end{lstlisting}
+
+Notice the \emph{@Lenses} annotation which generates one lens for each field
+(the focus) in the annotated case class (the whole). The great thing about
+optics is that they compose~\cite{pickering2017profunctor}. For instance, if we
+wanted to update the zip code associated to a person, we could express it in a
+modular way:
+
+\begin{lstlisting}
+def modZip(f: Int => Int): Person => Person =
+  (address compose zip).modify(f)
+\end{lstlisting}
+
+Despite the elegance that we get while describing this kind of transformations,
+lenses are restricted to work exclusively with in-memory data structures. For
+instance, imagine that we now want to persist this person in a relational
+database. In this scenario, we should abandon optics and use the specific
+transformations provided by the new technology. Otherwise, we would need to pull
+the whole state, modify it by means of optics and finally put it back again,
+which turns out to be completely impractical.
+
+We claim that it is possible to take the expressiveness of optics beyond
+in-memory data structures. We claim that we can describe the data layer of an
+application and its logic once and for all, and later instantiate it to
+particular state-based interpretations: in-memory data structures, databases,
+microservices, etc. Finally, we claim that we can do so while retaining
+reasonable levels of performance for a large class of applications.
+
+% Now, our contributions
+
+\section{Towards more abstract lenses}
+
+\section{Natural implementation of lenses}
+
+\section{Generalizing to other optics}
+
+\section{More complex optics: standard machines}
+
+\section{Discussion}
+
+\section{Conclusion}
+
+\section{MINECO}
+
+\bibliography{stateless}{}
+\bibliographystyle{unsrt}
+
+\end{document}
