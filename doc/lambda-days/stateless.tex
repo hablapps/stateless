@@ -10,10 +10,21 @@
 
 \title{Optic Algebras: Beyond In-memory Data Structures}
 
-\author[rvt]{J.~Lopez-Gonzalez\corref{cor1}}
+\author[urjc,habla]{J.~Lopez-Gonzalez\corref{cor1}\fnref{fn1}}
 \ead{j.lopezgo@alumnos.urjc.es}
 
-\cortext[cor1]{Jesus Lopez-Gonzalez}
+\author[urjc,habla]{J.M.~Serrano}
+\ead{j.serrano.hidalgo@urjc.es}
+
+\author[habla]{J.~Fuentes}
+\ead{javier.fuentes@hablapps.com}
+
+\cortext[cor1]{Corresponding author}
+
+\fntext[fn1]{This is the specimen author footnote.}
+
+\address[urjc]{Universidad Rey Juan Carlos}
+\address[habla]{Habla Computing}
 
 \begin{abstract}
 Abstract goes here!
@@ -21,7 +32,7 @@ Abstract goes here!
 
 \end{frontmatter}
 
-\lstset{language=Scala}
+\lstset{language=Scala, basicstyle=\small}
 
 \section{Introduction}
 
@@ -61,11 +72,10 @@ that we are dealing with these entities:
   zip: Int)
 \end{lstlisting}
 
-Notice the \emph{@Lenses} annotation which generates one lens for each field
-(the focus) in the annotated case class (the whole). The great thing about
-optics is that they compose~\cite{pickering2017profunctor}. For instance, if we
-wanted to update the zip code associated to a person, we could express it in a
-modular way:
+Notice that \emph{@Lenses} generates a lens for each field (the focus) in the
+annotated case class (the whole). The great thing about optics is that they
+compose~\cite{pickering2017profunctor}. For instance, if we wanted to update the
+zip code associated to a person, we could express it in a modular way:
 
 \begin{lstlisting}
 def modZip(f: Int => Int): Person => Person =
@@ -81,23 +91,71 @@ the whole state, modify it by means of optics and finally put it back again,
 which turns out to be completely impractical.
 
 We claim that it is possible to take the expressiveness of optics beyond
-in-memory data structures. We claim that we can describe the data layer of an
-application and its logic once and for all, and later instantiate it to
-particular state-based interpretations: in-memory data structures, databases,
-microservices, etc. Finally, we claim that we can do so while retaining
-reasonable levels of performance for a large class of applications.
+in-memory data structures. We claim that we can use optic algebra and
+composition patterns to describe the data layer of an application and its logic
+once and for all, and later instantiate them to particular state-based
+interpretations: in-memory data structures, databases, microservices, etc.
+Finally, we claim that we can do so while retaining reasonable levels of
+performance for a large class of applications. These are our contributions to
+fulfill the claims:
 
-% Now, our contributions
+\begin{itemize}
+
+\item We propose \emph{lens algebra} (section \ref{sec:Towards}), which distills
+the algebraic essence of a lens. To better illustrate this idea, we need to see
+lenses from a coalgebraic perspective~\cite{jacobs1995objects,
+jacobs1997tutorial, oconnor2011functor}. In this sense, optics are just machines
+---that can possibly run forever~\cite{turner2004total}--- with buttons that can
+be pressed to observe or forward the machine state. In fact, what we mean by the
+algebraic essence is just the description of the machine interface in terms of
+its buttons, where any reference to the inner state has been abstracted away.
+
+\item Lens algebras in their \emph{raw} formulation do not compose. In fact, it
+is difficult to determine what we mean by composition at this level of
+abstraction. To alleviate the situation, we propose a \emph{natural}
+representation (section \ref{sec:Natural}) ---since it relies on natural
+transformations~\cite{pierce1991basic}--- that enables composition for lens
+algebras.
+
+\item We take these ideas to other optics: \emph{getter}, \emph{setter},
+\emph{fold}, \emph{affine} and \emph{weak traversal}. As a result, we end up
+with a collection of algebras that we refer to as \emph{optic algebras} (section
+\ref{sec:Generalizing}). These algebras compose heterogeneously and they
+represent the corresponding transformations, but in a more general setting.
+
+\item We provide \emph{Stateless} (section \ref{sec:Stateless}), an optic algebra
+Scala library which is aimed to use this concepts and patterns in real-world
+applications, with automatic instances for the most prominent state-based
+technologies in the Scala ecosystem, such as \emph{Slick} or \emph{Doobie},
+among many others.
+
+\end{itemize}
+
+Previously, when we stated that optic algebras pursue transforming state in
+different settings, we actually meant that we want them to support different
+state-based effects~\cite{wadler1995monads}. In this sense, we find some work
+that relates optics and effects, being \emph{monadic
+lenses}~\cite{abou2016reflections} the most suitable one. Bidirectional
+transformations~\cite{abou2015notions, abou2017coalgebraic} is also a great
+source of effectful transformations. We will compare our approach with these
+techniques in section \ref{sec:Discussion}.
+
+% monadic lens and bx discussion effects
 
 \section{Towards more abstract lenses}
+\label{sec:Towards}
 
 \section{Natural implementation of lenses}
+\label{sec:Natural}
 
 \section{Generalizing to other optics}
+\label{sec:Generalizing}
 
-\section{More complex optics: standard machines}
+\section{Stateless: an optic algebra Scala library}
+\label{sec:Stateless}
 
 \section{Discussion}
+\label{sec:Discussion}
 
 \section{Conclusion}
 
