@@ -1,6 +1,9 @@
 \documentclass[final, twocolumn, 3p]{elsarticle}
 
+\usepackage{amsmath,amsthm,amssymb}
 \usepackage{listings}
+
+\def\bibsection{\section*{References}}
 
 \journal{Lambda Days 2018}
 
@@ -15,9 +18,6 @@
 
 \author[urjc,habla]{J.M.~Serrano}
 \ead{j.serrano.hidalgo@urjc.es}
-
-\author[habla]{J.~Fuentes}
-\ead{javier.fuentes@hablapps.com}
 
 \cortext[cor1]{Corresponding author}
 
@@ -34,7 +34,10 @@ Abstract goes here!
 
 \lstset{language=Scala, basicstyle=\small}
 
+\newtheorem*{remark}{Remark}
+
 \section{Introduction}
+\label{sec:Introduction}
 
 Optics provide abstractions and patterns to access and update immutable
 in-memory data structures. Specifically, they access and update \emph{focus}
@@ -45,22 +48,10 @@ them describing a particular type of transformation. Among them,
 \emph{lens}~\cite{foster2005combinators} has become the most prominent one.
 
 A lens do focus on a unique value that is always available from the whole data
-structure. Therefore, we can either \emph{get} the focus from the whole or
-\emph{set} a new focus into an existing whole ---returning a new version of it.
-Thereby, this is the concrete representation for this optic in
-Scala~\cite{odersky2004overview}:
-
-\begin{lstlisting}
-trait Lens[S, A] {
-  def get(s: S): A
-  def set(a: A): S => S
-}
-\end{lstlisting}
-
-Lenses are very useful to update nested data
-structures~\cite{morris2012asymmetric}. In fact, this is so practical that this
-optic stands out from the rest of them. To better illustrate the gain, suppose
-that we are dealing with these entities:
+structure. They turn out to be very useful to deal with nested data
+structures~\cite{morris2012asymmetric}. As an example, consider the following
+entities, where \emph{@Lenses} generates a lens for each field (or focus) in
+the annotated case class (or whole):
 
 \begin{lstlisting}
 @Lenses case class Person(
@@ -72,32 +63,34 @@ that we are dealing with these entities:
   zip: Int)
 \end{lstlisting}
 
-Notice that \emph{@Lenses} generates a lens for each field (the focus) in the
-annotated case class (the whole). The great thing about optics is that they
-compose~\cite{pickering2017profunctor}. For instance, if we wanted to update the
-zip code associated to a person, we could express it in a modular way:
+Now suppose that we want to modify the zip code associated to a person. Since
+lenses composition is closed~\cite{pickering2017profunctor}, we could express
+that transformation by combining the lenses associated to \emph{address} and
+\emph{zip} fields and then using the resulting composed lens to invoke the
+modifying method:
 
 \begin{lstlisting}
 def modZip(f: Int => Int): Person => Person =
   (address compose zip).modify(f)
 \end{lstlisting}
 
-Despite the elegance that we get while describing this kind of transformations,
-lenses are restricted to work exclusively with in-memory data structures. For
-instance, imagine that we now want to persist this person in a relational
-database. In this scenario, we should abandon optics and use the specific
-transformations provided by the new technology. Otherwise, we would need to pull
-the whole state, modify it by means of optics and finally put it back again,
-which turns out to be completely impractical.
+Despite the elegance that we get to describe this kind of transformations,
+lenses are restricted to work exclusively with in-memory data structures.
+Imagine that we wanted to persist this person in a relational database. In this
+scenario, we would discard optics in favor of the specific transformations
+provided by the new technology. Otherwise, we would need to pull the whole
+state, modify it by means of a lens and finally put it back again, which turns
+out to be completely impractical.
 
-We claim that it is possible to take the expressiveness of optics beyond
-in-memory data structures. We claim that we can use optic algebra and
-composition patterns to describe the data layer of an application and its logic
-once and for all, and later instantiate them to particular state-based
-interpretations: in-memory data structures, databases, microservices, etc.
-Finally, we claim that we can do so while retaining reasonable levels of
-performance for a large class of applications. These are our contributions to
-fulfill the claims:
+Firstly, we claim that it is possible to collect the essence of optics in a
+domain specific language~\cite{hudak1996building}, aimed to take optic
+abstractions and patterns beyond in-memory data structures. Secondly, we claim
+that this language is expressive enough to implement the data layer of an
+application and its associated logic once and for all, and later instantiate
+them to particular state-based interpretations: in-memory data structures,
+databases, microservices, etc. Lastly, we claim that we can do so while
+retaining reasonable levels of performance for a large class of applications.
+These are our contributions to fulfill our claims:
 
 \begin{itemize}
 
@@ -113,37 +106,148 @@ its buttons, where any reference to the inner state has been abstracted away.
 \item Lens algebras in their \emph{raw} formulation do not compose. In fact, it
 is difficult to determine what we mean by composition at this level of
 abstraction. To alleviate the situation, we propose a \emph{natural}
-representation (section \ref{sec:Natural}) ---since it relies on natural
+representation (section \ref{sec:Natural}) ---which heavily relies on natural
 transformations~\cite{pierce1991basic}--- that enables composition for lens
 algebras.
 
-\item We take these ideas to other optics: \emph{getter}, \emph{setter},
-\emph{fold}, \emph{affine} and \emph{weak traversal}. As a result, we end up
-with a collection of algebras that we refer to as \emph{optic algebras} (section
-\ref{sec:Generalizing}). These algebras compose heterogeneously and they
-represent the corresponding transformations, but in a more general setting.
+\item We take these ideas to other optics, particularly: \emph{getter},
+\emph{setter}, \emph{fold}, \emph{affine} and \emph{weak traversal\footnote{This
+is a relaxed traversal, where the transformation function for each focus must be
+exactly the same.}}. As a result, we end up with a collection of algebras that
+we refer to as \emph{optic algebras} (section \ref{sec:Generalizing}). These
+algebras represent analogous transformations to their in-memory optic
+counterparts, even preserving heterogeneous composition, but in a more general
+setting.
 
-\item We provide \emph{Stateless} (section \ref{sec:Stateless}), an optic algebra
-Scala library which is aimed to use this concepts and patterns in real-world
-applications, with automatic instances for the most prominent state-based
-technologies in the Scala ecosystem, such as \emph{Slick} or \emph{Doobie},
-among many others.
+\item We provide \emph{Stateless} (section \ref{sec:Stateless}), an optic
+algebra library which is aimed to take these concepts and patterns to the
+development of industrial applications in the Scala ecosystem.
 
 \end{itemize}
 
 Previously, when we stated that optic algebras pursue transforming state in
 different settings, we actually meant that we want them to support different
-state-based effects~\cite{wadler1995monads}. In this sense, we find some work
-that relates optics and effects, being \emph{monadic
-lenses}~\cite{abou2016reflections} the most suitable one. Bidirectional
+state-based effects~\cite{wadler1995monads}. In this sense, there exists work
+relating optics and effects, being \emph{monadic
+lenses}~\cite{abou2016reflections} the most relevant one. Bidirectional
 transformations~\cite{abou2015notions, abou2017coalgebraic} is also a great
 source of effectful transformations. We will compare our approach with these
 techniques in section \ref{sec:Discussion}.
 
-% monadic lens and bx discussion effects
-
 \section{Towards more abstract lenses}
 \label{sec:Towards}
+
+As stated in~\cite{foster2005combinators}, lenses approach the view update
+problem for tree-structured data. They consist of a pair of functions, one of
+them to \emph{get} the part from the whole and another one to \emph{set} a new
+part into the current whole, returning a new version for the whole. We represent
+concrete lenses in Scala ~\cite{morris2012asymmetric} as follows:
+
+\begin{lstlisting}
+case class Lens[S, A](
+  get: S => A,
+  set: (S, A) => S)
+\end{lstlisting}
+
+As you may figured out, $S$ and $A$ role the whole and the part, respectively.
+Lens operations must obey certain laws to be considered very
+well-behaved~\cite{fischer2015clear}. Broadly, they keep the consistency between
+$get$ and $set$ and check that $set$ does not modify anything else beyond the
+part. We show them below:
+\begin{align*}
+  & set(s,\ get(s))\ =\ s &&\textbf{GetPut} \\
+  & get(set(s,\ a))\ =\ a &&\textbf{PutGet} \\
+  & set(set(a1,\ s),\ a2)\ =\ set(s,\ a2) &&\textbf{PutPut}
+\end{align*}
+
+In section \ref{sec:Introduction} we inferred that lens generation for the
+fields of a case class is systematic, since we could generate them
+automatically. As an example, here it is the manual implementation of
+\emph{zip}, which just determines where is the part that we may want to access
+or update:
+
+\begin{lstlisting}
+val zip = Lens[Address, Int](
+  s => s.zip,
+  (s, a) => s.copy(zip = a))
+\end{lstlisting}
+
+Now, it is time for us to distill lenses and extract their algebraic essence.
+This consists of abstracting the in-memory details away, in other words,
+removing any reference to the outer $S$ state from the pair of functions $get$
+and $set$. To do so, we will try to represent both operations in terms of a
+state transformation $State[S,\ ?]$, where $S$ is completely isolated, and
+therefore easier to abstract away.
+
+State transformations take an initial state and additional input, to produce the
+new version of the state along with some output. What follows is an informal
+adaptation of the original $get$ and $set$ signatures into this state
+transformation template.
+
+\begin{remark}
+  Let $s, a$ be types representing the whole and the focus of a lens,
+  respectively. So,
+  \begin{align*}
+    &  (get, set) \\
+    &=\ (S \Rightarrow A,\ (S,\ A) \Rightarrow S) &&\text{(a)} \\
+    &=\ (S \Rightarrow A,\ (A,\ S) \Rightarrow S) &&\text{(b)} \\
+    &=\ (S \Rightarrow A,\ A \Rightarrow S \Rightarrow S) &&\text{(c)} \\
+    &=\ (1 \Rightarrow S \Rightarrow A,\ A \Rightarrow S \Rightarrow S) &&\text{(d)} \\
+    &=\ (1 \Rightarrow S \Rightarrow A,\ A \Rightarrow S \Rightarrow (S,\ 1)) &&\text{(e)} \\
+    &=\ (1 \Rightarrow S \Rightarrow (S,\ A),\ A \Rightarrow S \Rightarrow (S,\ 1)) &&\text{(f*)} \\
+    &=\ (1 \Rightarrow State[S,\ A],\ A \Rightarrow State[S,\ 1]) &&\text{(g)} \\
+    &\therefore\ (1 \Rightarrow F[A],\ A \Rightarrow F[1]) &&\text{(h*)}\qedhere
+  \end{align*}
+\end{remark}
+
+So, we start from the original signatures of our $get$ and $set$ operations
+packed in a tuple (a). After swapping the arguments (b) and currying (c) from
+$set$, we provide an artificial input argument for $get$ (d) typed $1$. On the
+other hand, $set$ is lacking the corresponding output, which is added in (e).
+
+The next step consists of providing an artificial transformed output for $get$
+(f). We know that this method does not update the state, so this change of
+signature comes with a new law\footnote{Steps marked with an asterisk represent
+that additional laws emerge.}: the initial state must be placed as the
+transformed one as is.
+\begin{align*}
+  & get_f(s).\_1\ =\ s &&\textbf{XGet} \\
+\end{align*}
+
+Finally, once we have our signatures matching the state transformation template,
+we can describe them in terms of $State[S,\ ?]$, which is the only place where
+we reference $S$ in both operations (g). Now, we can abstract away this
+reference to $S$ by turning $State[S,\ ?]$ into a mere $F[?]$ (h). As you might
+noticed, this step does not come for free, it requires us to include new laws.
+We will come back to this aspect shortly. By now, we can see that the essence of
+a lens is precisely a lens algebra. We now package $get_h$ and $set_h$ in a
+\emph{trait} to reify this concept:
+
+\begin{lstlisting}
+trait LensAlg[F[_], A] {
+  def get(): F[A]
+  def set(a: A): F[Unit]
+}
+\end{lstlisting}
+
+If we take into account that typeclasses~\cite{wadler1989make} in Scala are
+modeled as traits~\cite{oliveira2010type}, we can appreciate that this class is
+basically \emph{MonadState}~\cite{gibbons2012unifying}. The major structural
+difference relies in the fact that our class does not extend $Monad$. To go
+further with this connection, we need to bring laws into the picture.
+
+The final step of the derivation led us to $get_j$ and $set_j$, that no longer
+returned plain types. Instead, their codomain is wrapped with a type constructor
+in both cases. Once we carry out this step, lens laws become broken. Take
+\textbf{GetSet} as an example, we cannot feed the codomain of $get_j$ to
+$set_j$, since it is expecting an $A$ typed argument.
+
+If we want to recover lens laws, we are going to need additional combinators.
+These combinators are precisely the ones that we get when $LensAlg$ extends
+$Monad$. By providing them, \textbf{GetSet} becomes $get_j\ >>=\ set_j\ =\
+return()$, which is exactly one of the laws from $MonadState$. In fact, lens
+laws turn into $MonadState$ laws when we abstract away from $State[S, ?]$. As a
+result, we can determine that the essence of a lens is precisely $MonadState$.
 
 \section{Natural implementation of lenses}
 \label{sec:Natural}
@@ -159,7 +263,8 @@ techniques in section \ref{sec:Discussion}.
 
 \section{Conclusion}
 
-\section{MINECO}
+\section*{Acknowledgements}
+MINECO
 
 \bibliography{stateless}{}
 \bibliographystyle{unsrt}
