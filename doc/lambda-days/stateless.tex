@@ -334,10 +334,10 @@ def compNat: NatLensAlg[F[_], Int] =
 \end{lstlisting}
 
 Notice that we are still working at a high level of abstraction. In fact, we
-have no idea about how are \lstlisting{F[_]} or \lstlisting{G[_]} handling their
-encapsulated state. As long as \lstlisting{hom} is a monad morphism, our
+have no idea about how are \lstinline{F[_]} or \lstinline{G[_]} handling their
+encapsulated state. As long as \lstinline{hom} is a monad morphism, our
 composed lens expresses that we can access or update the nested zip code from a
-person, no matter the particular configuration where it is deployed.
+person, no matter the particular configuration where state is deployed.
 
 \section{Generalizing to other optics}
 \label{sec:Generalizing}
