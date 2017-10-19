@@ -32,7 +32,9 @@ Abstract goes here!
 
 \end{frontmatter}
 
-\lstset{language=Scala, basicstyle=\small}
+\lstset{language=Scala,
+        basicstyle=\small,
+        literate={~} {$\sim$}{1}}
 
 \newtheorem*{remark}{Remark}
 
@@ -247,10 +249,95 @@ These combinators are precisely the ones that we get when $LensAlg$ extends
 $Monad$. By providing them, \textbf{GetSet} becomes $get_j\ >>=\ set_j\ =\
 return()$, which is exactly one of the laws from $MonadState$. In fact, lens
 laws turn into $MonadState$ laws when we abstract away from $State[S, ?]$. As a
-result, we can determine that the essence of a lens is precisely $MonadState$.
+result, we determine that the essence of a lens is literally $MonadState$.
 
 \section{Natural implementation of lenses}
 \label{sec:Natural}
+
+Once our lenses algebras are defined, we could be interested in combining them,
+just as plain lenses are combined. However, when we move composition to this
+scenario, the situation becomes more complicated. As we saw in the person
+example (section~\ref{sec:Introduction}), lenses compose when the focus of the
+first lens matches the whole of the second one. However, our optic algebras have
+a type constructor $F[?]$ as weird whole and a concrete type $A$ as focus, which
+leads to an odd scenario.
+
+Therefore, we need to ask ourselves what does it mean to compose a pair of lens
+algebras. To do so, we will suppose that we have defined the corresponding optic
+algebras to the optics we described in the person example:
+
+\begin{lstlisting}
+def addressAlg: LensAlg[F[_], Address]
+def zipAlg: LensAlg[G[_], Int]
+\end{lstlisting}
+
+At this point, we do not know much about them, but we may guess from the context
+that \lstinline{adressAlg} should be hiding somehow the state of a $Person$
+while granting accessors to its $Address$ part, while $zipAlg$ encapsulates an
+$Address$, providing accessors to the $Int$ zip code. Therefore, if we compose
+$addressAlg$ with $zipAlg$ we should end up with a lens whose type would be
+close to \lstinline{LensAlg[F[_], Address]}, i.e. an algebra that hides a person
+and put focus on the zip code associated to its address. However, this
+composition is not possible, since it requires a morphism \lstinline{G ~> F} to
+be implemented.
+
+Unfortunately, we know now that lens algebras do not compose. However, along the
+way, we found an interesting clue: we need a homomorphism to compose them. This
+is interesting, since there are further connections between monad morphisms and
+lenses~\cite{abou2015notions}. Having said so, we would like to instantiate lens
+algebra buttons with a morphism-alike representation, to restore composition.
+This morphism should contemplate the notion of transforming programs on the part
+into programs on the whole. This is how we get to the following abstraction:
+
+\begin{lstlisting}
+case class NatLensAlg[P[_], Q[_], A](
+    hom: Q ~> P)(implicit
+    M: Monad[P]
+    MS: MonadState[A, Q]) extends LensAlg[P, A] {
+  def get(): P[A] = hom(MS.get)
+  def put(a: A): P[Unit] = hom(MS.put(a))
+}
+\end{lstlisting}
+
+\lstinline{NatLensAlg} takes three type parameters. The first of them represents
+the outer program, that knows how to access the whole. On the other hand, the
+second one, or inner program, knows how to access the focus. The type of the
+focus is determined by the third type parameter. This abstraction takes one
+value parameter \lstinline{hom}, which corresponds with the monad homomorphism
+that enables composition.
+
+However, if we want to instantiate \lstinline{LensAlg} we need to determine
+what particular inner programs are the ones that \lstinline{get} and
+\lstinline{set} the focus, which will be used to feed the morphism while
+implementing the outer \lstinline{get} and \lstinline{put}. That is the reason
+why we need to constraint our focus program to be a \emph{MonadState}. Finally,
+it is worth mentioning that composition of natural lens algebras is just monad
+morphism composition:
+
+\begin{lstlisting}
+def compose[P[_], Q[_], R[_], B](
+    ln1: NatLensAlg[P, Q, A]
+    ln2: NatLensAlg[Q, R, B])(implicit
+    MS1: MonadState[A, Q],
+    MS2: MonadState[B, R]): NatLensAlg[P, R, B] =
+  NatLensAlg(ln1.hom compose ln2.hom)
+\end{lstlisting}
+
+Now, we can redefine our original lenses as natural lens algebras and compose
+them:
+
+\begin{lstlisting}
+def addressNat: NatLensAlg[F[_], Address]
+def zipNat: NatLensAlg[G[_], Int]
+def compNat: NatLensAlg[F[_], Int] =
+  compose(addressNat, zipNat)
+\end{lstlisting}
+
+Notice that we are still working at a high level of abstraction. In fact, we
+have no idea about how are \lstlisting{F[_]} or \lstlisting{G[_]} handling their
+encapsulated state. As long as \lstlisting{hom} is a monad morphism, our
+composed lens expresses that we can access or update the nested zip code from a
+person, no matter the particular configuration where it is deployed.
 
 \section{Generalizing to other optics}
 \label{sec:Generalizing}
