@@ -282,17 +282,17 @@ composition is not possible, since it requires a morphism \lstinline{G ~> F} to
 be implemented.
 
 Unfortunately, we know now that lens algebras do not compose. However, along the
-way, we found an interesting clue: we need a homomorphism to compose them. This
-is interesting, since there are further connections between monad morphisms and
-lenses~\cite{abou2015notions}. Having said so, we would like to instantiate lens
-algebra buttons with a morphism-alike representation, to restore composition.
-This morphism should contemplate the notion of transforming programs on the part
-into programs on the whole. This is how we get to the following abstraction:
+way, we found an interesting clue: we need some kind of morphism to compose
+them. This is interesting, since there are further connections between monad
+morphisms and lenses~\cite{abou2015notions}. Having said so, we would like to
+instantiate lens algebra buttons with a morphism-alike representation, to
+restore composition. This morphism should transform programs on the part into
+programs on the whole. Following these intuitions, we get the following
+abstraction:
 
 \begin{lstlisting}
 case class NatLensAlg[P[_], Q[_], A](
     hom: Q ~> P)(implicit
-    M: Monad[P]
     MS: MonadState[A, Q]) extends LensAlg[P, A] {
   def get(): P[A] = hom(MS.get)
   def put(a: A): P[Unit] = hom(MS.put(a))
@@ -306,13 +306,17 @@ focus is determined by the third type parameter. This abstraction takes one
 value parameter \lstinline{hom}, which corresponds with the monad homomorphism
 that enables composition.
 
-However, if we want to instantiate \lstinline{LensAlg} we need to determine
-what particular inner programs are the ones that \lstinline{get} and
-\lstinline{set} the focus, which will be used to feed the morphism while
-implementing the outer \lstinline{get} and \lstinline{put}. That is the reason
-why we need to constraint our focus program to be a \emph{MonadState}. Finally,
-it is worth mentioning that composition of natural lens algebras is just monad
-morphism composition:
+However, if we want to instantiate \lstinline{LensAlg}, we need to provide an
+implementation for \lstinline{get} and \lstinline{set}. There is no way to
+provide such implementations solely with the monad morphism \lstinline{hom}.
+Thereby, we need to determine what particular inner programs are the ones that
+become \lstinline{get} and \lstinline{set} when passed through the homomorphism.
+Surprisingly, those programs are exactly the ones contained in
+\lstinline{MonadState[A, Q]}, and therefore the need for this particular
+evidence.
+
+Now we can declare a method to compose natural lens algebras. Indeed, it becomes
+trivial when using this representation, we simply compose monad morphisms:
 
 \begin{lstlisting}
 def compose[P[_], Q[_], R[_], B](
@@ -323,32 +327,94 @@ def compose[P[_], Q[_], R[_], B](
   NatLensAlg(ln1.hom compose ln2.hom)
 \end{lstlisting}
 
-Now, we can redefine our original lenses as natural lens algebras and compose
-them:
+Coming back to the guiding person example, we can reformulate our original
+lenses as natural lens algebras and compose them:
 
 \begin{lstlisting}
 def addressNat: NatLensAlg[F[_], Address]
 def zipNat: NatLensAlg[G[_], Int]
 def compNat: NatLensAlg[F[_], Int] =
-  compose(addressNat, zipNat)
+  addressNat compose zipNat
 \end{lstlisting}
 
 Notice that we are still working at a high level of abstraction. In fact, we
 have no idea about how are \lstinline{F[_]} or \lstinline{G[_]} handling their
-encapsulated state. As long as \lstinline{hom} is a monad morphism, our
-composed lens expresses that we can access or update the nested zip code from a
-person, no matter the particular configuration where state is deployed.
+encapsulated state. As long as \lstinline{hom} is a monad morphism, our composed
+lens expresses that we can access or update the nested part from the whole, no
+matter the particular configuration where it is deployed.
 
 \section{Generalizing to other optics}
 \label{sec:Generalizing}
 
+Lens composition is fundamental to deal with nested data structures, but optics
+really shine when they are composed
+heterogeneously~\cite{pickering2017profunctor}. Therefore, in order to take
+optic benefits to the algebraic setting, we need to describe other optic
+algebras and be able to compose them. In this section, we introduce \emph{affine
+algebras}, \emph{traversal algebras} and \emph{setter algebras}. For each of
+them, we will show a very brief introduction, we will extract its algebraic
+essence and finally, we will show a composable representation. Heterogeneous
+composition will be covered in section~\ref{sec:Stateless}, where we will
+present Stateless by means of a real-world example.
+
+\subsection{Affine Algebra}
+
+A lens implies that the part is always present in the whole, however this could
+not be the case in other scenarios. Affine\footnote{This optic is also known as
+\emph{affine traversal}, \emph{affine lens} or even \emph{optional} in the
+folklore.} comes to alleviate this situation by manifesting that the part could
+be unavailable from the whole:
+
+\begin{lstlisting}
+case class Affine[S, A](
+  getOption: S => Option[A],
+  set: (S, A) => S)
+\end{lstlisting}
+
+If we derive the essence of the affine, as we did in section~\ref{sec:Towards}
+for lens, we end up with the following definition for affine algebras:
+
+\begin{lstlisting}
+trait AffineAlg[F[_], A] extends Monad[F] {
+  def getOption(): F[Option[A]]
+  def set(a: A): F[Unit]
+}
+\end{lstlisting}
+
+As for the lens algebra case, it does not make much sense to compose affine
+algebras. We need to find a morphism representation to enable this feature.
+Intuitively, an inner program that modifies the part should be transformed into
+an outer program that optionally modifies the whole, just in case the part does
+exist. This intuition lead us to the following representation:
+
+\begin{lstlisting}
+case class NatAffineAlg[P[_], Q[_], A](
+    hom: Q ~> P[Option[?]])(implicit
+    MS: MonadState[A, Q]) extends LensAlg[P, A] {
+  def getOption(): P[Option[A]] = hom(MS.get)
+  def put(a: A): P[Unit] = hom(MS.put(a))
+}
+\end{lstlisting}
+
+\subsection{(Weak) Traversal Algebra}
+
+% Heterogeneous composition
+
 \section{Stateless: an optic algebra Scala library}
 \label{sec:Stateless}
 
-\section{Discussion}
+% Indexed, Lib, etc.
+
+% Example: university / geofence
+
+\section{Related Work}
 \label{sec:Discussion}
 
 \section{Conclusion}
+
+% Weak Algebra, Prism Algebra, etc.
+
+% Ignoring polymorphic STAB
 
 \section*{Acknowledgements}
 MINECO
