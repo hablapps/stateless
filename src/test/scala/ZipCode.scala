@@ -56,9 +56,7 @@ object View {
   import smonocle.nat.all._
 
   @Lenses case class SDepartment(budget: Long, people: List[SPerson])
-
   @Lenses case class SPerson(name: String, address: Option[SAddress])
-
   @Lenses case class SAddress(city: String, zip: Int)
 
   def fromState: View[State[SDepartment, ?]] = fromData(stateDepartment)

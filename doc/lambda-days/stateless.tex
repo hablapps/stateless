@@ -501,9 +501,108 @@ instead, it would have resulted in a traversal algebra.
 \section{Stateless: an optic algebra Scala library}
 \label{sec:Stateless}
 
+Once we have introduced the fundamentals of optic algebras, it is time to put
+them into practice. In fact, we have implemented Stateless, a Scala library
+where we deploy algebras and utilities to deal with them. We will use a guiding
+example to introduce the library basics. Particularly, we will extend the
+\emph{zip code} one. Now, we will consider that there exists a department, with
+a budget and a list of members. For each member, we will be able to access its
+name and optionally, to access its address. Each address, in turn, will contain
+the associated city and zip code. Our objective is to implement
+\lstinline{modifyZip}, that receives a function to modify a zip code and returns
+a program that modifies all the zip codes belonging to the people in the
+department according to the input function.
+
+Our example contains three major entities: address, person and department. Each
+of them will be located in its own data structure. We will start with address,
+which contains the name of the city and the zip code itself. Since they appear
+exactly once in every address, we know that accessing those fields could be
+achieved by means of lenses. Therefore we represent addresses as follow:
+
+\begin{lstlisting}
+trait Address[Ad] {
+  type P[_]
+  val city: LensAlg[P, String]
+  val zip: LensAlg[P, Int]
+}
+\end{lstlisting}
+
+First of all, this trait takes a type parameter that represents the final state
+of the address, or the context to get access to it. Secondly, it contains a
+\lstinline{type member} which roles programs that are able to access and modify
+the address state. Finally, you can find a lens algebras for each field.
+Concretely, this is a natural lens algebra. Contrary to what we saw in
+section~\ref{sec:Natural}, Stateless use the same name for both raw and natural
+optic algebras (which are kept in different packages), and hides the
+\lstinline{Q} type parameter as a type member for the second case, to improve
+compiler inference while composing optics. Now, we show how to encode a person:
+
+\begin{lstlisting}
+trait Person[Pr] {
+  type P[_]
+  type Ad
+  val name: LensAlg[P, String]
+  val address: Address[Ad]
+  val optAddress: OptionalAlg.Aux[P, address.P, Ad]
+}
+\end{lstlisting}
+
+As before, this entity takes a type parameter \lstinline{Dp}, which represents
+the final state, and a type member \lstinline{P}, which corresponds with the
+program that transforms the state. Besides, this entity contains two fields and
+therefore they are mapped into two optic algebras. There is nothing remarkable
+about \lstinline{name}, but \lstinline{optAddress} brings new patterns.
+Specifically, its returning type contemplates \lstinline{Q}, since we need to
+connect its inner program with the outer program from \lstinline{Address}, to
+make them composable. As a consequence, we need to provide an evidence of entity
+\lstinline{address}, and therefore the type of its final state \lstinline{Ad}.
+The last entity, department, is represented as folows:
+
+\begin{lstlisting}
+trait Department[Dp] {
+  type P[_]
+  type Pr
+  val budget: LensAlg[P, Long]
+  val person: Person[Pr]
+  val people: TraversalAlg.Aux[P, person.P, Pr]
+}
+\end{lstlisting}
+
+It contains two optic algebras, a simple lens for \lstinline{budget} and a
+dependent traversal for \lstinline{people}. Concretely, it has to establish the
+dependency between department and person. To do so, we use the same pattern we
+described above for \lstinline{optAddress}.
+
+The resulting data layer does not differ greatly from representing the state of
+the application with several case classes. In this sense, a simple field is
+represented with a lens algebra, an optional field is represented with an affine
+algebra and a list of elements is represented with a traversal algebra.
+
+The most striking feature of this data layer is that we can describe
+\lstinline{modifyZip} once and for all, in a modular and elegant way:
+
+\begin{lstlisting}
+def modifyZip(f: Int => Int): P[Unit] =
+  (people composeOptional optAddress composeLens zip).modify(f)
+\end{lstlisting}
+
+As you see, Stateless contains infix methods to compose a particular optic with
+another passed as argument, following the classic optic hierarchy. In this
+regard, it also contains abstracting methods, to turn an optic algebra into a
+hierarchy ancestor. Finally, it also provides the means to transform an optic
+algebra into its corresponding indexed one.
+
+Notice that \lstinline{modifyZip} knows nothing about the particular programs or
+the final application state. In fact, they could be mere \emph{State} programs
+dealing with case classes as state, or they could be \emph{IO} programs using a
+database session as state. We show these particular interpretations in the
+appendix. There you will find the utilities that Stateless provides to
+facilitate the instantiating task.
+% TODO: provide appendix
+
 % Indexed, Lib, etc.
 
-% Example: university / geofence
+% Future work
 
 \section{Related Work}
 \label{sec:Discussion}
