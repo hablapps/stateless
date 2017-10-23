@@ -1,4 +1,4 @@
-\documentclass[final, twocolumn, 3p]{elsarticle}
+\documentclass[preview, 3p]{elsarticle}
 
 \usepackage{amsmath,amsthm,amssymb}
 \usepackage{listings}
@@ -583,7 +583,7 @@ The most striking feature of this data layer is that we can describe
 
 \begin{lstlisting}
 def modifyZip(f: Int => Int): P[Unit] =
-  (people composeOptional optAddress composeLens zip).modify(f)
+  (people compose optAddress compose zip).modify(f)
 \end{lstlisting}
 
 As you see, Stateless contains infix methods to compose a particular optic with
