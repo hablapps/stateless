@@ -430,11 +430,11 @@ resulting type.
 
 \subsection{(Weak) Traversal Algebra}
 
-While lenses and affines do focus on a part, which could or could not exist, we
-lack something to focus on a sequence of parts, which is exactly what traversals
-are for. This optic turns out to be tricky and it is not possible to represent
-it as a bunch of simple functions~\cite{oconnor2011functor}. Therefore, we will
-use a relaxed version, which we call \emph{Weak Traversal}:
+While lenses and affines do focus on a single part, which could or could not
+exist, we lack something to focus on a sequence of parts, which is exactly what
+traversals are for. This optic turns out to be tricky and it is not possible to
+represent it as a bunch of simple functions~\cite{oconnor2011functor}.
+Therefore, we will use a relaxed version, which we call \emph{Weak Traversal}:
 
 \begin{lstlisting}
 case class WTraversal[S, A](
@@ -495,8 +495,8 @@ def compose[P[_], Q[_], R[_], B](
 \end{lstlisting}
 
 As expected by optic composition rules, composing lens algebras with traversal
-algebras results in a traversal algebra. Had we composed with an affine instead,
-it would have resulted in a traversal algebra.
+algebras results in traversal algebras. Had we composed with an affine algebra
+instead, it would have resulted in a traversal algebra.
 
 \section{Stateless: an optic algebra Scala library}
 \label{sec:Stateless}
