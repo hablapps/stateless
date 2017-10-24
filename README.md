@@ -7,11 +7,11 @@ structures. They compose, both homogeneously and heterogeneously, so they become
 essential to express complex data transformations in a modular and elegant way.
 However, optics are restricted to work solely with in-memory data structures.
 
-Stateless provides the means to take optic awesomeness to new settings, such as
-databases or microservices. To do so, it adopts *optic algebras*, an abstraction
-that generalizes monomorphic optics. They enable programmers to describe the
-data layer and business logic of their applications while keeping them
-completely decoupled from particular infrastructures.
+Stateless is a type class based framework that provides the means to take optic
+awesomeness to new settings, such as databases or microservices. To do so, it
+exploits *optic algebras*, an abstraction that generalizes monomorphic optics and enables
+programmers to describe the data layer and business logic of their applications
+in abstract terms, while keeping them completely decoupled from particular infrastructures.
 
 ## Set Up
 
@@ -33,8 +33,8 @@ This library depends on [Monocle](https://github.com/julien-truffaut/Monocle),
 
 Suppose that we wanted to modify the optional zip code field associated to a
 person, which in turn belongs to certain department. We clearly identity three
-entities here: department, person and address. We could implement this logic in
-Monocle as follows:
+entities here: department, person and address. We could implement this logic with
+case classes and Monocle as follows:
 
 ```scala
 import monocle.function.Each._
@@ -61,31 +61,28 @@ def modifyZip(f: Int => Int): SDepartment => SDepartment = {
 }
 ```
 
-The resulting implementation for `modifyZip` is modular and readable, though
-expressing a complex transformation. However, we're constrained to access and
+The resulting implementation for `modifyZip`, while expressing a complex transformation,
+is modular and readable. However, we're constrained to access and
 mutate in-memory data structures. If we wanted to persist the state of the
 application in a relational database, we should discard optics in favor of the
-specific transformations provided by the particular technology. Otherwise, we'd
-need to pull the whole state, modify it by means of an optic and finally put it
+specific transformations provided by Slick, Doobie, or any other database framework.
+Otherwise, we'd need to pull the whole state, modify it by means of an optic and finally put it
 back again, which turns out to be impractical.
 
-Stateless provides the means to describe the data layer and the business logic
+Stateless provides the means to describe the data layer of backend applications
 in a decoupled way, exploiting the algebra and modularity from optics, and later
 instantiate it to in-memory data structures, relational databases or any other
 effectful state-based framework.
 
 #### Decoupled Data Layer
 
-We will be using the *natural* representation of optic algebras, which heavily
-relies on natural transformations. Therefore, this is the only import that we're
-gonna need for this example:
+This is the only import that we're gonna need for this example:
 
 ```scala
 import stateless.core.nat._
 ```
 
-Stateless adopts the object-oriented style to define the application entities.
-Thereby, each entity will be defined in its corresponding trait. This is how we
+Stateless adopts type classes to implement application entities. This is how we
 encode `Address`:
 
 ```scala
@@ -96,23 +93,25 @@ trait Address[Ad] {
 }
 ```
 
-As you can see, there is a lens algebra for every field in the entity. Lens
-algebras take a type constructor as first parameter. It corresponds with the
-kind of programs that we are interested in for this entity. Particularly, `P`
-determines the type of program that is able to evolve an address. The second
-parameter is the focus of the lens, `String` for `city` and `Int` for `zip`.
-Finally, `Ad` corresponds with the state which is evolved and hidden by `P`.
+As you can see, an address is any type `Ad` for which we can provide two lenses
+`city` and `zip`. These fields allow us to access and modify the city and zip codes of an address,
+respectively. The particular type of transformation program that it will actually be employed to access
+and transform addresses is abstracted away by type constructor `P`. A typical instantiation
+for `P` is a state-based transformation `State[Ad,?]` in case that we want to store our application
+state using case classes. Alternatively, if the application state is stored in a relational database,
+we will typically use a reader-like program, where the read only state refers to the
+identifier of the address and the configuration of the database server.
 
-The second entity is person, that contains a name and optionally an address.
+The second entity is `Person`, that contains a name and optionally an address.
 It's represented this way:
 
 ```scala
 trait Person[Pr] {
   type P[_]
-  type Ad
+  type Ad; val Address: Address[Ad]
+
   val name: LensAlg[P, String]
-  val address: Address[Ad]
-  val optAddress: OptionalAlg.Aux[P, address.P, Ad]
+  val optAddress: OptionalAlg.Aux[P, Address.P, Ad]
 }
 ```
 
