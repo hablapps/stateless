@@ -35,7 +35,7 @@ This library depends on [Monocle](https://github.com/julien-truffaut/Monocle),
 ## Getting Started
 
 Suppose that we wanted to modify the optional zip code field
-associated to a person, which in turn belongs to certain
+associated to a person, which in turn belongs to a certain
 department. We clearly identity three entities here: department,
 person and address. We could implement this logic with case classes
 and Monocle as follows:
@@ -129,7 +129,7 @@ As before, this entity takes a type parameter `Pr` , which represents
 the entity state, and a type member `P`, that corresponds with the
 program that evolves it.  As this entity contains a name and an
 address, we declare two optic algebras: `name` and `optAddress`. There
-is nothing remarkable about `name`, but `optAddress`, which is an
+is nothing remarkable about `name`, but `optAddress`, which is a
 so-called optional algebra, brings new patterns.
 
 Specifically, its returning type refers to a generic address type
@@ -140,10 +140,10 @@ field's type exposes a second type constructor parameter through the
 `Aux` pattern. In fact, every optic algebra hides a type constructor
 member `Q`, that represents the type of program that evolves the
 focus; optic algebras are then equipped with a natural transformation
-that turn these *inner* programs into programs that evolve the whole
+that turns these *inner* programs into programs that evolve the whole
 `P`, or *outer* programs. Since the focus of the optional field is of
-type `Ad`, we use `Address.P` as the type of inner programs. This is
-the essential mechanism that enables optic algebra composition.
+type `Ad`, we use `Address.P` as the type of inner programs for the optional lens. This is
+the essential mechanism that enables optic algebra composition in stateless.
 
 Finally, this is how we represent departments:
 
@@ -187,11 +187,9 @@ that qualifies as a department. Similarly, the type of the
 transformation program returned by this function is not fixed once and
 for all but depends on the actual type of department received. This
 level of generality allows us to decouple this implementation from any
-concrete infrastructure. And, still, what is great here is the fact
-the implementation of this method is almost the same as the one we
-used in the in-memory scenario with Monocle.
+concrete infrastructure. And, still, what is great here is that this implementation is almost the same as the one we did for the in-memory scenario with Monocle.
 
-#### Recovering In-memory Setting
+#### Recovering the In-memory Setting
 
 Now, if we want to do something useful with our data layer, we need to
 instantiate its implementation in the effectful land. In order to show
@@ -225,9 +223,9 @@ val stateDepartment = new Department[SDepartment] {
 }
 ```
 
-If we feed this value to `modifyZip`, we get a `State[SDepartment, Unit]`, which
+If we feed this value to `modifyZip`, we get a `State[SDepartment, Unit]` program, which
 updates all the zip codes existing in the department when executed over an
-instance of `case class SDepartment`.
+instance of `SDepartment`.
 
 ```scala
 scala> val initial = SDepartment(1000, List(
