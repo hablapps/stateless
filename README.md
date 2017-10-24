@@ -2,16 +2,19 @@
 
 ## Overview
 
-Optics provide abstractions and patterns to access and update immutable data
-structures. They compose, both homogeneously and heterogeneously, so they become
-essential to express complex data transformations in a modular and elegant way.
-However, optics are restricted to work solely with in-memory data structures.
+Optics provide abstractions and patterns to access and update
+immutable data structures. They compose, both homogeneously and
+heterogeneously, so they become essential to express complex data
+transformations in a modular and elegant way.  However, optics are
+restricted to work solely with in-memory data structures.
 
-Stateless is a type class based framework that provides the means to take optic
-awesomeness to new settings, such as databases or microservices. To do so, it
-exploits *optic algebras*, an abstraction that generalizes monomorphic optics and enables
-programmers to describe the data layer and business logic of their applications
-in abstract terms, while keeping them completely decoupled from particular infrastructures.
+Stateless is a type class based framework that provides the means to
+take optic awesomeness to new settings, such as databases or
+microservices. To do so, it exploits *optic algebras*, an abstraction
+that generalizes monomorphic optics and enables programmers to
+describe the data layer and business logic of their applications in
+abstract terms, while keeping them completely decoupled from
+particular infrastructures.
 
 ## Set Up
 
@@ -31,10 +34,11 @@ This library depends on [Monocle](https://github.com/julien-truffaut/Monocle),
 
 ## Getting Started
 
-Suppose that we wanted to modify the optional zip code field associated to a
-person, which in turn belongs to certain department. We clearly identity three
-entities here: department, person and address. We could implement this logic with
-case classes and Monocle as follows:
+Suppose that we wanted to modify the optional zip code field
+associated to a person, which in turn belongs to certain
+department. We clearly identity three entities here: department,
+person and address. We could implement this logic with case classes
+and Monocle as follows:
 
 ```scala
 import monocle.function.Each._
@@ -61,18 +65,20 @@ def modifyZip(f: Int => Int): SDepartment => SDepartment = {
 }
 ```
 
-The resulting implementation for `modifyZip`, while expressing a complex transformation,
-is modular and readable. However, we're constrained to access and
-mutate in-memory data structures. If we wanted to persist the state of the
-application in a relational database, we should discard optics in favor of the
-specific transformations provided by Slick, Doobie, or any other database framework.
-Otherwise, we'd need to pull the whole state, modify it by means of an optic and finally put it
-back again, which turns out to be impractical.
+The resulting implementation for `modifyZip`, while expressing a
+complex transformation, is modular and readable. However, we're
+constrained to access and mutate in-memory data structures. If we
+wanted to persist the state of the application in a relational
+database, we should discard optics in favor of the specific
+transformations provided by Slick, Doobie, or any other database
+framework.  Otherwise, we'd need to pull the whole state, modify it by
+means of an optic and finally put it back again, which turns out to be
+impractical.
 
-Stateless provides the means to describe the data layer of backend applications
-in a decoupled way, exploiting the algebra and modularity from optics, and later
-instantiate it to in-memory data structures, relational databases or any other
-effectful state-based framework.
+Stateless provides the means to describe the data layer of backend
+applications in a decoupled way, exploiting the algebra and modularity
+from optics, and later instantiate it to in-memory data structures,
+relational databases or any other effectful state-based framework.
 
 #### Decoupled Data Layer
 
@@ -82,8 +88,8 @@ This is the only import that we're gonna need for this example:
 import stateless.core.nat._
 ```
 
-Stateless adopts type classes to implement application entities. This is how we
-encode `Address`:
+Stateless adopts type classes to implement application entities. This
+is how we encode `Address`:
 
 ```scala
 trait Address[Ad] {
@@ -93,17 +99,21 @@ trait Address[Ad] {
 }
 ```
 
-As you can see, an address is any type `Ad` for which we can provide two lenses
-`city` and `zip`. These fields allow us to access and modify the city and zip codes of an address,
-respectively. The particular type of transformation program that it will actually be employed to access
-and transform addresses is abstracted away by type constructor `P`. A typical instantiation
-for `P` is a state-based transformation `State[Ad,?]` in case that we want to store our application
-state using case classes. Alternatively, if the application state is stored in a relational database,
-we will typically use a reader-like program, where the read only state refers to the
-identifier of the address and the configuration of the database server.
+As you can see, an address is any type `Ad` for which we can provide
+two lenses `city` and `zip`. These fields allow us to access and
+modify the city and zip codes of an address `Ad`, respectively. The
+particular type of transformation program that it will actually be
+employed to access and transform addresses is abstracted away by type
+constructor `P`. A typical instantiation for `P` is a state-based
+transformation `State[Ad,?]`, in case that we want to store our
+application state using case classes. Alternatively, if the
+application state is stored in a relational database, we will
+typically use a reader-like program, where the read only state refers
+to the identifier of the address and the configuration of the database
+server.
 
-The second entity is `Person`, that contains a name and optionally an address.
-It's represented this way:
+The second entity is `Person`, that contains a name and optionally an
+address.  It's represented this way:
 
 ```scala
 trait Person[Pr] {
@@ -115,88 +125,102 @@ trait Person[Pr] {
 }
 ```
 
-As before, this entity takes a type parameter `Pr` , which represents the entity
-state, and a type member `P`, that corresponds with the program that evolves it.
-As this entity contains a name and an address, we declare two optic algebras:
-`name` and `optAddress`. There is nothing remarkable about `name`, but
-`optAddress`, which is an optional algebra, brings new patterns.
+As before, this entity takes a type parameter `Pr` , which represents
+the entity state, and a type member `P`, that corresponds with the
+program that evolves it.  As this entity contains a name and an
+address, we declare two optic algebras: `name` and `optAddress`. There
+is nothing remarkable about `name`, but `optAddress`, which is an
+so-called optional algebra, brings new patterns.
 
-Specifically, its returning type uses an alias `Aux` that shows a second type
-constructor parameter. In fact, every optic algebra hides a type constructor
-member `Q`, that roles the program that evolves the focus. Having said so,
-natural optic algebras turn programs that evolve the focus `Q`, or *inner*
-programs, into programs that evolve the whole `P`, or *outer* programs. Thereby,
-we need the reification of `Q` to connect `Person`'s inner program with
-`Address`' outer program, to enable optic algebra composition. As a consequence,
-we need to provide an evidence of entity `address`, and therefore the type of
-its final state `Ad`.
+Specifically, its returning type refers to a generic address type
+`Ad`, which is declared as a type member. The fact that we intend this
+type to be used as an actual address is declared through the
+corresponding type class instance `Address`. Also, the `optAddress`
+field's type exposes a second type constructor parameter through the
+`Aux` pattern. In fact, every optic algebra hides a type constructor
+member `Q`, that represents the type of program that evolves the
+focus; optic algebras are then equipped with a natural transformation
+that turn these *inner* programs into programs that evolve the whole
+`P`, or *outer* programs. Since the focus of the optional field is of
+type `Ad`, we use `Address.P` as the type of inner programs. This is
+the essential mechanism that enables optic algebra composition.
 
 Finally, this is how we represent departments:
 
 ```scala
 trait Department[Dp] {
   type P[_]
-  type Pr
+  type Pr;  val Person: Person[Pr]
+
   val budget: LensAlg[P, Long]
-  val person: Person[Pr]
-  val people: TraversalAlg.Aux[P, person.P, Pr]
+  val people: TraversalAlg.Aux[P, Person.P, Pr]
 }
 ```
 
-Despite the appearance of a traversal algebra, there's nothing new in this
-entity definition. So, our data layer is fully defined!
+Besides the new traversal algebra for the `people` field, there's
+nothing new in this entity definition. So, our data layer is fully
+defined!
 
-(!) *Don't be intimidated by the accidental complexity: type members, nested
-entity evidences, etc.. By now, you can simply follow the pattern. We're working
-hard on hiding those aspects, to make our entity definition as close as possible
+(!) *Don't be intimidated by the accidental complexity: type members,
+nested entity evidences, etc.. By now, you can simply follow this
+pattern. We're working hard on hiding those aspects, to make the
+implementation of data layers through stateless as close as possible
 to the definition of the corresponding case class.*
 
 #### Decoupled Business Logic
 
-Once we have defined our data layer, it's time for us to implement the business
-logic. This is how we modify the zip codes for all the members of the department
-in a declarative way:
+Once we have defined our data layer, it's time for us to implement the
+business logic. This is how we modify the zip codes for all the
+members of the department in a declarative way:
 
 ```scala
-def modifyZip[Dp](f: Int => Int)(dep: Department[Dp]): dep.P[Unit] = {
-  import dep.people, dep.person.optAddress, dep.person.address.zip
+def modifyZip[D](f: Int => Int)(Dep: Department[D]): Dep.P[Unit] = {
+  import Dep.people, Dep.Person.optAddress, Dep.Person.Address.zip
   (people composeOptional optAddress composeLens zip).modify(f)
 }
 ```
 
-As you can see, we had to adapt the signature of the function. It no longer
-takes an `SDepartment`, it takes a particular instantiation of the department
-instead. The function returns the program that makes the department evolv,
-modifying the zip codes. What is great here is that the implementation of this
-method is exactly the same as the one we used in the in-memory scenario with
-Monocle. However, this version is completely decoupled from particular
-infrastructures, aspect which is encapsulated in `dep`.
+First, compare to the `modifyZip` function for case classes that was
+shown previously, this new signature is truly generic. It no longer
+works for a specific `SDepartment` case class, but for any type `D`
+that qualifies as a department. Similarly, the type of the
+transformation program returned by this function is not fixed once and
+for all but depends on the actual type of department received. This
+level of generality allows us to decouple this implementation from any
+concrete infrastructure. And, still, what is great here is the fact
+the implementation of this method is almost the same as the one we
+used in the in-memory scenario with Monocle.
 
 #### Recovering In-memory Setting
 
-The resulting data layer is completely decoupled from any infrastructure.
-However, if we want to do something useful with it, we need to land our program
-in the effectful land. In order to show that our approach generalizes classic
-optics, we provide an in-memory instantiation:
+Now, if we want to do something useful with our data layer, we need to
+instantiate its implementation in the effectful land. In order to show
+that our approach generalizes classic optics, we provide an in-memory
+instantiation bellow:
 
 ```scala
 import smonocle.nat.all._
 
 val stateDepartment = new Department[SDepartment] {
   type P[X] = State[SDepartment, X]
+
   type Pr = SPerson
-  val budget = asLensAlg(SDepartment.budget)
-  val person = new Person[Pr] {
+  val Person = new Person[Pr] {
     type P[X] = State[Pr, X]
+
     type Ad = SAddress
-    val name = asLensAlg(SPerson.name)
-    val address = new Address[Ad] {
+    val Address = new Address[Ad] {
       type P[X] = State[Ad, X]
+
       val city = asLensAlg(SAddress.city)
       val zip = asLensAlg(SAddress.zip)
     }
+
+    val name = asLensAlg(SPerson.name)
     val optAddress = asOptionalAlg(SPerson.address composePrism some)
   }
+
+  val budget = asLensAlg(SDepartment.budget)
   val people = asTraversalAlg(SDepartment.people composeTraversal each)
 }
 ```
@@ -209,7 +233,7 @@ instance of `case class SDepartment`.
 scala> val initial = SDepartment(1000, List(
      |   SPerson("Juan", Some(SAddress("Leganes", 28911))),
      |   SPerson("Maria", Some(SAddress("Mostoles", 28934)))))
-initial: org.hablapps.stateless.test.SDepartment = SDepartment(1000,List(SPerson(Juan,Some(SAddress(Leganes,28911))), SPerson(Maria,Some(SAddress(Mostoles,28934)))))
+initial: org.hablapps.stateless.test.SDepartment = ...
 
 scala> modifyZip(_ + 1)(stateDepartment).exec(initial)
 res0: org.hablapps.stateless.test.SDepartment = SDepartment(1000,List(SPerson(Juan,Some(SAddress(Leganes,28912))), SPerson(Maria,Some(SAddress(Mostoles,28935)))))
@@ -223,8 +247,8 @@ TODO
 
 ## Additional Features
 
-Stateless provides additional features that we find interesting for many
-implementations:
+Stateless provides additional features that we find interesting for
+many implementations:
 
 * It contains *indexed optic algebras*, which turn out to be very handy when
 dealing with entities whose parts are indexed.
@@ -233,14 +257,15 @@ dealing with entities whose parts are indexed.
 Monocle.
 * Stateless includes recurrent combination of optics. For example, by packaging
 a collection of lenses and traversals under certain configuration, we are able
-to implement the interface of a Scala `Map`, which is very intuitive for an
+to implement the interface of a Scala `Map`, which is very intuitive from an
 object-oriented mindset.
 * The library offers utilities to facilitate the instantiation of relevant
 frameworks in the Scala ecosystem.
 
 ## Limitations
 
-Stateless is still very experimental, and therefore comes with some limitations.
+Stateless is still very experimental, and therefore comes with some
+limitations.
 
 * We've said that optic algebras generalize optics. However, we have to specify
 here that we're generalizing the monomorphic version of optics, instead of the
