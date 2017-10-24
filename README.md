@@ -224,18 +224,43 @@ TODO
 
 ## Additional Features
 
-* Indexed Optic Algebras
-* At, FilterIndex
-* Map
-* Slick / Doobie
+Stateless provides additional features that we find interesting for many
+implementations:
+
+* It contains *indexed optic algebras*, which turn out to be very handy when
+dealing with entities whose parts are indexed.
+* It provides typeclasses that produce optic algebras, such as `At` and
+`FilterIndex`. They correspond with which is known as *optic functions* in
+Monocle.
+* Stateless includes recurrent combination of optics. For example, by packaging
+a collection of lenses and traversals under certain configuration, we are able
+to implement the interface of a Scala `Map`, which is very intuitive for an
+object-oriented mindset.
+* The library offers utilities to facilitate the instantiation of relevant
+frameworks in the Scala ecosystem.
 
 ## Limitations
 
-* Prism, Adapter
-* Weak Traversal
-* Monomorphic Lenses
-* Boilerplate and Noise
+Stateless is still very experimental, and therefore comes with some limitations.
+
+* We've said that optic algebras generalize optics. However, we have to specify
+here that we're generalizing the monomorphic version of optics, instead of the
+polymorphic version identified by Russell O'Connor which leads to the classic
+`STAB`.
+* Our traversal algebra is not really a generalization of a traversal. In fact,
+it generalizes what we have considered a *weak traversal*, more restricted but
+good enough for most of cases.
+* We haven't introduced `Adapter`s or `Prism`s yet. These optics are special
+since they are able to build the whole from the part without additional
+help, meaning that they don't need to access the current state to evolve the
+entity. Therefore, we still have to determine if they make sense in this
+context.
+* We need to establish what we consider "reasonable" when we talk about
+performance. The optimization of instances is crucial to make stateless viable.
+* We're working on macro annotations to remove boilerplate from applications.
 
 ## Contributing
+TODO
 
 ## License
+TODO
