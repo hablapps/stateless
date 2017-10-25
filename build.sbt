@@ -33,3 +33,19 @@ scalacOptions ++= Seq(
   "-language:implicitConversions",
   "-language:postfixOps",
   "-language:higherKinds")
+
+resolvers ++= Seq(
+  "Habla repo - releases" at "http://repo.hablapps.com/releases",
+  "Habla repo - snapshots" at "http://repo.hablapps.com/snapshots")
+
+publishTo <<= version { v =>
+  import java.io.File
+  val privateKeyFile: File = new File(sys.env("HOME") + "/.ssh/hablaweb.pem")
+  Some(Resolver.sftp(
+    "HABLA",
+    "repo.hablapps.com",
+    "/var/www/repo/html/" + (
+      if (v.trim.endsWith("SNAPSHOT")) { "snapshots" } else { "releases" }
+    )
+  ) as("ubuntu", privateKeyFile))
+}
