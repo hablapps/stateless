@@ -3,9 +3,14 @@
 \usepackage{amsmath,amsthm,amssymb}
 \usepackage{listings}
 
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{definition}{Definition}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}{Corollary}[theorem]
+
 \def\bibsection{\section*{References}}
 
-\journal{Lambda Days 2018}
+\journal{Somewhere to Publish}
 
 \begin{document}
 
@@ -41,19 +46,21 @@ Abstract goes here!
 \section{Introduction}
 \label{sec:Introduction}
 
-Optics provide abstractions and patterns to access and update immutable
-in-memory data structures. Specifically, they access and update \emph{focus}
-values which are contextualized within a \emph{whole} data structure. There are
-different kinds of optics in the
+Optics provide abstractions and patterns to access and update immutable data
+structures. Specifically, they access and update \emph{focus} values which are
+contextualized within a \emph{whole} data structure. There are different kinds
+of optics in the
 folklore\footnote{http://oleg.fi/gists/images/optics-hierarchy.svg}, each of
-them describing a particular type of transformation. Among them,
-\emph{lens}~\cite{foster2005combinators} has become the most prominent one.
+them describing a particular type of transformation. Among them, \emph{lens} has
+become the most prominent one.
 
 A lens do focus on a unique value that is always available from the whole data
-structure. They turn out to be very useful to deal with nested data
-structures~\cite{morris2012asymmetric}. As an example, consider the following
-entities, where \emph{@Lenses} generates a lens for each field (or focus) in
-the annotated case class (or whole):
+structure. They turn out to be very useful to express transformations over
+nested data structures~\cite{foster2005combinators}. As an example, consider the
+following Scala classes~\cite{odersky2004overview}, where we use macro
+annotations\footnote{This annotation is provided by \emph{Monocle}, the most
+relevant optic library in the Scala ecosystem.} to generate a lens for each
+field (or focus) of the annotated case class (or whole):
 
 \begin{lstlisting}
 @Lenses case class Person(
@@ -65,11 +72,11 @@ the annotated case class (or whole):
   zip: Int)
 \end{lstlisting}
 
-Now suppose that we want to modify the zip code associated to a person. Since
-lenses composition is closed~\cite{pickering2017profunctor}, we could express
-that transformation by combining the lenses associated to \emph{address} and
-\emph{zip} fields and then using the resulting composed lens to invoke the
-modifying method:
+Now suppose we want to modify the zip code associated to a person. Since lens
+composition is closed~\cite{pickering2017profunctor}, we could express that
+transformation by combining the lenses associated to \emph{address} and
+\emph{zip} fields and then using the resulting one to invoke the modifying
+method:
 
 \begin{lstlisting}
 def modZip(f: Int => Int): Person => Person =
@@ -78,11 +85,11 @@ def modZip(f: Int => Int): Person => Person =
 
 Despite the elegance that we get to describe this kind of transformations,
 lenses are restricted to work exclusively with in-memory data structures.
-Imagine that we wanted to persist this person in a relational database. In this
-scenario, we would discard optics in favor of the specific transformations
-provided by the new technology. Otherwise, we would need to pull the whole
-state, modify it by means of a lens and finally put it back again, which turns
-out to be completely impractical.
+Imagine that we wanted to persist this person in a relational database using
+\emph{Doobie} or \emph{Slick}. In this scenario, we would discard optics in
+favor of the specific transformations provided by these technologies. Otherwise,
+we would need to pull the whole state, modify it by means of a lens and finally
+put it back again, which turns out to be completely impractical.
 
 Firstly, we claim that it is possible to collect the essence of optics in a
 domain specific language~\cite{hudak1996building}, aimed to take optic
@@ -140,33 +147,35 @@ techniques in section \ref{sec:Discussion}.
 \label{sec:Towards}
 
 As stated in~\cite{foster2005combinators}, lenses approach the view update
-problem for tree-structured data. They consist of a pair of functions, one of
-them to \emph{get} the part from the whole and another one to \emph{set} a new
-part into the current whole, returning a new version for the whole. We represent
-concrete lenses in Scala ~\cite{morris2012asymmetric} as follows:
+problem for tree-structured data.
+
+\begin{definition}
+
+A \emph{lens} consists of a pair of functions, one of them \emph{gets} the
+part from the whole and the other one \emph{sets} a new part into an old whole,
+returning a new whole. They are encoded in Scala as
+follows~\cite{morris2012asymmetric}:
 
 \begin{lstlisting}
 case class Lens[S, A](
   get: S => A,
   set: (S, A) => S)
 \end{lstlisting}
-
-As you may figured out, $S$ and $A$ role the whole and the part, respectively.
-Lens operations must obey certain laws to be considered very
-well-behaved~\cite{fischer2015clear}. Broadly, they keep the consistency between
-$get$ and $set$ and check that $set$ does not modify anything else beyond the
-part. We show them below:
+As you may figured out, $S$ and $A$ serve as the whole and the part,
+respectively. Lens operations must obey certain laws to be considered very
+well-behaved~\cite{fischer2015clear}:
 \begin{align*}
   & set(s,\ get(s))\ =\ s &&\textbf{GetPut} \\
   & get(set(s,\ a))\ =\ a &&\textbf{PutGet} \\
   & set(set(a1,\ s),\ a2)\ =\ set(s,\ a2) &&\textbf{PutPut}
 \end{align*}
 
-In section \ref{sec:Introduction} we inferred that lens generation for the
-fields of a case class is systematic, since we could generate them
-automatically. As an example, here it is the manual implementation of
-\emph{zip}, which just determines where is the part that we may want to access
-or update:
+\end{definition}
+
+In section \ref{sec:Introduction} we saw that lens generation for the fields of
+a case class is systematic, since we generated them automatically. Anyway, here
+it is the manual implementation of \emph{zip}, which just determines what is the
+part that we may want to access or update:
 
 \begin{lstlisting}
 val zip = Lens[Address, Int](
@@ -174,82 +183,144 @@ val zip = Lens[Address, Int](
   (s, a) => s.copy(zip = a))
 \end{lstlisting}
 
-Now, it is time for us to distill lenses and extract their algebraic essence.
-This consists of abstracting the in-memory details away, in other words,
-removing any reference to the outer $S$ state from the pair of functions $get$
-and $set$. To do so, we will try to represent both operations in terms of a
-state transformation $State[S,\ ?]$, where $S$ is completely isolated, and
-therefore easier to abstract away.
+Now, it is time for us to distill the algebraic essence of a lens, since we are
+interested on taking its interface to new settings. To do so, we need to view
+this abstraction from a coalgebraic perspective~\cite{jacobs1995objects,
+jacobs1997tutorial}. Particularly, coalgebras can be seen as machines with
+buttons to forward its current state. These buttons are special, since they
+could require an input to be pressed or they could produce an output to the
+environment. The following process turns the original lens operations into
+state-based transformations were buttons are made explicit.
 
-State transformations take an initial state and additional input, to produce the
-new version of the state along with some output. What follows is an informal
-adaptation of the original $get$ and $set$ signatures into this state
-transformation template.
-
-\begin{remark}
-  Let $s, a$ be types representing the whole and the focus of a lens,
-  respectively. So,
+\begin{lemma}
+  Let $s_0, s_1 \in S$ and $a_0, a_1 \in A$. If we consider a very well behaved
+  lens (\emph{get}, \emph{set}) with whole $S$ and focus $A$, where $s_0$ and
+  $s_1$ enclose $a_0$ and $a_1$, respectively
   \begin{align*}
     &  (get, set) \\
-    &=\ (S \Rightarrow A,\ (S,\ A) \Rightarrow S) &&\text{(a)} \\
-    &=\ (S \Rightarrow A,\ (A,\ S) \Rightarrow S) &&\text{(b)} \\
-    &=\ (S \Rightarrow A,\ A \Rightarrow S \Rightarrow S) &&\text{(c)} \\
-    &=\ (1 \Rightarrow S \Rightarrow A,\ A \Rightarrow S \Rightarrow S) &&\text{(d)} \\
-    &=\ (1 \Rightarrow S \Rightarrow A,\ A \Rightarrow S \Rightarrow (S,\ 1)) &&\text{(e)} \\
-    &=\ (1 \Rightarrow S \Rightarrow (S,\ A),\ A \Rightarrow S \Rightarrow (S,\ 1)) &&\text{(f*)} \\
-    &=\ (1 \Rightarrow State[S,\ A],\ A \Rightarrow State[S,\ 1]) &&\text{(g)} \\
-    &\therefore\ (1 \Rightarrow F[A],\ A \Rightarrow F[1]) &&\text{(h*)}\qedhere
+    &=\ (s_0 \Rightarrow a_0,\ (s_0,\ a_1) \Rightarrow s_1) &&\text{(expand methods)} \\
+    &=\ (s_0 \Rightarrow a_0,\ (a_1,\ s_0) \Rightarrow s_1) &&\text{(flip \emph{set} arguments)} \\
+    &=\ (s_0 \Rightarrow a_0,\ a_1 \Rightarrow s_0 \Rightarrow s_1) &&\text{(curry \emph{set})} \\
+    &=\ (() \Rightarrow s_0 \Rightarrow a_0,\ a_1 \Rightarrow s_0 \Rightarrow s_1) &&\text{(input for \emph{get})} \\
+    &=\ (() \Rightarrow s_0 \Rightarrow a_0,\ a_1 \Rightarrow s_0 \Rightarrow (s_1,\ ())) &&\text{(output for \emph{set})} \\
+    &=\ (() \Rightarrow s_0 \Rightarrow (s_0,\ a_0),\ a_1 \Rightarrow s_0 \Rightarrow (s_1,\ ())) &&\text{(resulting state for \emph{get})} \\
+    &=\ (() \Rightarrow State(s_0 \Rightarrow (s_0,\ a_0)),\ a_1 \Rightarrow State(s_0 \Rightarrow (s_1,\ ()))) &&\text{(State wrap)} \\
   \end{align*}
-\end{remark}
+\end{lemma}
 
-So, we start from the original signatures of our $get$ and $set$ operations
-packed in a tuple (a). After swapping the arguments (b) and currying (c) from
-$set$, we provide an artificial input argument for $get$ (d) typed $1$. On the
-other hand, $set$ is lacking the corresponding output, which is added in (e).
+% TODO: use button notation from jacobs paper
+So, we started with the pair of lens operations and we ended up with a pair of
+buttons, each of them showing the notion of input, output and state
+transformation. Particularly, to homogenize the button intuition in both
+operations, we had to provide an artificial input to \emph{get}, an artificial
+output to \emph{set} and an artificial resulting state to \emph{get} ---which
+keeps the old state as is. Thereby, we could represent the type that describes
+the final buttons in this interface as follows:
+\begin{lstlisting}
+trait LensButtons[S, A] {
+  def get(): State[S, A]
+  def set(a: A): State[S, Unit]
+}
+\end{lstlisting}
 
-The next step consists of providing an artificial transformed output for $get$
-(f). We know that this method does not update the state, so this change of
-signature comes with a new law\footnote{Steps marked with an asterisk represent
-that additional laws emerge.}: the initial state must be placed as the
-transformed one as is.
-\begin{align*}
-  & get_f(s).\_1\ =\ s &&\textbf{XGet} \\
-\end{align*}
+Despite the fact that we identified the buttons, it is still difficult to see
+how to take them to other settings. Indeed, \lstinline{LensButtons} is
+completely coupled to in-memory data structures. This is evidenced in the right
+hand side of the methods, where we can find plain \lstinline{State} programs. If
+we aim at being more generic, we should abstract away any reference to
+\lstinline{State[S, ?]} from the buttons.
 
-Finally, once we have our signatures matching the state transformation template,
-we can describe them in terms of $State[S,\ ?]$, which is the only place where
-we reference $S$ in both operations (g). Now, we can abstract away this
-reference to $S$ by turning $State[S,\ ?]$ into a mere $F[?]$ (h). As you might
-noticed, this step does not come for free, it requires us to include new laws.
-We will come back to this aspect shortly. By now, we can see that the essence of
-a lens is precisely a lens algebra. We now package $get_h$ and $set_h$ in a
-\emph{trait} to reify this concept:
-
+\begin{definition}
+A lens algebra is a multi-parameter typeclass that is indexed over two type
+parameters \lstinline{F[_]} and \lstinline{A} and which defines a pair of
+methods \lstinline{get} and \lstinline{set}.
 \begin{lstlisting}
 trait LensAlg[F[_], A] {
   def get(): F[A]
   def set(a: A): F[Unit]
 }
 \end{lstlisting}
+\end{definition}
 
-If we take into account that typeclasses~\cite{wadler1989make} in Scala are
-modeled as traits~\cite{oliveira2010type}, we can appreciate that this class is
-basically \emph{MonadState}~\cite{gibbons2012unifying}. The major structural
-difference relies in the fact that our class does not extend $Monad$. To go
-further with this connection, we need to bring laws into the picture.
+Informally, we can see that \lstinline{F} is representing a state-based effect,
+which let us access or update a value typed \lstinline{A} ---which is somehow
+contextualized in \lstinline{F}--- by means of \lstinline{get} and
+\lstinline{set}.
 
-The final step of the derivation led us to $get_j$ and $set_j$, that no longer
-returned plain types. Instead, their codomain is wrapped with a type constructor
-in both cases. Once we carry out this step, lens laws become broken. Take
-\textbf{GetSet} as an example, we cannot feed the codomain of $get_j$ to
-$set_j$, since it is expecting an $A$ typed argument.
+\begin{remark}
 
-If we want to recover lens laws, we are going to need additional combinators.
-These combinators are precisely the ones that we get when $LensAlg$ extends
-$Monad$. By providing them, \textbf{GetSet} becomes $get_j\ >>=\ set_j\ =\
-return()$, which is exactly one of the laws from $MonadState$. In fact, lens
-laws turn into $MonadState$ laws when we abstract away from $State[S, ?]$. As a
-result, we determine that the essence of a lens is literally $MonadState$.
+We can recover \lstinline{LensButtons} by instancing \lstinline{LensAlg} for
+\lstinline{State[S, ?]}
+
+\begin{lstlisting}
+type LensButtons[S, A] = LensAlg[State[S, ?], A]
+\end{lstlisting}
+
+\end{remark}
+
+Most of typeclasses require laws to be useful, and \lstinline{LensAlg} is not an
+exception for that. Since the original lens holds several properties, we could
+infer that \lstinline{LensAlg} laws will be related to them somehow. Take lens
+\emph{GetPut} law as an example. It establishes that getting the part and then
+setting it again does not produce an overall effect. It is now tempting to think
+that \lstinline{LensAlg} should behave accordingly. However, \lstinline{get}
+returns a value typed \lstinline{F[A]}, which cannot be fed to \lstinline{set}.
+
+Monad is the combinator that we need to recover lens laws in
+\lstinline{LensAlg}. If \lstinline{F} is an instance of monad, we can establish
+the analogous \emph{GetPut} for \lstinline{LensAlg} as follows:
+\begin{align*}
+  & get\ >>=\ set\ =\ return\ () &&\textbf{GetPut}
+\end{align*}
+We can represent the other laws using monadic analogous as well. In addition, we
+need to include a new law, which emerges when we represent \lstinline{get} as a
+stateful computation. This new law tells us that this method cannot modify the
+machine state, since it is a mere observer. This typeclass, laws included,
+should be familiar to a functional programmer.
+
+\begin{corollary}
+If you distill the algebraic essence of a lens, you get \lstinline{MonadState}
+(laws included).
+\end{corollary}
+
+We, as programmers, are used to work with the instance
+\lstinline{MonadState[State[S, ?], S]}, where the value behind \lstinline{State}
+is precisely the value that you have access to from the typeclass methods.
+However, we gave a different intuition for lens algebras, where we exhibited the
+instance \lstinline{LensAlg[State[S, ?],A]}, where \lstinline{A} is somehow
+contextualized in \lstinline{S}. Surprinsingly, in order to implement such an
+instance, we are going to need a \lstinline{Lens[S, A]}. In fact, there are many
+interesting connections between lenses and state
+computations~\cite{abou2015notions}.
+
+Now, we could use lens algebras to represent \emph{address}, from the
+example of the introduction. Concretely, we could express it as a pair of lens
+algebras, one of them granting access to the city and the other one doing the
+proper for the zip code, as follows: % TODO: idealized Scala? Applicative
+\begin{lstlisting}
+trait Address[F[_]: Applicative] {
+  def city: LensAlg[F, String]
+  def zip:  LensAlg[F, Int]
+
+  def serialize: F[String] = (city.get |@| zip.get) { (c, z) =>
+    s'{ "city":$c, "zip":$z }'
+  }
+}
+\end{lstlisting}
+As you can see, \lstinline{Address} is itself a typeclass. It is defined for
+every \lstinline{F}, as long as we can provide the pair of lens algebras
+\lstinline{city} and \lstinline{zip} for it. The intuition is that \lstinline{F}
+is somehow hiding the means to manipulate the state of the address.
+
+The major benefit that we get by adopting this pattern is that we can implement
+the business logic once and for all, exploiting the same algebra that we use
+when dealing with normal lenses. This is evidenced in \lstinline{serialize},
+which returns a program that invokes \lstinline{get} to collect and serialize
+the involved values.
+
+We saw that optic composition is a key feature to cope with nested data
+structures. In the next section, we will cover composability at this high level
+of abstraction enabled by lens algebras.
 
 \section{Natural implementation of lenses}
 \label{sec:Natural}
