@@ -16,7 +16,7 @@
 
 \begin{frontmatter}
 
-\title{Optic Algebras: Beyond In-memory Data Structures}
+\title{Optic Algebras: Beyond Immutable Data Structures}
 
 \author[urjc,habla]{J.~Lopez-Gonzalez\corref{cor1}\fnref{fn1}}
 \ead{j.lopezgo@alumnos.urjc.es}
@@ -63,6 +63,8 @@ relevant optic library in the Scala ecosystem.} to generate a lens for each
 field (or focus) of the annotated case class (or whole):
 
 \begin{lstlisting}
+package data
+
 @Lenses case class Person(
   name: String,
   address: Address)
@@ -298,18 +300,18 @@ example of the introduction. Concretely, we could express it as a pair of lens
 algebras, one of them granting access to the city and the other one doing the
 proper for the zip code, as follows: % TODO: idealized Scala? Applicative
 \begin{lstlisting}
-trait Address[F[_]: Applicative] {
-  def city: LensAlg[F, String]
-  def zip:  LensAlg[F, Int]
+trait Address[Q[_]: Applicative] {
+  def city: LensAlg[Q, String]
+  def zip:  LensAlg[Q, Int]
 
-  def serialize: F[String] = (city.get |@| zip.get) { (c, z) =>
+  def serialize: Q[String] = (city.get |@| zip.get) { (c, z) =>
     s'{ "city":$c, "zip":$z }'
   }
 }
 \end{lstlisting}
 As you can see, \lstinline{Address} is itself a typeclass. It is defined for
 every \lstinline{F}, as long as we can provide the pair of lens algebras
-\lstinline{city} and \lstinline{zip} for it. The intuition is that \lstinline{F}
+\lstinline{city} and \lstinline{zip} for it. The intuition is that \lstinline{Q}
 is somehow hiding the means to manipulate the state of the address.
 
 The major benefit that we get by adopting this pattern is that we can implement
@@ -322,98 +324,156 @@ We saw that optic composition is a key feature to cope with nested data
 structures. In the next section, we will cover composability at this high level
 of abstraction enabled by lens algebras.
 
-\section{Natural implementation of lenses}
+\section{Natural lens algebras}
 \label{sec:Natural}
 
-Once our lenses algebras are defined, we could be interested in combining them,
-just as plain lenses are combined. However, when we move composition to this
-scenario, the situation becomes more complicated. As we saw in the person
-example (section~\ref{sec:Introduction}), lenses compose when the focus of the
-first lens matches the whole of the second one. However, our optic algebras have
-a type constructor $F[?]$ as weird whole and a concrete type $A$ as focus, which
-leads to an odd scenario.
+A particular lens is not very useful by itself, but it becomes extremely handy
+in combination with other lenses. Since concrete lenses do not compose well,
+there has been great interest on discovering new lens representations ---such
+as \emph{van laarhoven} or \emph{profunctor}--- to improve this
+feature~\cite{pickering2017profunctor}. In fact, these representations compose
+nicely, because they are essentially functions.
 
-Therefore, we need to ask ourselves what does it mean to compose a pair of lens
-algebras. To do so, we will suppose that we have defined the corresponding optic
-algebras to the optics we described in the person example:
-
+There is another function-like representation for lenses which is not so
+widespread in the folklore~\cite{abou2015notions}. It consists of a particular
+monad morphism\footnote{We use \emph{kind-projector} to dulcify the morphism
+types}:
 \begin{lstlisting}
-def addressAlg: LensAlg[F[_], Address]
-def zipAlg: LensAlg[G[_], Int]
+type Lens[S, A] = State[A, ?] ~> State[S, ?]
 \end{lstlisting}
+Informally, if you have a state program on the focus, you can transform it into
+a state program on the whole. As any other homomorphism, this natural
+transformation is composable. Thereby, we could compose it with another lens, as
+long as its whole matches the focus of the original lens. What is interesting
+about this particular representation is that a state program produces an output
+value along with the state transformation. This idea will serve us well later.
 
-At this point, we do not know much about them, but we may guess from the context
-that \lstinline{adressAlg} should be hiding somehow the state of a $Person$
-while granting accessors to its $Address$ part, while $zipAlg$ encapsulates an
-$Address$, providing accessors to the $Int$ zip code. Therefore, if we compose
-$addressAlg$ with $zipAlg$ we should end up with a lens whose type would be
-close to \lstinline{LensAlg[F[_], Address]}, i.e. an algebra that hides a person
-and put focus on the zip code associated to its address. However, this
-composition is not possible, since it requires a morphism \lstinline{G ~> F} to
-be implemented.
+As expected, we are interested on taking composition to optic algebras.
+Particularly, we will exploit the last lens representation to do so, but prior
+to that, we need to understand what we are referring to when we talk about lens
+algebra composition. Using the guiding example, we could define a
+\lstinline{person} lens algebra as we did for address in the last section,
+aiming at composing their inner lenses:
+\begin{lstlisting}
+trait Person[P[_]] {
+  type Ad
+  def address: LensAlg[P, Ad]
+}
 
-Unfortunately, we know now that lens algebras do not compose. However, along the
-way, we found an interesting clue: we need some kind of morphism to compose
-them. This is interesting, since there are further connections between monad
-morphisms and lenses~\cite{abou2015notions}. Having said so, we would like to
-instantiate lens algebra buttons with a morphism-alike representation, to
-restore composition. This morphism should transform programs on the part into
-programs on the whole. Following these intuitions, we get the following
-abstraction:
+trait Address[Q[_]] {
+  def zip: LensAlg[Q, Int]
+}
+\end{lstlisting}
+So, we get a \lstinline{Person} which is parameterized by \lstinline{P}, the
+type of programs that knows how to evolve a person. This trait contains a lens
+\lstinline{address}, whose focus is \lstinline{Ad}, we are not sure about the
+particular representation for it, so we left it opened. Now, we are interested
+on composing it with \lstinline{zip}, as we did previously with concrete lenses.
+To recap, there is \lstinline{zip} lens, which produces programs \lstinline{Q}
+to evolve an address, and there is \lstinline{address} lens, which produces
+programs \lstinline{P} to evolve a person. If we want to compose both lenses, we
+need to inject \lstinline{Q} programs into \lstinline{P} ones. This sounds a lot
+like a natural transformation \lstinline{Q ~> P}.
+
+As a naive approach, we could consider that a monad morphism from \lstinline{Q}
+to \lstinline{P} is a nice candidate to be a composable representation for optic
+algebras. In fact, \lstinline{Q ~> P} is what we get when we abstract away from
+\lstinline{State[A, ?] ~> State[S, ?]}:
+\begin{lstlisting}
+trait NaiveLensNat[P[_]: Monad, Q[_]: Monad, A] {
+  def apply: Q ~> P
+}
+\end{lstlisting}
+However, it is not possible to implement \lstinline{get} and \lstinline{set}
+given this monad morphism alone, so it is difficult to establish connections
+with the results obtained from section~\ref{sec:Towards}.
+
+To avoid this situation, we need to relate somehow the type constructors
+\lstinline{P} and \lstinline{Q} with the focus \lstinline{A}. Indeed, when we
+abstract \lstinline{State[A, ?]} from the monad morphism, we can determine not
+only that \lstinline{Q} is a monad but also that it is a \lstinline{MonadState}
+for \lstinline{A}. It appears that if we add this new constraint to our monad
+morphism, we are able to implement \lstinline{get} and \lstinline{set}, feeding
+the corresponding programs to the homomorphism:
+
+\begin{definition}
+
+The natural representation of a lens algebra is a monad morphism which is lifted
+into a monad state morphism from \lstinline{Q} ---the inner program that evolves
+the part--- to \lstinline{P} ---the outer program that evolves the whole.
 
 \begin{lstlisting}
-case class NatLensAlg[P[_], Q[_], A](
-    hom: Q ~> P)(implicit
-    MS: MonadState[A, Q]) extends LensAlg[P, A] {
-  def get(): P[A] = hom(MS.get)
-  def put(a: A): P[Unit] = hom(MS.put(a))
+trait LensNat[P[_]: Monad, Q[_]: MonadState[A, ?[_]], A]
+    extends LensAlg[P, A] { self =>
+
+  def apply: Q ~> P
+
+  def get: P[A] = apply(MS.get)
+  def set(a: A): P[Unit] = apply(MS.put(a))
 }
 \end{lstlisting}
 
-\lstinline{NatLensAlg} takes three type parameters. The first of them represents
-the outer program, that knows how to access the whole. On the other hand, the
-second one, or inner program, knows how to access the focus. The type of the
-focus is determined by the third type parameter. This abstraction takes one
-value parameter \lstinline{hom}, which corresponds with the monad homomorphism
-that enables composition.
+\end{definition}
 
-However, if we want to instantiate \lstinline{LensAlg}, we need to provide an
-implementation for \lstinline{get} and \lstinline{set}. There is no way to
-provide such implementations solely with the monad morphism \lstinline{hom}.
-Thereby, we need to determine what particular inner programs are the ones that
-become \lstinline{get} and \lstinline{set} when passed through the homomorphism.
-If we assume that our inner program is an instance of \lstinline{MonadState[A, ?]},
-this is the same as providing a homomorphism for that algebra among
-\lstinline{Q} and \lstinline{P}.
+By implementing \lstinline{get} and \lstinline{set} this way, we are actually
+forcing the monad morphism to be a \emph{monad state morphism}. In other words,
+we are turning \lstinline{Q} ---a program that evolves the focus
+\lstinline{A}--- into \lstinline{P} ---a program that evolves the whole (hidden
+by \lstinline{P})--- but the morphism preserves \lstinline{get} and
+\lstinline{set}, so we grant access to \lstinline{A} in terms of \lstinline{P}
+programs.
 
-Now, we can declare a method to compose natural lens algebras. Indeed, it
-becomes trivial when using this representation, we simply compose monad
-morphisms:
-
+The gretatest benefit we get by using \lstinline{LensNat} is that it enables
+lens algebra composition. Next, we show the corresponding method to achieve such
+task:
 \begin{lstlisting}
-def compose[P[_], Q[_], R[_], B](
-    ln1: NatLensAlg[P, Q, A]
-    ln2: NatLensAlg[Q, R, B])(implicit
-    MS1: MonadState[A, Q],
-    MS2: MonadState[B, R]): NatLensAlg[P, R, B] =
-  NatLensAlg(ln1.hom compose ln2.hom)
+def compose[R[_], B](other: LensNat[Q, R, B]): LensNat[P, R, B] =
+  new LensNat[P, R, B] {
+    def apply: R ~> P = self.apply compose other.apply
+  }
 \end{lstlisting}
 
-Coming back to the guiding person example, we can reformulate our original
-lenses as natural lens algebras and compose them:
+This tells us that if we compose a lens \lstinline{ln1: LensNat[P, Q, A]} with
+another lens \lstinline{ln2: LensNat[Q, R, B]} we get a new lens algebra typed
+\lstinline{LensNat[P, R, B]}. To put it in another way, if the inner program of
+\lstinline{ln1} matches the outer program of \lstinline{ln2} we can define a new
+lens algebra whose inner program focuses in a more specific part of the state.
 
+Now we should be able to compose \lstinline{address} with \lstinline{zip}. To do
+so, we need to establish a connection between the inner program from
+\lstinline{address} and the outer program from \lstinline{zip}. We could do so
+using the next pattern:
 \begin{lstlisting}
-def addressNat: NatLensAlg[F[_], Address]
-def zipNat: NatLensAlg[G[_], Int]
-def compNat: NatLensAlg[F[_], Int] =
-  addressNat compose zipNat
-\end{lstlisting}
+trait Person[P[_]] {
+  type Ad
+  type Q[_]: Address
+  def address: LensNat[P, Q, Ad]
+}
 
-Notice that we are still working at a high level of abstraction. In fact, we
-have no idea about how are \lstinline{F[_]} or \lstinline{G[_]} handling their
-encapsulated state. As long as \lstinline{hom} is a monad morphism, our composed
-lens expresses that we can access or update the nested part from the whole, no
-matter the particular configuration where it is deployed.
+trait Address[Q[_]] {
+  def zip: LensNat[Q, State[Int, ?], Int]
+}
+\end{lstlisting}
+Notice that we had to specify that \lstinline{Q} instantiates the
+\lstinline{Address} typeclass to connect \lstinline{address} inner program with
+\lstinline{zip} outer one. On the other hand, the inner program for
+\lstinline{zip} is concrete, since we are not interested on further composing
+this particular lens algebra.
+
+Once we have defined the basic data layer in general terms, we can use it to
+implement the application logic. In this particular scenario, we could be
+interested on modifying the zip code associated to a person:
+\begin{lstlisting}
+def modZip[P[_]](f: Int => Int)(p: Person[P]): P[Unit] = {
+  import p.address, p.Address.zip
+  (address compose zip).modify(f)
+}
+\end{lstlisting}
+As you can see, the implementation is completely decoupled from any
+infrastructure. It no longer works for a specific case class, but for any type
+\lstinline{P} that qualifies a \lstinline{Person}. And, still, what is great
+here is that this implementation is almost the same as the one we did for the
+in-memory scenario in section~\ref{sec:Introduction}.
 
 \section{Generalizing to other optics}
 \label{sec:Generalizing}
