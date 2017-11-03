@@ -122,10 +122,27 @@ object NoPOpticsModify{
         l.modify andThen modify)
   }
 
+  case class Traversal[S,A](
+    get: S => List[A],
+    modify: (A => A) => S => (S, List[Unit])
+  ){
+    def set(v: A): S => (S, List[Unit]) = 
+      modify(_ => v)
+
+    def compose[B](l: Lens[A,B]): Traversal[S,B] = 
+      Traversal(get andThen (_.map(l.get)),
+        l.modify andThen modify)
+
+    def filter(p: S => A): Traversal[S,A] = 
+      Traversal(s => get(s).filter(_ != p(s)),
+        m => s => modify(a => if (a!=p(s)) m(a) else a)(s))
+  }
+
   trait Department[D] {
     type E; val Employee: Employee[E]
 
     val head: Lens[D,E]
+    val members: Traversal[D,E]
   }
 
   trait Employee[E] {
@@ -135,6 +152,12 @@ object NoPOpticsModify{
   def raiseHeadSalary[D](i: Int)(Department: Department[D]): D => D =
     // (Department.Employee.salary.modify andThen Department.head.modify)(_ + i)
     (Department.head compose Department.Employee.salary).modify(_ + i)
+
+  def raiseSalaries[D](i: Int)(Department: Department[D]): D => (D, List[Unit]) =
+    (Department.members compose Department.Employee.salary).modify(_ + i)
+
+  def raiseNonHeadSalaries[D](i: Int)(Department: Department[D]): D => (D, List[Unit]) =
+    (Department.members.filter(Department.head.get) compose Department.Employee.salary).modify(_ + i)
 
 }
 
@@ -210,5 +233,47 @@ object POpticsGetSet{
       C: Department.Employee.P ~> Department.P,
       M: Monad[Department.P]): Department.P[Unit] =
     (Department.head.compose(Department.Employee.salary)(C)).modify(_ + i)(M)
+
+}
+
+object POptics{
+
+  case class Lens[P[_],Q[_]](modify: Q ~> P){
+
+    // val MS: MonadState[Q,A]
+    // def get: P[A] = modify(MS.get)
+    // def set(v: A): P[Unit] = modify(MS.put(v))
+    // def modify(f: A => A): P[Unit] = modify(MS.modify(f))
+
+    def compose[R[_]](l: Lens[Q,R]): Lens[P,R] =
+      Lens[P,R](l.modify andThen modify)
+  }
+
+  case class Traversal[P[_],Q[_]](
+    modify: Q ~> λ[t => P[List[t]]]){
+
+    def compose[R[_]](l: Lens[Q,R]): Traversal[P,R] = 
+      Traversal[P,R](l.modify andThen[λ[t=>P[List[t]]]] modify)
+
+    def filter(l: Lens[P,Q]): Traversal[P,Q] = 
+      ???
+  }
+
+  trait Department[D[_]] {
+    type E[_]; val Employee: Employee[E]
+
+    val head: Lens[D,E]
+    val members: Traversal[D,E]
+  }
+
+  type IntState[t] = State[Int,t]
+
+  trait Employee[E[_]] {
+    val salary: Lens[E,IntState]
+  }
+
+  def raiseHeadSalary[D[_]](i: Int)(Department: Department[D]): D[List[Unit]] =
+    (Department.members compose Department.Employee.salary)
+      .modify(State.modify(_ + i))
 
 }
