@@ -15,6 +15,12 @@ object FilterIndex {
   type Aux[P[_], Q2[_], I, A] =
     FilterIndex[P, I, A] { type Q[x] = Q2[x] }
 
+  def apply[P[_], _Q[_], I, A](f: (I=>Boolean) =>
+    ITraversalAlg.Aux[P,_Q,I::HNil,A]) = new FilterIndex[P,I,A]{
+    type Q[t] = _Q[t]
+    def apply(p: I => Boolean) = f(p)
+  }
+
   trait Syntax {
     def filterIndex[P[_], Q[_], I <: HList, A](
         p: I => Boolean)(implicit
