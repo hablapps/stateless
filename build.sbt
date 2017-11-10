@@ -13,11 +13,14 @@ resolvers ++= Seq(
   "Habla repo - snapshots" at "http://repo.hablapps.com/snapshots")
 
 libraryDependencies ++= Seq(
-  "org.hablapps" %% "puretest-scalaz" % "0.2",
+  "org.hablapps" %% "puretest-scalaz" % "0.3.1",
   "org.scalaz" %% "scalaz-core" % "7.2.8",
   "com.chuusai" %% "shapeless" % "2.3.2",
   "com.github.julien-truffaut" %%  "monocle-core"  % "1.4.0",
   "com.github.julien-truffaut" %%  "monocle-macro" % "1.4.0",
+  "org.tpolecat" %% "doobie-core"       % "0.4.2",
+  "org.tpolecat" %% "doobie-postgres"   % "0.4.2",
+  "org.tpolecat" %% "doobie-scalatest"  % "0.4.2",
   "org.scalatest" %% "scalatest" % "3.0.1" % "test",
   "org.scalacheck" %% "scalacheck" % "1.13.4" % "test")
 
