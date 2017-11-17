@@ -55,6 +55,23 @@ object DoobieOptional{
     )
 }
 
+case class DoobieTraversal[K,V](
+  getList: V => ConnectionIO[List[K]]
+)
+
+object DoobieTraversal{
+  def apply[K: Param: Composite, V: Param](
+    table: String, keyField: String, valueField: String
+  ): DoobieTraversal[K,V] =
+    DoobieTraversal[K,V](
+      (value: V) => (
+        fr"SELECT" ++ Fragment.const(keyField) ++
+        fr"FROM" ++ Fragment.const(table) ++
+        fr"WHERE" ++ Fragment.const(valueField) ++ fr"=$value"
+      ).query[K].list
+    )
+}
+
 trait DoobieSchemaV[K,V]{
   def key(v: V): K
   def insertOrUpdate(v: V): Update0

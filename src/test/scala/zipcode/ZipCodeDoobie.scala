@@ -44,6 +44,7 @@ object DepartmentTable{
   val DLensBudget = DoobieLens[Int,Int]("Department","did","budget")
 
   val DLensHead = DoobieLens[Int,Int]("Department","did","head")
+
 }
 
 object PersonTable{ // } extends DoobieSchemaKV[Int,(String,Int,Int)]{
@@ -61,7 +62,7 @@ object PersonTable{ // } extends DoobieSchemaKV[Int,(String,Int,Int)]{
     DROP TABLE IF EXISTS Person CASCADE;
   """.update
 
-  def insertWithAdd(name: String, did: Int, add: Int): Update0 =
+  def insertWithAdd(name: String, did: Int, add: Option[Int]): Update0 =
     sql"""
       INSERT INTO Person (name, did, add) VALUES ($name, $did, $add);
     """.update
@@ -72,6 +73,8 @@ object PersonTable{ // } extends DoobieSchemaKV[Int,(String,Int,Int)]{
     """.update
 
   val DLensName = DoobieLens[Int,String]("Person","pid","name")
+  val DOptionalAddress = DoobieOptional[Int,Int]("Person","pid","add")
+  val DTraversalMembers = DoobieTraversal[Int,Int]("Person","pid","did")
 }
 
 object AddressTable{
@@ -89,11 +92,11 @@ object AddressTable{
 
   def insert(city: String, zip: Int): Update0 =
     sql"""
-      INSERT INTO Address VALUES ($city, $zip);
+      INSERT INTO Address (city,zip) VALUES ($city, $zip);
     """.update
 
-  val DLensCity = DoobieLens[Int,String]("Person","pid","city")
-  val DLensZip = DoobieLens[Int,Int]("Person","pid","zip")
+  val DLensCity = DoobieLens[Int,String]("Address","aid","city")
+  val DLensZip = DoobieLens[Int,Int]("Address","aid","zip")
 }
 
 object ZipCodeDoobie{
@@ -119,12 +122,10 @@ object ZipCodeDoobie{
       AddressTable.insert(ad.city,ad.zip).withUniqueGeneratedKeys[Int]("aid")
 
     def initPerson(did: Int)(p: SPerson): ConnectionIO[Int] =
-      PersonTable.insert(p.name,did).withUniqueGeneratedKeys[Int]("pid")
-      // p.address.traverse(initAddress) >>= {
-      //   _.fold(PersonTable.insert(p.name,did).withUniqueGeneratedKeys[Int]("pid")){
-      //     aid => PersonTable.insertWithAdd(p.name,did,aid).withUniqueGeneratedKeys[Int]("pid")
-      //   }
-      // }
+      p.address.traverse(initAddress) >>= {
+        PersonTable.insertWithAdd(p.name,did,_).withUniqueGeneratedKeys[Int]("pid")
+      }
+
 
     def init(dep: SDepartment): ConnectionIO[Unit] = for {
       did <- DepartmentTable.insert(dep.budget).withUniqueGeneratedKeys[Int]("did")
@@ -145,16 +146,18 @@ object ZipCodeDoobie{
 
     val budget: LensAlg[P, Int] = LensState.fromDLens(DepartmentTable.DLensBudget)
     val head: LensAlg.Aux[P, Person.P, Pr] = LensState.fromStateT(DepartmentTable.DLensHead)
-    lazy val members: TraversalAlg.Aux[P, Person.P, Pr] = ???
+    lazy val members: TraversalAlg.Aux[P, Person.P, Pr] =
+      TraversalDoobie.fromStateT(PersonTable.DTraversalMembers)
   }
 
   object DoobiePerson extends Person[Int]{
     type P[T]=StateT[ConnectionIO,Int,T]
     type Ad=Int
-    val Address: Address[Ad] = DoobieAddress
+    val Address = DoobieAddress
 
     val name: LensAlg[P, String] = LensState.fromDLens(PersonTable.DLensName)
-    lazy val optAddress: OptionalAlg.Aux[P, Address.P, Ad] = ???
+    lazy val optAddress: OptionalAlg.Aux[P, Address.P, Ad] =
+      OptionalDoobie.fromStateT(PersonTable.DOptionalAddress)
   }
 
   object DoobieAddress extends Address[Int]{

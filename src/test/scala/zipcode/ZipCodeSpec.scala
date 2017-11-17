@@ -13,20 +13,9 @@ trait ZipCodeSpec[P[_]] extends FunSpec[P]{
   val Sys: SystemData[P]; import Sys._
   val Ser: View[P]
 
-  val d0 = SDepartment(10,SPerson("b",None),List(
+  val d0 = SDepartment(10,SPerson("b",Some(SAddress("c0",0))),List(
     SPerson("a",Some(SAddress("c1",1))),
     SPerson("c",Some(SAddress("c2",2)))))
-
-  // Describe("Modify zip code"){
-  //   It("should work"){
-  //     init(d0) >>
-  //     Ser.modifyZip(_+1) >>
-  //     (department composeTraversal
-  //     Department.members composeOptional
-  //     Department.Person.optAddress composeLens
-  //     Department.Person.Address.zip).getList shouldBe List(2,3)
-  //   }
-  // }
 
   Describe("Department"){
     It("should get the budget"){
@@ -54,11 +43,41 @@ trait ZipCodeSpec[P[_]] extends FunSpec[P]{
     }
   }
 
+  Describe("Department's members"){
+    It("should get all members"){
+      init(d0) >> 
+      (department composeTraversal Department.members composeLens Department.Person.name).getList shouldBe 
+        List("b","a","c")
+    }
+  }
+
   Describe("Person's address"){
     It("should get info if not none"){
       init(d0) >>
-      (department composeLens Department.head composeOptional Department.Person.optAddress)
-        .getOption shouldBe Some(1.asInstanceOf[Department.Person.Ad])
+      (for {
+        Some(_) <- (department composeLens 
+                   Department.head composeOptional 
+                   Department.Person.optAddress).getOption
+      } yield ()  )
+    }
+
+    It("should get all zip codes"){
+      init(d0) >>
+      (department composeTraversal
+      Department.members composeOptional
+      Department.Person.optAddress composeLens
+      Department.Person.Address.zip).getList shouldBe List(0,1,2)
+    }
+  }
+
+  Describe("Modify zip code"){
+    It("should work"){
+      init(d0) >>
+      Ser.modifyZip(_+1) >>
+      (department composeTraversal
+      Department.members composeOptional
+      Department.Person.optAddress composeLens
+      Department.Person.Address.zip).getList shouldBe List(1,2,3)
     }
   }
 }
