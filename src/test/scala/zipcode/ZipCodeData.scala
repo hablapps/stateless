@@ -19,8 +19,7 @@ trait SystemData[P[_]]{
 
 trait Department[Dp] {
   type P[_]
-  type Pr
-  val Person: Person[Pr]
+  type Pr; val Person: Person[Pr]
 
   val budget: LensAlg[P, Int]
   val head: LensAlg.Aux[P, Person.P, Pr]
@@ -33,8 +32,7 @@ object Department{
 
 trait Person[Pr] {
   type P[_]
-  type Ad
-  val Address: Address[Ad]
+  type Ad; val Address: Address[Ad]
 
   val name: LensAlg[P, String]
   val optAddress: OptionalAlg.Aux[P, Address.P, Ad]

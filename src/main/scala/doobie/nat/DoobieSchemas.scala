@@ -15,13 +15,43 @@ object DoobieLens{
     table: String, keyField: String, valueField: String
   ): DoobieLens[K,V] =
     DoobieLens[K,V](
-      (key: K) => sql"""
-        SELECT $valueField FROM $table where $keyField=$key
-      """.query[V],
-      (key: K) => (value: V) => sql"""
-        INSERT INTO $table VALUES ($key,$value)
-        ON CONFLICT (keyField) DO UPDATE SET valueField = excluded.valueField;
-      """.update
+      (key: K) => (
+        fr"SELECT" ++ Fragment.const(valueField) ++
+        fr"FROM" ++ Fragment.const(table) ++
+        fr"WHERE" ++ Fragment.const(keyField) ++
+        fr"=$key"
+      ).query[V],
+      (key: K) => (value: V) => (
+        fr"UPDATE" ++ Fragment.const(table) ++
+        fr"SET" ++ Fragment.const(valueField) ++ fr"=" ++ fr"$value" ++
+        fr"WHERE" ++ Fragment.const(keyField) ++ fr"=" ++ fr"$key"
+      ).update
+      // ).updateWithLogHandler(LogHandler.jdkLogHandler)
+    )
+}
+
+case class DoobieOptional[K,V](
+  getOption: K => Query0[Option[V]],
+  set: K => V => Update0
+)
+
+object DoobieOptional{
+  def apply[K: Param, V: Param](
+    table: String, keyField: String, valueField: String
+  )(implicit C: Composite[Option[V]]): DoobieOptional[K,V] =
+    DoobieOptional[K,V](
+      (key: K) => (
+        fr"SELECT" ++ Fragment.const(valueField) ++
+        fr"FROM" ++ Fragment.const(table) ++
+        fr"WHERE" ++ Fragment.const(keyField) ++
+        fr"=$key"
+      ).query[Option[V]],
+      (key: K) => (value: V) => (
+        fr"UPDATE" ++ Fragment.const(table) ++
+        fr"SET" ++ Fragment.const(valueField) ++ fr"=" ++ fr"$value" ++
+        fr"WHERE" ++ Fragment.const(keyField) ++ fr"=" ++ fr"$key"
+      ).update
+      // ).updateWithLogHandler(LogHandler.jdkLogHandler)
     )
 }
 

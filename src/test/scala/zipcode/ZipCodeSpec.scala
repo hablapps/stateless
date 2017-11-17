@@ -15,7 +15,6 @@ trait ZipCodeSpec[P[_]] extends FunSpec[P]{
 
   val d0 = SDepartment(10,SPerson("b",None),List(
     SPerson("a",Some(SAddress("c1",1))),
-    SPerson("b",None),
     SPerson("c",Some(SAddress("c2",2)))))
 
   // Describe("Modify zip code"){
@@ -30,14 +29,36 @@ trait ZipCodeSpec[P[_]] extends FunSpec[P]{
   // }
 
   Describe("Department"){
-    It("should be ruled by 'the boss'"){
+    It("should get the budget"){
+      init(d0) >>
+      ((department composeLens Department.budget).get shouldBe 10)
+    }
+
+    It("should set the budget"){
+      init(d0) >>
+      ((department composeLens Department.budget).put(11)) >>
+      ((department composeLens Department.budget).get shouldBe 11)
+    }
+  }
+
+  Describe("Department's head"){
+    It("should get info"){
       init(d0) >>
       (department composeLens Department.head composeLens Department.Person.name).get shouldBe "b"
     }
 
-    It("should have correct budget"){
+    It("should set info"){
       init(d0) >>
-      (department composeLens Department.budget).get shouldBe 10
+      (department composeLens Department.head composeLens Department.Person.name).put("cc") >>
+      (department composeLens Department.head composeLens Department.Person.name).get shouldBe "cc"
+    }
+  }
+
+  Describe("Person's address"){
+    It("should get info if not none"){
+      init(d0) >>
+      (department composeLens Department.head composeOptional Department.Person.optAddress)
+        .getOption shouldBe Some(1.asInstanceOf[Department.Person.Ad])
     }
   }
 }
