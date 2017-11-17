@@ -6,15 +6,13 @@ we are actually instantiating a natural lens.
 ## From laws
 
 `γ: (MonadState a q, Monad p) => q x -> p x` such that γ is a monad morphism:
-
-`φ: State a ~> State s` such that φ is a monad morphism:
 * MonMor0: `γ (return_a x) = return_s x`
 * MonMor1: `γ (m >>=_a (x -> k x)) = γ m >>=_s (x -> γ (k x))`
 
 Useful laws - *MonadState*:
 * GetGet: `get >>= (a1 -> get >>= (a2 -> k (a1, a2)))`
 * GetPut: `get >>= put = return ()`
-* PutGet: `put a1 >> get = put a >> return a`
+* PutGet: `put a >> get = put a >> return a`
 * PutPut: `put a1 >> put a2 = put a2`
 
 ## With defs

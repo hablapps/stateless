@@ -9,7 +9,7 @@
 Useful laws - *MonadState*:
 * GetGet: `get >>= (a1 -> get >>= (a2 -> k (a1, a2)))`
 * GetPut: `get >>= put = return ()`
-* PutGet: `put a1 >> get = put a >> return a`
+* PutGet: `put a >> get = put a >> return a`
 * PutPut: `put a1 >> put a2 = put a2`
 
 ## With defs
