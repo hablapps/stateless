@@ -485,149 +485,197 @@ optic benefits to the algebraic setting, we need to describe other optic
 algebras and be able to compose them. In this section, we introduce \emph{affine
 algebras} and \emph{traversal algebras}. For each of them, we will show a very
 brief introduction, we will extract its algebraic essence and finally, we will
-show a composable representation.
+show a natural composable representation.
 
 \subsection{Affine Algebra}
 
 A lens implies that the part is always present in the whole, however this could
-not be the case in other scenarios. Affine\footnote{This optic is also known as
-\emph{affine traversal}, \emph{affine lens} or even \emph{optional} in the
-folklore.} comes to alleviate this situation by evidencing that the part could
-be unavailable from the whole:
+not be the case in other scenarios.
+
+\begin{definition}
+
+An \emph{affine}\footnote{This optic is also known as \emph{affine traversal},
+\emph{affine lens}} consists of a pair of functions, one of them gets the
+optional part from the whole and the other one sets a new part into an old
+whole, as long as the part did exist in the whole.
 
 \begin{lstlisting}
 case class Affine[S, A](
   getOption: S => Option[A],
   set: (S, A) => S)
 \end{lstlisting}
+Affine operations must obey certain laws to be considered very well-behaved:
+\begin{align*}
+  & getOption(s).map(a => set(s, a))\ =\ s &&\textbf{GetPut} \\
+  & getOption(set(s,\ a))\ =\ getOption(s)\ as\ a &&\textbf{PutGet} \\
+  & set(set(s,\ a1),\ a2)\ =\ set(s,\ a2) &&\textbf{PutPut}
+\end{align*}
+
+\end{definition}
 
 If we derive the essence of the affine, as we did in section~\ref{sec:Towards}
-for lens, we end up with the following definition for affine algebras:
+for lens, we end up with the corresponding optic algebra for affine.
 
+\begin{definition}
+
+An affine algebra is a multi-parameter typeclass that is indexed over two type
+parameters \lstinline{F[_]} and \lstinline{A} and which defines a pair of
+methods \lstinline{getOption} and \lstinline{setOption}.
 \begin{lstlisting}
 trait AffineAlg[F[_], A] extends Monad[F] {
   def getOption(): F[Option[A]]
-  def set(a: A): F[Unit]
+  def setOption(a: A): F[Option[Unit]]
+}
+\end{lstlisting}
+These are the laws associated to this algebra:
+\begin{align*}
+  & getOption >>= (x => getOption >>= (y => (x, y).point)) = getOption >>= (x => (x, x).point) &&\textbf{GetGet} \\
+  & getOption >>= (\_.fold(None.point)(setOption)) = getOption >>= ((\_\ as\ ()).point) &&\textbf{GetPut} \\
+  & setOption(a) >> getOption = setOption(a).map(\_\ as\ a)) &&\textbf{PutGet} \\
+  & setOption(a1) >> setOption(a2) = setOption(a2) &&\textbf{PutPut}
+\end{align*}
+\end{definition}
+
+Now, we need to find a morphism representation for affine algebras to enable
+composition. In fact, we will rely on this representation of affine:
+\begin{lstlisting}
+type Affine[S, A] = State[A, ?] ~> OptionT[State[S, ?], ?]
+\end{lstlisting}
+We have not seen this representation in any other work, but we assume it to be
+folklore. If we generalize this representation as we did in previous section for
+lens algebras, we get the natural representation of affine algebras.
+
+\begin{definition}
+
+The natural representation of a affine algebra is a monad morphism which is
+lifted into a monad state morphism from \lstinline{Q} ---the inner program that
+evolves the part--- to \lstinline{P} ---the outer program that evolves the
+whole.
+
+\begin{lstlisting}
+trait AffineNat[P[_]: Monad, Q[_]: MonadState[A, ?[_]], A]
+    extends LensAlg[P, A] { self =>
+
+  def apply: Q ~> P
+
+  def get: P[A] = apply(MS.get)
+  def set(a: A): P[Unit] = apply(MS.put(a))
 }
 \end{lstlisting}
 
-As for the lens algebra case, it does not make much sense to compose affine
-algebras. We need to find a morphism representation to enable this feature.
-Intuitively, an inner program that modifies the part should be transformed into
-an outer program that optionally modifies the whole, just in case the part does
-exist. This intuition lead us to the following representation:
+\end{definition}
 
-\begin{lstlisting}
-case class NatAffineAlg[P[_], Q[_], A](
-    hom: Q ~> P[Option[?]])(implicit
-    MS: MonadState[A, Q]) extends AffineAlg[P, A] {
-  def getOption(): P[Option[A]] = hom(MS.get)
-  def put(a: A): P[Option[Unit]] = hom(MS.put(a))
-}
-\end{lstlisting}
-
-In fact, if we instantiate this algebra for
-\lstinline{NatAffineAlg[State[S, ?], State[A, ?], A]} we get something
-isomorphic to \lstinline{Affine[S, A]}, which supports the new algebra
-definition. Now that we have a composable representation, we should be able to
-compose a pair of affine algebras:
-
-\begin{lstlisting}
-def compose[P[_], Q[_], R[_], B](
-    af1: NatAffineAlg[P, Q, A]
-    af2: NatAffineAlg[Q, R, B])(implicit
-    MS1: MonadState[A, Q],
-    MS2: MonadState[B, R]): NatAffineAlg[P, R, B] =
-  NatAffineAlg((af1.hom compose af2.hom).map(_.join))
-\end{lstlisting}
-
-And what is even more interesting, we should be able to compose optics
-heterogeneously, for instance, a lens algebra with an affine algebra:
-
-\begin{lstlisting}
-def compose[P[_], Q[_], R[_], B](
-    ln: NatLensAlg[P, Q, A]
-    af: NatAffineAlg[Q, R, B])(implicit
-    MS1: MonadState[A, Q],
-    MS2: MonadState[B, R]): NatAffineAlg[P, R, B] =
-  NatLensAlg(ln.hom compose af.hom)
-\end{lstlisting}
-
-This composition results in an affine algebra, which is pretty consistent with
-classic optic composition, where the result of composing a lens with an affine
-is itself an affine. Notice as well that reversing the composing optic types,
-eg: composing an affine algebra with a lens algebra, does not affect the
-resulting type.
-
-\subsection{(Weak) Traversal Algebra}
-
-While lenses and affines do focus on a single part, which could or could not
-exist, we lack something to focus on a sequence of parts, which is exactly what
-traversals are for. This optic turns out to be tricky and it is not possible to
-represent it as a bunch of simple functions~\cite{oconnor2011functor}.
-Therefore, we will use a relaxed version, which we call \emph{Weak Traversal}:
-
-\begin{lstlisting}
-case class WTraversal[S, A](
-  getAll: S => List[A],
-  modify: (A => A) => S => S)
-\end{lstlisting}
-
-This optic is constrained in the sense that the modification that we achieve
-over each part must be exactly the same, but we find it good enough for most of
-cases. If we derive the essence of a weak traversal, we get the following
-interface:
-
-\begin{lstlisting}
-trait WTraversalAlg[F[_], A] extends Monad[F] {
-  def getList(): F[List[A]]
-  def modify(f: A => A): F[List[Unit]]
-}
-\end{lstlisting}
-
-As usual, we need to find a composable representation for these traversal
-algebras. If we apply the same ideas that we used for affine algebras, we get
-the next representation, where the possibility of failing focus is replaced with
-the possibility of multiple focus:
-
-\begin{lstlisting}
-case class NatWTraversalAlg[P[_], Q[_], A](
-    hom: Q ~> P[List[?]])(implicit
-    MS: MonadState[A, Q]) extends WTraversalAlg[P, A] {
-  def getList() = hom(MS.get)
-  def modify(f: A => A) = hom(MS.put(a))
-}
-\end{lstlisting}
-
-Again, if we instantiate this algebra for
-\lstinline{NatWTraversalAlg[State[S, ?], State[A, ?], A]} we get something
-isomorphic to \lstinline{WTraversal[S, A]}. Now that we have a composable
-representation, we should be able to compose homogeneously:
-
-\begin{lstlisting}
-def compose[P[_], Q[_], R[_], B](
-    af1: NatWTraversalAlg[P, Q, A]
-    af2: NatWTraversalAlg[Q, R, B])(implicit
-    MS1: MonadState[A, Q],
-    MS2: MonadState[B, R]): NatWTraversalAlg[P, R, B] =
-  NatWTraversalAlg((af1.hom compose af2.hom).map(_.join))
-\end{lstlisting}
-
-And besides, we should be able to compose optics heterogeneously, for instance,
-a lens algebra with a traversal algebra:
-
-\begin{lstlisting}
-def compose[P[_], Q[_], R[_], B](
-    ln: NatLensAlg[P, Q, A]
-    af: NatTraversalAlg[Q, R, B])(implicit
-    MS1: MonadState[A, Q],
-    MS2: MonadState[B, R]): NatTraversalAlg[P, R, B] =
-  NatTraversalAlg(ln.hom compose af.hom)
-\end{lstlisting}
-
-As expected by optic composition rules, composing lens algebras with traversal
-algebras results in traversal algebras. Had we composed with an affine algebra
-instead, it would have resulted in a traversal algebra.
+% \begin{lstlisting}
+% case class NatAffineAlg[P[_], Q[_], A](
+%     hom: Q ~> P[Option[?]])(implicit
+%     MS: MonadState[A, Q]) extends AffineAlg[P, A] {
+%   def getOption(): P[Option[A]] = hom(MS.get)
+%   def put(a: A): P[Option[Unit]] = hom(MS.put(a))
+% }
+% \end{lstlisting}
+%
+% In fact, if we instantiate this algebra for
+% \lstinline{NatAffineAlg[State[S, ?], State[A, ?], A]} we get something
+% isomorphic to \lstinline{Affine[S, A]}, which supports the new algebra
+% definition. Now that we have a composable representation, we should be able to
+% compose a pair of affine algebras:
+%
+% \begin{lstlisting}
+% def compose[P[_], Q[_], R[_], B](
+%     af1: NatAffineAlg[P, Q, A]
+%     af2: NatAffineAlg[Q, R, B])(implicit
+%     MS1: MonadState[A, Q],
+%     MS2: MonadState[B, R]): NatAffineAlg[P, R, B] =
+%   NatAffineAlg((af1.hom compose af2.hom).map(_.join))
+% \end{lstlisting}
+%
+% And what is even more interesting, we should be able to compose optics
+% heterogeneously, for instance, a lens algebra with an affine algebra:
+%
+% \begin{lstlisting}
+% def compose[P[_], Q[_], R[_], B](
+%     ln: NatLensAlg[P, Q, A]
+%     af: NatAffineAlg[Q, R, B])(implicit
+%     MS1: MonadState[A, Q],
+%     MS2: MonadState[B, R]): NatAffineAlg[P, R, B] =
+%   NatLensAlg(ln.hom compose af.hom)
+% \end{lstlisting}
+%
+% This composition results in an affine algebra, which is pretty consistent with
+% classic optic composition, where the result of composing a lens with an affine
+% is itself an affine. Notice as well that reversing the composing optic types,
+% eg: composing an affine algebra with a lens algebra, does not affect the
+% resulting type.
+%
+% \subsection{(Weak) Traversal Algebra}
+%
+% While lenses and affines do focus on a single part, which could or could not
+% exist, we lack something to focus on a sequence of parts, which is exactly what
+% traversals are for. This optic turns out to be tricky and it is not possible to
+% represent it as a bunch of simple functions~\cite{oconnor2011functor}.
+% Therefore, we will use a relaxed version, which we call \emph{Weak Traversal}:
+%
+% \begin{lstlisting}
+% case class WTraversal[S, A](
+%   getAll: S => List[A],
+%   modify: (A => A) => S => S)
+% \end{lstlisting}
+%
+% This optic is constrained in the sense that the modification that we achieve
+% over each part must be exactly the same, but we find it good enough for most of
+% cases. If we derive the essence of a weak traversal, we get the following
+% interface:
+%
+% \begin{lstlisting}
+% trait WTraversalAlg[F[_], A] extends Monad[F] {
+%   def getList(): F[List[A]]
+%   def modify(f: A => A): F[List[Unit]]
+% }
+% \end{lstlisting}
+%
+% As usual, we need to find a composable representation for these traversal
+% algebras. If we apply the same ideas that we used for affine algebras, we get
+% the next representation, where the possibility of failing focus is replaced with
+% the possibility of multiple focus:
+%
+% \begin{lstlisting}
+% case class NatWTraversalAlg[P[_], Q[_], A](
+%     hom: Q ~> P[List[?]])(implicit
+%     MS: MonadState[A, Q]) extends WTraversalAlg[P, A] {
+%   def getList() = hom(MS.get)
+%   def modify(f: A => A) = hom(MS.put(a))
+% }
+% \end{lstlisting}
+%
+% Again, if we instantiate this algebra for
+% \lstinline{NatWTraversalAlg[State[S, ?], State[A, ?], A]} we get something
+% isomorphic to \lstinline{WTraversal[S, A]}. Now that we have a composable
+% representation, we should be able to compose homogeneously:
+%
+% \begin{lstlisting}
+% def compose[P[_], Q[_], R[_], B](
+%     af1: NatWTraversalAlg[P, Q, A]
+%     af2: NatWTraversalAlg[Q, R, B])(implicit
+%     MS1: MonadState[A, Q],
+%     MS2: MonadState[B, R]): NatWTraversalAlg[P, R, B] =
+%   NatWTraversalAlg((af1.hom compose af2.hom).map(_.join))
+% \end{lstlisting}
+%
+% And besides, we should be able to compose optics heterogeneously, for instance,
+% a lens algebra with a traversal algebra:
+%
+% \begin{lstlisting}
+% def compose[P[_], Q[_], R[_], B](
+%     ln: NatLensAlg[P, Q, A]
+%     af: NatTraversalAlg[Q, R, B])(implicit
+%     MS1: MonadState[A, Q],
+%     MS2: MonadState[B, R]): NatTraversalAlg[P, R, B] =
+%   NatTraversalAlg(ln.hom compose af.hom)
+% \end{lstlisting}
+%
+% As expected by optic composition rules, composing lens algebras with traversal
+% algebras results in traversal algebras. Had we composed with an affine algebra
+% instead, it would have resulted in a traversal algebra.
 
 \section{Stateless: an optic algebra Scala library}
 \label{sec:Stateless}
