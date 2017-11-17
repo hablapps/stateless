@@ -7,9 +7,9 @@ import scalaz._, Scalaz._
 import doobie.imports._
 import monocle.{Lens => MLens}
 
-object LensState{
+object LensesDoobie{
 
-  def fromDLens[K,V](dlens: DoobieLens[K,V]) =
+  def fromState[K,V](dlens: DoobieLens[K,V]) =
     LensAlg[StateT[ConnectionIO,K,?],State[V,?],V]{
       new (State[V,?] ~> StateT[ConnectionIO,K,?]){
         def apply[T](q: State[V,T]): StateT[ConnectionIO,K,T] =

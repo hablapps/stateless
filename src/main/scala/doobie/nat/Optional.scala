@@ -9,7 +9,7 @@ import monocle.{Lens => MLens}
 
 object OptionalDoobie{
 
-  def fromDOptional[K,V](dopt: DoobieOptional[K,V]) =
+  def fromState[K,V](dopt: DoobieOptional[K,V]) =
     OptionalAlg[StateT[ConnectionIO,K,?],State[V,?],V]{
       new (State[V,?] ~> λ[T => StateT[ConnectionIO,K,Option[T]]]){
         def apply[T](q: State[V,T]): StateT[ConnectionIO,K,Option[T]] =

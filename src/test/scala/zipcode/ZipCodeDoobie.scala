@@ -144,8 +144,8 @@ object ZipCodeDoobie{
     type Pr=Int
     val Person = DoobiePerson
 
-    val budget: LensAlg[P, Int] = LensState.fromDLens(DepartmentTable.DLensBudget)
-    val head: LensAlg.Aux[P, Person.P, Pr] = LensState.fromStateT(DepartmentTable.DLensHead)
+    val budget: LensAlg[P, Int] = LensesDoobie.fromState(DepartmentTable.DLensBudget)
+    val head: LensAlg.Aux[P, Person.P, Pr] = LensesDoobie.fromStateT(DepartmentTable.DLensHead)
     lazy val members: TraversalAlg.Aux[P, Person.P, Pr] =
       TraversalDoobie.fromStateT(PersonTable.DTraversalMembers)
   }
@@ -155,7 +155,7 @@ object ZipCodeDoobie{
     type Ad=Int
     val Address = DoobieAddress
 
-    val name: LensAlg[P, String] = LensState.fromDLens(PersonTable.DLensName)
+    val name: LensAlg[P, String] = LensesDoobie.fromState(PersonTable.DLensName)
     lazy val optAddress: OptionalAlg.Aux[P, Address.P, Ad] =
       OptionalDoobie.fromStateT(PersonTable.DOptionalAddress)
   }
@@ -163,8 +163,8 @@ object ZipCodeDoobie{
   object DoobieAddress extends Address[Int]{
     type P[T]=StateT[ConnectionIO,Int,T]
 
-    val city: LensAlg[P, String] = LensState.fromDLens(AddressTable.DLensCity)
-    val zip: LensAlg[P, Int] = LensState.fromDLens(AddressTable.DLensZip)
+    val city: LensAlg[P, String] = LensesDoobie.fromState(AddressTable.DLensCity)
+    val zip: LensAlg[P, Int] = LensesDoobie.fromState(AddressTable.DLensZip)
   }
 
 }

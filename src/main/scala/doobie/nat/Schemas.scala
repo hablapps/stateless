@@ -26,7 +26,6 @@ object DoobieLens{
         fr"SET" ++ Fragment.const(valueField) ++ fr"=" ++ fr"$value" ++
         fr"WHERE" ++ Fragment.const(keyField) ++ fr"=" ++ fr"$key"
       ).update
-      // ).updateWithLogHandler(LogHandler.jdkLogHandler)
     )
 }
 
@@ -51,7 +50,6 @@ object DoobieOptional{
         fr"SET" ++ Fragment.const(valueField) ++ fr"=" ++ fr"$value" ++
         fr"WHERE" ++ Fragment.const(keyField) ++ fr"=" ++ fr"$key"
       ).update
-      // ).updateWithLogHandler(LogHandler.jdkLogHandler)
     )
 }
 
@@ -70,23 +68,4 @@ object DoobieTraversal{
         fr"WHERE" ++ Fragment.const(valueField) ++ fr"=$value"
       ).query[K].list
     )
-}
-
-trait DoobieSchemaV[K,V]{
-  def key(v: V): K
-  def insertOrUpdate(v: V): Update0
-  def get(k: K): Query0[V]
-  def getAll: Query0[V]
-  def remove(k: K): Update0
-}
-
-trait DoobieSchemaKV[K,V]{
-  def createTable: Update0
-  def dropTable: Update0
-  def insert(v: V): Update0
-  def insertOrUpdate(k: K, v: V): Update0
-  def getIndices: Query0[K]
-  def get(k: K): Query0[V]
-  def getAll: Query0[(K,V)]
-  def remove(k: K): Update0
 }
