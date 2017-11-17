@@ -43,30 +43,30 @@
     State (s -> fmap (flip put s) (run (k x) (get s))))
 = [def >>=_s]
   State (s0 ->
-    let (s1, x1) = fmap (flip put s0) (run m (get s0))
+    let (s1, x1) = fmap (flip put s0) (run m (get s0)) in
     fmap (flip put s1) (run (k x1) (get s1)))
 = [def eval, def run]
   State (s0 ->
     let s1 = put (exec m (get s0)) s0
-        x1 = eval m (get s0)
+        x1 = eval m (get s0) in
     fmap (flip put s1) (run (k x1) (get s1)))
 = [s1 expansion]
   State(s0 ->
     let s1 = put (exec m (get s0)) s0
-        x1 = eval m (get s0)
+        x1 = eval m (get s0) in
     fmap (flip put s1) (run (k x1) (get (put (exec m (get s0)) s0))))
 = [PutGet]
   State(s0 ->
     let s1 = put (exec m (get s0)) s0
-        x1 = eval m (get s0)
+        x1 = eval m (get s0) in
     fmap (flip put s1) (run (k x1) (exec m (get s0))))
 = [s1 expansion]
   State(s0 ->
-    let x1 = eval m (get s0)
+    let x1 = eval m (get s0) in
     fmap (flip put (put (exec m (get s0)) s0)) (run (k x1) (exec m (get s0))))
 = [PutPut]
   State(s0 ->
-    let x1 = eval m (get s0)
+    let x1 = eval m (get s0) in
     fmap (flip put s0) (run (k x1) (exec m (get s0))))
 = [x1 expansion, s0 -> s]
   State(s -> fmap (flip put s) (run (k (eval m (get s))) (exec m (get s))))
