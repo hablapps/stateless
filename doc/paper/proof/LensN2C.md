@@ -7,7 +7,7 @@
 * MonMor1: `φ (m >>=_a (x -> k x)) = φ m >>=_s (x -> φ (k x))`
 
 Useful laws - *MonadState*:
-* GetGet: `get >>= (a1 -> get >>= (a2 -> k (a1, a2)))`
+* GetGet: `get >>= (a1 -> get >>= (a2 -> k (a1, a2))) = get >>= (a -> k (a, a))`
 * GetPut: `get >>= put = return ()`
 * PutGet: `put a >> get = put a >> return a`
 * PutPut: `put a1 >> put a2 = put a2`

@@ -1,19 +1,13 @@
 # Hypothesis: natural lens algebra is natural lens
 
 If we provide a natural lens algebra for `State s`, `State a` with focus on `a`
-we are actually instantiating a natural lens.
+we are actually instantiating a natural lens. This should be trivial!
 
 ## From laws
 
 `γ: (MonadState a q, Monad p) => q x -> p x` such that γ is a monad morphism:
 * MonMor0: `γ (return_a x) = return_s x`
 * MonMor1: `γ (m >>=_a (x -> k x)) = γ m >>=_s (x -> γ (k x))`
-
-Useful laws - *MonadState*:
-* GetGet: `get >>= (a1 -> get >>= (a2 -> k (a1, a2)))`
-* GetPut: `get >>= put = return ()`
-* PutGet: `put a >> get = put a >> return a`
-* PutPut: `put a1 >> put a2 = put a2`
 
 ## With defs
 

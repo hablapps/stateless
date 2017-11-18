@@ -34,7 +34,7 @@ put_p = γ (put a)
   do_p { a1 <- γ get; do_p { a2 <- γ get; k (a1, a2) } }
 = [Monad associativity]
   do_p { (a1, a2) <- do_p { a1 <- γ get; a2 <- γ get; return (a1, a2) } k (a1, a2) }
-= [do-notation]
+= [do-notation] -- reasoning about associativity is easier with do-notation
   (γ get >>=_p (a1 -> γ get >>=_p (a2 -> return (a1, a2)))) >>=_p ((a1, a2) -> k (a1, a2))
 = [γ - MonMor0]
   (γ get >>=_p (a1 -> γ get >>=_p (a2 -> γ (return (a1, a2))))) >>=_p ((a1, a2) -> k (a1, a2))
