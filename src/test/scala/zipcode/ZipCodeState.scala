@@ -33,6 +33,23 @@ object ZipCodeState{
     val department = asLensAlg(System.department)
   }
 
+  //- BEGIN AUX
+
+  implicit val _ = new Semigroup[SDepartment]{
+    def append(f1: SDepartment, f2: => SDepartment) = 
+      SDepartment(f1.budget, f1.head, f2.members)
+  }
+
+  implicit class LensOp[S,T: Semigroup,A,B](lens: monocle.PLens[S,T,A,B]){
+    def :+(trav: monocle.PTraversal[S,T,A,B]) = 
+      new monocle.PTraversal[S, T, A, B]{
+        def modifyF[F[_]: Applicative](f: A => F[B])(s: S): F[T] =
+          (lens.modifyF(f)(s) |@| trav.modifyF(f)(s))(_ |+| _)
+    }
+  }
+
+  //- END AUX
+
   def stateDepartment[F[_]: Monad] = new Department[SDepartment] {
     type P[X] = StateT[F,SDepartment, X]
     type Pr = SPerson
@@ -40,7 +57,7 @@ object ZipCodeState{
 
     val budget = asLensAlg(SDepartment.budget)
     val head = asLensAlg(SDepartment.head)
-    val members = fromTraversal(SDepartment.members composeTraversal each)
+    val members = fromTraversal(SDepartment.head :+ (SDepartment.members composeTraversal each))
   }
 
   def statePerson[F[_]: Monad] = new Person[SPerson] {
