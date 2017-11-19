@@ -35,16 +35,13 @@ object ZipCodeState{
 
   //- BEGIN AUX
 
-  implicit val _ = new Semigroup[SDepartment]{
-    def append(f1: SDepartment, f2: => SDepartment) = 
-      SDepartment(f1.budget, f1.head, f2.members)
-  }
-
-  implicit class LensOp[S,T: Semigroup,A,B](lens: monocle.PLens[S,T,A,B]){
-    def :+(trav: monocle.PTraversal[S,T,A,B]) = 
-      new monocle.PTraversal[S, T, A, B]{
-        def modifyF[F[_]: Applicative](f: A => F[B])(s: S): F[T] =
-          (lens.modifyF(f)(s) |@| trav.modifyF(f)(s))(_ |+| _)
+  implicit class LensOp[S,A](lens: monocle.PLens[S,S,A,A]){
+    def :+(trav: monocle.PTraversal[S,S,A,A]) = 
+      new monocle.PTraversal[S, S, A, A]{
+        def modifyF[F[_]: Applicative](f: A => F[A])(s: S): F[S] =
+          (lens.modifyF(f)(s) |@| trav.modifyF(f)(s)){
+            (s1,s2) => lens.set(lens.get(s1))(s2)
+          }
     }
   }
 
