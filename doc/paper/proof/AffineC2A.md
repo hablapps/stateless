@@ -21,37 +21,37 @@ With laws:
 ## Finding the buttons
 
 ```haskell
-  (s -> Maybe a, s -> a -> s)
+  (GETOPT :: s -> Maybe a, PUT :: s -> a -> s)
   { GETOPT (PUT s a) => GETOPT s $> a
   , maybe (PUT s) (GETOPT s) => s
   , PUT (PUT s a1) a2 => PUT s a2 }
 
 = [getOpt + input]
-  () -> s -> Maybe a
+  (GETOPT :: () -> s -> Maybe a, PUT :: s -> a -> s)
   { GETOPT () (PUT s a) => GETOPT () s $> a
   , maybe (PUT s) (GETOPT () s) => s
   , PUT (PUT s a1) a2 => PUT s a2 }
 
 = [getOpt + resulting state]
-  (() -> s (Maybe a, s), s -> a -> s)
+  (GETOPT :: () -> s (Maybe a, s), PUT :: s -> a -> s)
   { uncurry (\out _ -> out) (GETOPT () (PUT s a)) => uncurry (\out _ -> out $> a) (GETOPT () s)
   , uncurry (\out _ -> maybe s (PUT s) out) (GETOPT () s) => s
   , PUT (PUT s a1) a2 => PUT s a2 }
 
 = [put + def flip]
-  (() -> s (Maybe a, s), a -> s -> s)
+  (GETOPT :: () -> s (Maybe a, s), PUT :: a -> s -> s)
   { uncurry (\out _ -> out) (GETOPT () (PUT a s)) => uncurry (\out _ -> out $> a) (GETOPT () s)
   , uncurry (\out _ -> maybe s (flip (PUT s)) out) (GETOPT () s) => s
   , PUT a2 (PUT a1 s) => PUT a2 s }
 
 = [put + optional output]
-  (() -> s (Maybe a, s), a -> s -> (Maybe (), s)
+  (GETOPT :: () -> s (Maybe a, s), PUT :: a -> s -> (Maybe (), s)
   { uncurry (\out _ -> out) (GETOPT () (uncurry (\_ s -> s) (PUT a s))) => uncurry (\out _ -> out $> a) (GETOPT () s)
   , uncurry (\out _ -> maybe s (\a -> uncurry (\_ s -> s) (PUT a s)) out) (GETOPT () s) => s
   , uncurry (\_ s -> s) (PUT a2 (uncurry (\_ s -> s) (PUT a1 s))) => uncurry (\_ -> s) (PUT a2 s) }
 
 = [def State]
-  (() -> State s (Maybe a), a -> State s (Maybe ()))
+  (GETOPT :: () -> State s (Maybe a), PUT :: a -> State s (Maybe ()))
   { uncurry (\out _ -> out) (GETOPT () (uncurry (\_ s -> s) (PUT a s))) => uncurry (\out _ -> out $> a) (GETOPT () s)
   , uncurry (\out _ -> maybe s (\a -> uncurry (\_ s -> s) (PUT a s)) out) (GETOPT () s) => s
   , uncurry (\_ s -> s) (PUT a2 (uncurry (\_ s -> s) (PUT a1 s))) => uncurry (\_ -> s) (PUT a2 s) }
@@ -61,8 +61,8 @@ With laws:
 
 Using definitions:
 ```haskell
-first :: State s x -> (x -> y) -> State s y
-first sx f = s -> uncurry (\out s -> (f out, s)) (sx s)
+fmap :: (x -> y) -> State s x -> State s y
+fmap f sx = s -> uncurry (\out s -> (f out, s)) (sx s)
 
 (>>) :: State s x -> State s y -> State s y
 sx >> sy = s -> uncurry (\_ s -> sy s) (sx s)
@@ -79,13 +79,14 @@ uncurry (f . g) = f . uncurry g                     -- Uncurry distribution
 
 #### New laws
 
-What should we do with the contrived information we added in the previous section? We need some basic rules for it:
+What should we do with the contrived information we added in the previous
+section? We need some basic rules for it:
 * Get is non-effectful: `uncurry (\_ s -> s) (GETOPT () s) = s`
 * Outputs are homogeneous for a state: `uncurry (\out _ -> out) (PUT a s) = uncurry (\out _ -> out $> ()) (GETOPT () s)`
 
-Temptative:
+Temptative laws (taking previous laws to monadic context):
 * Get is non-effectful: `getOpt >> p = p`
-* Outputs are homogeneous: `putOpt a = getOpt >>= (oa -> putOpt a >> return (() <$ oa))`
+* Outputs are homogeneous: `getOpt >>= (oa -> putOpt x >> return (() <$ oa)) = putOpt x`
 
 #### 1st law
 
@@ -160,7 +161,7 @@ AffineAlg { getOpt :: p (Maybe a)
 
 With laws:
 * Non-eff: `getOpt >> p = p`
-* Homog: `getOpt >>= (oa -> putOpt a >> return (() <$ oa)) = putOpt a`
+* Homog: `getOpt >>= (oa -> putOpt x >> return (() <$ oa)) = putOpt x`
 * PutGet: `putOpt a >> getOpt = fmap (a <$) (putOpt a)`
 * GetPut: `getOpt >>= (maybe (return None) setOpt) = fmap (() <$) getOpt`
 * PutPut: `putOpt a1 >> putOpt a2 = putOpt a2`
