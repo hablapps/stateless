@@ -15,7 +15,7 @@ Operations:
 
 With laws:
 * PutGet: `GETOPT (PUT s a) => GETOPT s $> a`
-* GetPut: `maybe (PUT s) (GETOPT s) => s`
+* GetPut: `maybe s (PUT s) (GETOPT s) => s`
 * PutPut: `PUT (PUT s a1) a2 => PUT s a2`
 
 ## Finding the buttons
@@ -33,19 +33,19 @@ With laws:
   , PUT (PUT s a1) a2 => PUT s a2 }
 
 = [getOpt + resulting state]
-  (GETOPT :: () -> s (Maybe a, s), PUT :: s -> a -> s)
+  (GETOPT :: () -> s -> (Maybe a, s), PUT :: s -> a -> s)
   { uncurry (\out _ -> out) (GETOPT () (PUT s a)) => uncurry (\out _ -> out $> a) (GETOPT () s)
   , uncurry (\out _ -> maybe s (PUT s) out) (GETOPT () s) => s
   , PUT (PUT s a1) a2 => PUT s a2 }
 
 = [put + def flip]
-  (GETOPT :: () -> s (Maybe a, s), PUT :: a -> s -> s)
+  (GETOPT :: () -> s -> (Maybe a, s), PUT :: a -> s -> s)
   { uncurry (\out _ -> out) (GETOPT () (PUT a s)) => uncurry (\out _ -> out $> a) (GETOPT () s)
   , uncurry (\out _ -> maybe s (flip (PUT s)) out) (GETOPT () s) => s
   , PUT a2 (PUT a1 s) => PUT a2 s }
 
 = [put + optional output]
-  (GETOPT :: () -> s (Maybe a, s), PUT :: a -> s -> (Maybe (), s)
+  (GETOPT :: () -> s -> (Maybe a, s), PUT :: a -> s -> (Maybe (), s)
   { uncurry (\out _ -> out) (GETOPT () (uncurry (\_ s -> s) (PUT a s))) => uncurry (\out _ -> out $> a) (GETOPT () s)
   , uncurry (\out _ -> maybe s (\a -> uncurry (\_ s -> s) (PUT a s)) out) (GETOPT () s) => s
   , uncurry (\_ s -> s) (PUT a2 (uncurry (\_ s -> s) (PUT a1 s))) => uncurry (\_ -> s) (PUT a2 s) }
