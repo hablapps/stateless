@@ -70,6 +70,16 @@ uncurry g . second f  = uncurry (\x s -> g x (f s)) -- Uncurry 2
 uncurry (f . g) = f . uncurry g                     -- Uncurry distribution
 ```
 
+```haskell
+  (GET >>= (a1 -> GET >>= (a2 -> return (a1, a2)))) s => (GET >>= (a -> return (a, a)) s)
+= [def >>=]
+  (s -> uncurry (\x s2 -> (a1 -> GET >>= (a2 -> return (a1, a2))) x s2) (GET s)) s
+= [def apply]
+  uncurry (\x s2 -> (a1 -> GET >>= (a2 -> return (a1, a2))) x s2) (GET s)
+= [def >>=]
+  uncurry (\x s2 -> (a1 -> (uncurry (\y s3 -> (a2 -> return (a1, a2)) y s3) (GET s2))) x s2) (GET s)
+```
+
 #### New laws
 
 Contrived resulting state leads to this rule:
@@ -144,4 +154,42 @@ Temptative law:
 Temptative law:
 * `put a1 >> put a2 = put a2`
 
-#### What about `GetGet`?
+## Lens algebra definition and laws
+
+Lens algebra:
+```haskell
+LensAlg { get :: p a
+        , set :: a -> p () }
+```
+
+With laws:
+* Non-eff: `get >> p = p`
+* GetPut: `get >>= put = return ()`
+* PutGet: `put a >> get = put a >> return a`
+* PutPut: `put a1 >> put a2 = put a2`
+
+## What about `GetGet`?
+
+Can we fulfill this law from the rest of them (including non-effectful get)?
+
+```haskell
+  get >>= (a1 -> get >>= (a2 -> p a1 a2)) => get >>= (a -> p a a)
+= [p x y = q where q ignores (x, y)]
+  get >>= (a1 -> get >>= (a2 -> q))
+= [ignore parameters]
+  get >>= (_ -> get >>= (_ -> q))
+= [def >>]
+  get >> get >> q
+= [Non-effectful get]
+  get >> q
+= [def >>]
+  get >>= (_ -> q)
+= [p x y = q where q ignores (x, y)]
+  get >>= (a -> p a a)
+```
+
+It works for a particular type of programs, those who ignore get outputs. We
+can't say that GetGet is more general, since we can't define Non-effectful from
+it.
+
+However, these laws seem to have a relation at concrete level:
