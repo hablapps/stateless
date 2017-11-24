@@ -160,8 +160,11 @@ AffineAlg { getOpt :: p (Maybe a)
 ```
 
 With laws:
-* Non-eff: `getOpt >> p = p`
+* ~~Non-eff: `getOpt >> p = p`~~
+* GetGet: `getOpt >>= (oa -> getOpt >>= (ob -> return (oa, ob))) = getOpt (oa -> return (oa, oa))`
 * Homog: `getOpt >>= (oa -> putOpt x >> return (() <$ oa)) = putOpt x`
 * PutGet: `putOpt a >> getOpt = fmap (a <$) (putOpt a)`
 * GetPut: `getOpt >>= (maybe (return None) setOpt) = fmap (() <$) getOpt`
 * PutPut: `putOpt a1 >> putOpt a2 = putOpt a2`
+
+_(*) UPDATE: we'll be using GetGet instead of Non-eff, to be homogeneous with Lens, though this aspect is not very clear yet._

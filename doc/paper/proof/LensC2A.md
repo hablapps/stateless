@@ -70,16 +70,6 @@ uncurry g . second f  = uncurry (\x s -> g x (f s)) -- Uncurry 2
 uncurry (f . g) = f . uncurry g                     -- Uncurry distribution
 ```
 
-```haskell
-  (GET >>= (a1 -> GET >>= (a2 -> return (a1, a2)))) s => (GET >>= (a -> return (a, a)) s)
-= [def >>=]
-  (s -> uncurry (\x s2 -> (a1 -> GET >>= (a2 -> return (a1, a2))) x s2) (GET s)) s
-= [def apply]
-  uncurry (\x s2 -> (a1 -> GET >>= (a2 -> return (a1, a2))) x s2) (GET s)
-= [def >>=]
-  uncurry (\x s2 -> (a1 -> (uncurry (\y s3 -> (a2 -> return (a1, a2)) y s3) (GET s2))) x s2) (GET s)
-```
-
 #### New laws
 
 Contrived resulting state leads to this rule:
@@ -193,3 +183,37 @@ can't say that GetGet is more general, since we can't define Non-effectful from
 it.
 
 However, these laws seem to have a relation at concrete level:
+
+```haskell
+  GET >>= (a1 -> GET >>= (a2 -> return (a1, a2))) => GET >>= (a -> return (a, a))
+= [def >>=]
+  s -> uncurry (\x s2 -> (a1 -> GET >>= (a2 -> return (a1, a2))) x s2) (GET s)
+= [def >>=]
+  s -> uncurry (\x s2 -> (a1 -> (s -> uncurry (\y s3 -> (a2 -> return (a1, a2)) y s3) (GET s))) x s2) (GET s)
+= [def apply/abstract]
+  s -> uncurry (\x s2 -> (a1 -> (s -> uncurry (\y s3 -> (return (a1, y)) s3) (GET s))) x s2) (GET s)
+= [def apply/abstract]
+  s -> uncurry (\x s2 -> (s -> uncurry (\y s3 -> (return (x, y)) s3) (GET s)) s2) (GET s)
+= [Non-effectful GET s: s2 = s]
+  s -> uncurry (\x _ -> (s -> uncurry (\y s3 -> (return (x, y)) s3) (GET s)) s) (GET s)
+= [Non-effectful GET s: s3 = s]
+  s -> uncurry (\x _ -> (s -> uncurry (\y _ -> (return (x, y)) s) (GET s)) s) (GET s)
+= [def return, def apply]
+  s -> uncurry (\x _ -> (s -> uncurry (\y _ -> ((x, y), s)) (GET s)) s) (GET s)
+= [GET s = (x, _) => x = y]
+  s -> uncurry (\x _ -> (s -> uncurry (\_ _ -> ((x, x), s)) (GET s)) s) (GET s)
+= [Uncurry const]
+  s -> uncurry (\x _ -> (s -> ((x, x), s)) s) (GET s)
+= [def return]
+  s -> uncurry (\x _ -> (return (x, x)) s) (GET s)
+= [def abstract, Non-effectful GET]
+  s -> uncurry (\x s2 -> (return (x, x)) s2) (GET s)
+= [def abstract]
+  s -> uncurry (\x s2 -> (\x -> return (x, x)) x s2) (GET s)
+= [def >>=]
+  GET >>= (x -> return (x, x))
+= [variable renaming]
+  GET >>= (a -> return (a, a))
+```
+
+**Anyway, reaching GetGet is still an open question!!!**
