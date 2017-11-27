@@ -6,6 +6,8 @@
 * AffMor1: `φ (m >>=_a (x -> k x)) = φ m >>=_s (x -> φ (k x))`
 * AffMor2: `φ q >> φ (return_a x) = φ q >> return_op x`
 * AffMor3: `(uncurry (\out _ -> out) (φ q1 s)) $> a = (uncurry (\out _ -> out) (φ q2 s)) $> a`
+* AffMor4: `f (uncurry (\out _ -> out) (φ get_a s)) s = `uncurry f (φ get_a s)`
+           `f (uncurry (\out _ -> out) (φ (return_a x) s)) s = `uncurry f (φ (return_a x) s)`
 
 Useful laws - *MonadState*:
 * GetGet: `get >>= (a1 -> get >>= (a2 -> k (a1, a2))) = get >>= (a -> k (a, a))`
@@ -35,9 +37,27 @@ PUT s a = uncurry (\_ s -> s) (φ (put_a a) s)
   maybe s (\a -> uncurry (\_ s -> s) (φ (put_a a) s)) (GETOPT s)
 = [def GETOPT]
   maybe s (\a -> uncurry (\_ s -> s) (φ (put_a a) s)) (uncurry (\out _ -> out) (φ get_a s))
-
-
-= [???]
+= [AffMor4]
+  uncurry (\out s -> maybe s (\a -> uncurry (\_ s -> s) (φ (put_a a) s)) out) (φ get_a s)
+= [Non-effectful return]
+  uncurry (\out s -> maybe (uncurry (\_ s -> s) (return None s)) (\a -> uncurry (\_ s -> s) (φ (put_a a) s)) out) (φ get_a s)
+= [lift uncurry]
+  uncurry (\out s -> uncurry (\_ s -> s) (maybe (return None s) (\a -> φ (put_a a) s) out)) (φ get_a s)
+= [Uncurry distribution]
+  uncurry (\_ s -> s) (uncurry (\out s -> maybe (return None s) (\a -> φ (put_a a) s) out) (φ get_a s))
+= [def apply/abstract]
+  uncurry (\_ s -> s) ((s -> uncurry (\out s -> maybe (return None s) (\a -> φ (put_a a) s) out) (φ get_a s)) s)
+= [def >>=_mt (MaybeT)]
+  uncurry (\_ s -> s) ((φ get_a >>=_mt (a -> φ (put_a a))) s)
+= [AffMor1]
+  uncurry (\_ s -> s) (φ (get_a >>=_a (a -> put_a a)) s)
+= [MonadState GetPut]
+  uncurry (\_ s -> s) (φ (return_a ()) s)
+= [AffMor4]
+  uncurry (\_ s -> s) (return_op () s)
+= [def return_op]
+  uncurry (\_ s -> s) ((),  s)
+= [def uncurry]
   s
 ```
 
