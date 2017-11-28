@@ -107,7 +107,7 @@ PUT s a = uncurry (\_ s -> s) (φ (put_a a) s)
   uncurry (\_ s -> s) ((s -> uncurry (\_ s -> φ (put_a a2) s) (φ (put_a a1) s)) s)
 = [def >>]
   uncurry (\_ s -> s) ((φ (put_a a1) >> φ (put_a a2)) s)
-= [φ distributes over >>]
+= [AffMor1]
   uncurry (\_ s -> s) (φ (put_a a1 >> put_a a2) s)
 = [MonadState - PutPut]
   uncurry (\_ s -> s) (φ (put_a a2) s)
