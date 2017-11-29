@@ -19,6 +19,31 @@
 #### AffMor1
 ```haskell
   φ (m >>=_a (x -> k x)) = φ m >>=_op (x -> φ (k x))
+= [def φ]
+  s -> maybe (None, s) (\a -> uncurry (\out a -> (Just out, put s a)) (m a)) (getOpt s) >>=_op
+    (x -> s -> maybe (None, s) (\a -> uncurry (\out a -> (Just out, put s a)) ((k x) a)) (getOpt s))
+= [def >>=_op]
+  s -> uncurry (\out s -> maybe (return None) (x -> maybe (None, s) (\a -> uncurry (\out a -> (Just out, put s a)) ((k x) a)) (getOpt s)) out) (maybe (None, s) (\a -> uncurry (\out a -> (Just out, put s a)) (m a)) (getOpt s))
+= [...] -- big step here, which merges blocks of operations into a single one, exploiting the block output
+  s -> maybe (None, s) (\a -> uncurry (\out a -> uncurry (\x s -> maybe (None, s) (\a -> uncurry (\out a -> (Just out, put s a)) ((k x) a)) (getOpt s)) (out, put s a)) (m a)) (getOpt s)
+= [def uncurry]
+  s -> maybe (None, s) (\a -> uncurry (\x a -> maybe (None, put s a) (\a -> uncurry (\out a -> (Just out, put (put s a) a)) ((k x) a)) (getOpt (put s a))) (m a)) (getOpt s)
+= [PutPut]
+  s -> maybe (None, s) (\a -> uncurry (\x a -> maybe (None, put s a) (\a -> uncurry (\out a -> (Just out, put s a)) ((k x) a)) (getOpt (put s a))) (m a)) (getOpt s)
+= [GetPut]
+  s -> maybe (None, s) (\a -> uncurry (\x a -> maybe (None, put s a) (\a -> uncurry (\out a -> (Just out, put s a)) ((k x) a)) (getOpt s $> a)) (m a)) (getOpt s)
+= [(getOpt s) is defined]
+  s -> maybe (None, s) (\a -> uncurry (\x a -> maybe (None, put s a) (\a -> uncurry (\out a -> (Just out, put s a)) ((k x) a)) (Just a)) (m a)) (getOpt s)
+= [maybe definition]
+  s -> maybe (None, s) (\a -> uncurry (\x a -> uncurry (\out a -> (Just out, put s a)) (k x a)) (m a)) (getOpt s)
+= [Uncurry distribution]
+  s -> maybe (None, s) (\a -> uncurry (\out a -> (Just out, put s a)) (uncurry k (m a))) (getOpt s)
+= [def >>=]
+  s -> maybe (None, s) (\a -> uncurry (\out a -> (Just out, put s a)) ((m >>= k) a)) (getOpt s)
+= [def φ]
+  φ (m >>= k)
+= [lambda syntax]
+  φ (m >>= (x -> k x))
 ```
 
 #### AffMor2
