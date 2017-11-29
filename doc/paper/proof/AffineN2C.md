@@ -6,8 +6,8 @@
 * AffMor1: `φ (m >>=_a (x -> k x)) = φ m >>=_s (x -> φ (k x))`
 * AffMor2: `φ q >> φ (return_a x) = φ q >> return_op x`
 * AffMor3: `(uncurry (\out _ -> out) (φ q1 s)) $> a = (uncurry (\out _ -> out) (φ q2 s)) $> a`
-* AffMor4: `f (uncurry (\out _ -> out) (φ get_a s)) s = `uncurry f (φ get_a s)`
-           `f (uncurry (\out _ -> out) (φ (return_a x) s)) s = `uncurry f (φ (return_a x) s)`
+* AffMor4: `f (uncurry (\out _ -> out) (φ get_a s)) s = uncurry f (φ get_a s)` &
+           `f (uncurry (\out _ -> out) (φ (return_a x) s)) s = uncurry f (φ (return_a x) s)`
 
 Useful laws - *MonadState*:
 * GetGet: `get >>= (a1 -> get >>= (a2 -> k (a1, a2))) = get >>= (a -> k (a, a))`
