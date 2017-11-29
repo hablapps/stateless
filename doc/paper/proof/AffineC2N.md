@@ -18,7 +18,7 @@
 
 #### AffMor1
 ```haskell
-  φ (m >>=_a (x -> k x)) = φ m >>=_s (x -> φ (k x))
+  φ (m >>=_a (x -> k x)) = φ m >>=_op (x -> φ (k x))
 ```
 
 #### AffMor2
@@ -29,6 +29,38 @@
 = [def φ]
   (s -> maybe (None, s) (\a -> uncurry (\out a -> (Just out, put s a)) (q a)) (getOpt s)) >>
     (s -> maybe (None, s) (\a -> uncurry (\out a -> (Just out, put s a)) (return_a x a)) (getOpt s))
+= [def return_a]
+  (s -> maybe (None, s) (\a -> uncurry (\out a -> (Just out, put s a)) (q a)) (getOpt s)) >>
+    (s -> maybe (None, s) (\a -> uncurry (\out a -> (Just out, put s a)) (x, a)) (getOpt s))
+= [def uncurry]
+  (s -> maybe (None, s) (\a -> uncurry (\out a -> (Just out, put s a)) (q a)) (getOpt s)) >>
+    (s -> maybe (None, s) (\a -> (Just x, put s a)) (getOpt s))
+= [def >>_op]
+  s -> uncurry (\out s -> maybe (return None) (\_ -> (s -> maybe (None, s) (\a -> (Just x, put s a)) (getOpt s)) s) out) ((s -> maybe (None, s) (\a -> uncurry (\out a -> (Just out, put s a)) (q a)) (getOpt s)) s)
+= [def apply]
+  s -> uncurry (\out s -> maybe (return None) (\_ -> (maybe (None, s) (\a -> (Just x, put s a)) (getOpt s))) out) ((s -> maybe (None, s) (\a -> uncurry (\out a -> (Just out, put s a)) (q a)) (getOpt s)) s)
+= [def apply]
+  s -> uncurry (\out s -> maybe (return None) (\_ -> (maybe (None, s) (\a -> (Just x, put s a)) (getOpt s))) out) (maybe (None, s) (\a -> uncurry (\out a -> (Just out, put s a)) (q a)) (getOpt s))
+= [...] -- big step here, which merges the two blocks of operations into single one, based on the first block output
+  s -> maybe (return None s) (\a -> uncurry (\_ a -> uncurry (\_ s -> maybe (None, s) (\a -> (Just x, put s a)) (getOpt s)) (Just out, put s a)) (q a)) (getOpt s)
+= [def uncurry]
+  s -> maybe (return None s) (\a -> uncurry (\_ a -> maybe (None, put s a) (\a -> (Just x, put (put s a) a)) (getOpt (put s a))) (q a)) (getOpt s)
+= [PutGet]
+  s -> maybe (return None s) (\a -> uncurry (\_ a -> maybe (None, put s a) (\a -> (Just x, put (put s a) a)) (getOpt s $> a)) (q a)) (getOpt s)
+= [PutPut]
+  s -> maybe (return None s) (\a -> uncurry (\_ a -> maybe (None, put s a) (\a -> (Just x, put s a)) (getOpt s $> a)) (q a)) (getOpt s)
+= [(getOpt s) is defined]
+  s -> maybe (return None s) (\a -> uncurry (\_ a -> maybe (None, put s a) (\a -> (Just x, put s a)) (Just a)) (q a)) (getOpt s)
+= [maybe definition]
+  s -> maybe (return None s) (\a -> uncurry (\_ a -> (Just x, put s a)) (q a)) (getOpt s)
+= [def return]
+  s -> maybe (return None s) (\a -> uncurry (\_ a -> return (Just x) (put s a)) (q a)) (getOpt s)
+= [...] -- reversing previous big step. Again, this makes much sense pictorically.
+  s -> uncurry (\out s -> maybe (return None) (\_ -> return (Just x)) out) (maybe (return None s) (\a -> uncurry (\out a -> (Just out, put s a)) (q a)) (getOpt s))
+= [def >>_op]
+  (s -> maybe (return None s) (\a -> uncurry (\out a -> (Just out, put s a)) (q a)) (getOpt s)) >> (return_op x)
+= [def φ]
+  φ q >> return_op x
 ```
 
 #### AffMor3
