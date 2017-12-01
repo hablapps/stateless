@@ -17,6 +17,10 @@ trait SystemData[P[_]]{
   val department: LensAlg.Aux[P, Department.P, Dp]
 }
 
+object SystemData{
+  type Aux[P1[_], Dp2] = SystemData[P1] { type Dp = Dp2 }
+}
+
 trait Department[Dp] {
   type P[_]
   type Pr; val Person: Person[Pr]

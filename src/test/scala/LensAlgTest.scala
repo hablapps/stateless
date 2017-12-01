@@ -43,13 +43,14 @@ class LensAlgTest extends FlatSpec with Matchers with Checkers {
         address <- arbitrary[Address]
       } yield Person(name, last, age, address))
 
-  implicit val ageLn: Lens[Person, Int] = Person.age
+  val ageLn: Lens[Person, Int] = Person.age
 
   val john = Person("John", "Doe", 40, Address("street", "city", 1))
 
   "Lens" should "check laws" in {
-    nat.lensAlg.laws[State[Person, ?], State[Int, ?], Int]
-    .properties.map(_._2).foreach(check(_))
+    nat.lensAlg.laws[State[Person, ?], State[Int, ?], Int](ageLn).properties
+      .map(_._2)
+      .foreach(check(_))
   }
 
   it should "get" in {
@@ -67,6 +68,12 @@ class LensAlgTest extends FlatSpec with Matchers with Checkers {
   val addrLn: Lens[Person, Address] = Person.address
 
   val nmbLn: Lens[Address, Int] = Address.number
+
+  "Lens composition" should "check laws" in {
+    nat.lensAlg.laws[State[Person, ?], State[Int, ?], Int](addrLn composeLens nmbLn).properties
+      .map(_._2)
+      .foreach(check(_))
+  }
 
   it should "compose" in {
 

@@ -126,7 +126,6 @@ object ZipCodeDoobie{
         PersonTable.insertWithAdd(p.name,did,_).withUniqueGeneratedKeys[Int]("pid")
       }
 
-
     def init(dep: SDepartment): ConnectionIO[Unit] = for {
       did <- DepartmentTable.insert(dep.budget).withUniqueGeneratedKeys[Int]("did")
       pid <- initPerson(did)(dep.head)

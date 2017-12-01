@@ -27,7 +27,7 @@ object ZipCodeSpecDoobie{
   }
 
   val xa = DriverManagerTransactor[IOLite](
-    "org.postgresql.Driver", "jdbc:postgresql:testing", "postgres", "habla667$"
+    "org.postgresql.Driver", "jdbc:postgresql:testing", "postgres", "postgres"
   )
 
   val Sys = ZipCodeDoobie.doobieSystem

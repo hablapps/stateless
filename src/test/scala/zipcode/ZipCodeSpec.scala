@@ -4,7 +4,7 @@ package test
 import scalaz._, Scalaz._
 import org.hablapps.puretest._
 
-trait ZipCodeSpec[P[_]] extends FunSpec[P]{
+trait ZipCodeSpec[P[_]] extends FunSpec[P] {
 
   implicit val M: Monad[P]
   implicit val HE: HandleError[P,Throwable]
@@ -45,8 +45,8 @@ trait ZipCodeSpec[P[_]] extends FunSpec[P]{
 
   Describe("Department's members"){
     It("should get all members"){
-      init(d0) >> 
-      (department composeTraversal Department.members composeLens Department.Person.name).getList shouldBe 
+      init(d0) >>
+      (department composeTraversal Department.members composeLens Department.Person.name).getList shouldBe
         List("b","a","c")
     }
   }
@@ -55,8 +55,8 @@ trait ZipCodeSpec[P[_]] extends FunSpec[P]{
     It("should get info if not none"){
       init(d0) >>
       (for {
-        Some(_) <- (department composeLens 
-                   Department.head composeOptional 
+        Some(_) <- (department composeLens
+                   Department.head composeOptional
                    Department.Person.optAddress).getOption
       } yield ()  )
     }
@@ -82,13 +82,17 @@ trait ZipCodeSpec[P[_]] extends FunSpec[P]{
   }
 }
 
+trait EqualP[P[_]] {
+  def apply[A: Equal]: Equal[P[A]]
+}
+
 object ZipCodeSpec{
-  class ScalaTest[P[_]](
+  abstract class ScalaTest[P[_]](
     val Sys: SystemData[P],
     val Ser: View[P],
     val Tester: Tester[P,PuretestError[Throwable]])(implicit
     val M: Monad[P],
     val HE: HandleError[P,Throwable],
-    val RE: RaiseError[P,PuretestError[Throwable]]
+    val RE: RaiseError[P,PuretestError[Throwable]],
   ) extends scalatestImpl.FunSpec[P,Throwable] with ZipCodeSpec[P]
 }
