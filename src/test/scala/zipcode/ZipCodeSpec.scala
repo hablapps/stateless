@@ -3,6 +3,7 @@ package test
 
 import scalaz._, Scalaz._
 import org.hablapps.puretest._
+import core.nat.GetterAlg
 
 trait ZipCodeSpec[P[_]] extends FunSpec[P] {
 
@@ -13,7 +14,11 @@ trait ZipCodeSpec[P[_]] extends FunSpec[P] {
   val Sys: SystemData[P]; import Sys._
   val Ser: View[P]
 
-  val d0 = SDepartment(10,SPerson("b",Some(SAddress("c0",0))),List(
+  val Alg: DepartmentAlg.Aux[Sys.Dp, Sys.Department.Pr]
+  val Lift: Alg.Person.F ~> P
+
+  val hd = SPerson("b",Some(SAddress("c0",0)))
+  val d0 = SDepartment(10,hd,List(
     SPerson("a",Some(SAddress("c1",1))),
     SPerson("c",Some(SAddress("c2",2)))))
 
@@ -27,6 +32,31 @@ trait ZipCodeSpec[P[_]] extends FunSpec[P] {
       init(d0) >>
       ((department composeLens Department.budget).put(11)) >>
       ((department composeLens Department.budget).get shouldBe 11)
+    }
+
+    import Department._, Person._, Address._
+
+    implicit val M2: Monad[Sys.Department.Person.P] =
+      Sys.Department.Person.name
+
+    implicit val M3: Monad[Sys.Department.Person.Address.P] =
+      Sys.Department.Person.Address.zip
+
+    val getSPerson: Sys.Department.Person.P[SPerson] =
+      for {
+        nm <- name.get
+        sa <- optAddress.hom(city.get >>= (c => zip.get.map(z => SAddress(c, z))))
+      } yield SPerson(nm, sa)
+
+    It("should get the head"){
+      init(d0) >> ((department composeLens head).hom(getSPerson) shouldBe hd)
+    }
+
+    It("should set the head"){
+      init(d0) >>
+      Lift(Alg.Person.init(hd)) >>=
+      (pr => (department composeLens head).put(pr) >>
+      ((department composeLens head).hom(getSPerson) shouldBe hd))
     }
   }
 
@@ -93,6 +123,6 @@ object ZipCodeSpec{
     val Tester: Tester[P,PuretestError[Throwable]])(implicit
     val M: Monad[P],
     val HE: HandleError[P,Throwable],
-    val RE: RaiseError[P,PuretestError[Throwable]],
+    val RE: RaiseError[P,PuretestError[Throwable]]
   ) extends scalatestImpl.FunSpec[P,Throwable] with ZipCodeSpec[P]
 }
