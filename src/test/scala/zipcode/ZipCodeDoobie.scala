@@ -53,7 +53,7 @@ object PersonTable{ // } extends DoobieSchemaKV[Int,(String,Int,Int)]{
     CREATE TABLE IF NOT EXISTS Person(
       pid SERIAL PRIMARY KEY,
       name VARCHAR(10) NOT NULL,
-      did INTEGER NOT NULL,
+      did INTEGER,
       add INTEGER,
       FOREIGN KEY (did) REFERENCES Department(did)
   );""".update
