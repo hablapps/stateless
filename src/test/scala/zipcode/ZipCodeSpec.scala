@@ -23,40 +23,40 @@ trait ZipCodeSpec[P[_]] extends FunSpec[P] {
     SPerson("c",Some(SAddress("c2",2)))))
 
   Describe("Department"){
+    import Department._, Person._, Address._
+
     It("should get the budget"){
       init(d0) >>
-      ((department composeLens Department.budget).get shouldBe 10)
+      ((department composeLens budget).get shouldBe 10)
     }
 
     It("should set the budget"){
       init(d0) >>
-      ((department composeLens Department.budget).put(11)) >>
-      ((department composeLens Department.budget).get shouldBe 11)
+      ((department composeLens budget).put(11)) >>
+      ((department composeLens budget).get shouldBe 11)
     }
 
-    import Department._, Person._, Address._
-
-    implicit val M2: Monad[Sys.Department.Person.P] =
-      Sys.Department.Person.name
-
-    implicit val M3: Monad[Sys.Department.Person.Address.P] =
-      Sys.Department.Person.Address.zip
-
-    val getSPerson: Sys.Department.Person.P[SPerson] =
+    lazy val getSPerson: Sys.Department.Person.P[SPerson] = {
+      implicit lazy val M2 = Sys.Department.Person.name
+      implicit lazy val M3 = Sys.Department.Person.Address.city
       for {
         nm <- name.get
         sa <- optAddress.hom(city.get >>= (c => zip.get.map(z => SAddress(c, z))))
       } yield SPerson(nm, sa)
+    }
 
     It("should get the head"){
       init(d0) >> ((department composeLens head).hom(getSPerson) shouldBe hd)
     }
 
     It("should set the head"){
-      init(d0) >>
-      Lift(Alg.Person.init(hd)) >>=
-      (pr => (department composeLens head).put(pr) >>
-      ((department composeLens head).hom(getSPerson) shouldBe hd))
+
+      val hd2 = SPerson("b2", Some(SAddress("c3", 0)))
+
+      init(d0) *>
+      Lift(Alg.Person.init(hd2)) >>=
+      (pr => (department composeLens head).put(pr) *>
+      ((department composeLens head).hom(getSPerson) shouldBe hd2))
     }
   }
 
@@ -110,19 +110,4 @@ trait ZipCodeSpec[P[_]] extends FunSpec[P] {
       Department.Person.Address.zip).getList shouldBe List(1,2,3)
     }
   }
-}
-
-trait EqualP[P[_]] {
-  def apply[A: Equal]: Equal[P[A]]
-}
-
-object ZipCodeSpec{
-  abstract class ScalaTest[P[_]](
-    val Sys: SystemData[P],
-    val Ser: View[P],
-    val Tester: Tester[P,PuretestError[Throwable]])(implicit
-    val M: Monad[P],
-    val HE: HandleError[P,Throwable],
-    val RE: RaiseError[P,PuretestError[Throwable]]
-  ) extends scalatestImpl.FunSpec[P,Throwable] with ZipCodeSpec[P]
 }
