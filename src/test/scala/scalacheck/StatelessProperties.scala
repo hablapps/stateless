@@ -50,39 +50,39 @@ object StatelessProperties {
 
     object lensAlg {
 
-      def getGet[P[_], A](implicit
-          alg: LensAlg[P, A],
+      def getGet[P[_], A](
+          alg: LensAlg[P, A])(implicit
           eq: Equal[P[(A, A)]]) =
         forAll((_: Unit) => alg.lensAlgLaw.getGet)
 
-      def getPut[P[_], A](implicit
-          alg: LensAlg[P, A],
+      def getPut[P[_], A](
+          alg: LensAlg[P, A])(implicit
           eq: Equal[P[Unit]]) =
         forAll((_: Unit) => alg.lensAlgLaw.getPut)
 
-      def putGet[P[_], A](implicit
-          alg: LensAlg[P, A],
+      def putGet[P[_], A](
+          alg: LensAlg[P, A])(implicit
           eq: Equal[P[A]],
           aa: Arbitrary[A]) =
         forAll(a => alg.lensAlgLaw.putGet(a))
 
-      def putPut[P[_], A](implicit
-          alg: LensAlg[P, A],
+      def putPut[P[_], A](
+          alg: LensAlg[P, A])(implicit
           eq: Equal[P[Unit]],
           aa: Arbitrary[A]) =
         forAll((a1, a2) => alg.lensAlgLaw.putPut(a1, a2))
 
-      def laws[P[_], A](implicit
-          alg: LensAlg[P, A],
+      def laws[P[_], A](
+          alg: LensAlg[P, A])(implicit
           eq0: Equal[P[(A, A)]],
           eq1: Equal[P[Unit]],
           eq2: Equal[P[A]],
           aa: Arbitrary[A]): Properties =
         newProperties("foldAlg") { p =>
-          p.property("getGet") = getGet[P, A]
-          p.property("getPut") = getPut[P, A]
-          p.property("putGet") = putGet[P, A]
-          p.property("putPut") = putPut[P, A]
+          p.property("getGet") = getGet[P, A](alg)
+          p.property("getPut") = getPut[P, A](alg)
+          p.property("putGet") = putGet[P, A](alg)
+          p.property("putPut") = putPut[P, A](alg)
         }
     }
 
@@ -201,14 +201,15 @@ object StatelessProperties {
 
     object lensAlg {
 
-      def hom1[P[_], A](implicit
-          alg: LensAlg[P, A],
+      def hom1[P[_], A](
+          alg: LensAlg[P, A])(implicit
           eq: Equal[P[A]],
-          aa: Arbitrary[A]) =
+          aa: Arbitrary[A]) = {
         forAll(a => alg.natLensAlgLaw.hom1[A](a))
+      }
 
-      def hom2[P[_], Q[_], A, X, Y](implicit
-          alg: LensAlg.Aux[P, Q, A],
+      def hom2[P[_], Q[_], A, X, Y](
+          alg: LensAlg.Aux[P, Q, A])(implicit
           eq: Equal[P[Y]],
           aqx: Arbitrary[Q[X]],
           axqy: Arbitrary[X => Q[Y]]) =
@@ -216,19 +217,18 @@ object StatelessProperties {
           alg.natLensAlgLaw.hom2[X, Y](qx)(xqy)
         }
 
-      def laws[P[_], Q[_], A](implicit
-          alg: LensAlg.Aux[P, Q, A],
+      def laws[P[_], Q[_], A](
+          alg: LensAlg.Aux[P, Q, A])(implicit
           eq0: Equal[P[(A, A)]],
           eq1: Equal[P[Unit]],
           eq2: Equal[P[A]],
           eq3: Equal[P[Int]],
           aa: Arbitrary[A],
-          aqi: Arbitrary[Q[Int]],
-          aiqi: Arbitrary[Int => Q[Int]]): Properties =
+          aqi: Arbitrary[Q[Int]]): Properties =
         newProperties("lensAlg") { p =>
-          p.include(raw.lensAlg.laws)
-          p.property("hom1") = hom1[P, A]
-          p.property("hom2") = hom2[P, Q, A, Int, Int]
+          p.include(raw.lensAlg.laws(alg))
+          p.property("hom1") = hom1[P, A](alg)
+          p.property("hom2") = hom2[P, Q, A, Int, Int](alg)
         }
     }
 
