@@ -25,6 +25,15 @@ class ZipCodeSpecDoobie
 
     val Person = new PersonAlg[Int] {
       type F[X] = ConnectionIO[X]
+      type Ad = Int
+
+      val Address = new AddressAlg[Int] {
+        type F[X] = ConnectionIO[X]
+        def init(add: SAddress) =
+          sql"INSERT INTO Address (city, zip) VALUES (${add.city}, ${add.zip});"
+            .update
+            .withUniqueGeneratedKeys[Int]("aid")
+      }
 
       def init(per: SPerson) =
         for {
@@ -44,6 +53,7 @@ class ZipCodeSpecDoobie
   }
 
   val Lift = λ[Alg.Person.F ~> ConnectionIO](x => x)
+  val Lift2 = λ[Alg.Person.Address.F ~> ConnectionIO](x => x)
 }
 
 object ZipCodeSpecDoobie{

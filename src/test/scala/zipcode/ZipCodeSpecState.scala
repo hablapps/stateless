@@ -24,12 +24,18 @@ class ZipCodeSpecState
     type Pr = SPerson
     val Person = new PersonAlg[SPerson] {
       type F[X] = Id[X]
+      type Ad = SAddress
+      val Address = new AddressAlg[SAddress] {
+        type F[X] = Id[X]
+        def init(add: SAddress) = add
+      }
       def init(per: SPerson) = per
     }
     def init(dep: SDepartment) = dep
   }
 
-  val Lift: Alg.Person.F ~> Program = λ[Alg.Person.F ~> Program](M.point(_))
+  val Lift = λ[Alg.Person.F ~> Program](M.point(_))
+  val Lift2 = λ[Alg.Person.Address.F ~> Program](M.point(_))
 }
 
 object ZipCodeSpecState {

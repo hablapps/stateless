@@ -14,16 +14,29 @@ trait ZipCodeSpec[P[_]] extends FunSpec[P] {
   val Sys: SystemData[P]; import Sys._
   val Ser: View[P]
 
-  val Alg: DepartmentAlg.Aux[Sys.Dp, Sys.Department.Pr]
+  val Alg: DepartmentAlg.Aux[Sys.Dp, Sys.Department.Pr, Sys.Department.Person.Ad]
   val Lift: Alg.Person.F ~> P
+  val Lift2: Alg.Person.Address.F ~> P
 
-  val hd = SPerson("b",Some(SAddress("c0",0)))
-  val d0 = SDepartment(10,hd,List(
+  val ad = SAddress("c0", 0)
+  val hd = SPerson("b", Some(ad))
+  val d0 = SDepartment(10, hd, List(
     SPerson("a",Some(SAddress("c1",1))),
     SPerson("c",Some(SAddress("c2",2)))))
 
+  import Department._, Person._, Address._
+
+  lazy val getSPerson: Sys.Department.Person.P[SPerson] = {
+    implicit lazy val _ = Sys.Department.Person.name
+    (name.get |@| optAddress.hom(getSAddress)) { (n, a) => SPerson(n, a) }
+  }
+
+  lazy val getSAddress: Sys.Department.Person.Address.P[SAddress] = {
+    implicit lazy val _ = Sys.Department.Person.Address.city
+    (city.get |@| zip.get) { (c, z) => SAddress(c, z) }
+  }
+
   Describe("Department"){
-    import Department._, Person._, Address._
 
     It("should get the budget"){
       init(d0) >>
@@ -36,21 +49,11 @@ trait ZipCodeSpec[P[_]] extends FunSpec[P] {
       ((department composeLens budget).get shouldBe 11)
     }
 
-    lazy val getSPerson: Sys.Department.Person.P[SPerson] = {
-      implicit lazy val M2 = Sys.Department.Person.name
-      implicit lazy val M3 = Sys.Department.Person.Address.city
-      for {
-        nm <- name.get
-        sa <- optAddress.hom(city.get >>= (c => zip.get.map(z => SAddress(c, z))))
-      } yield SPerson(nm, sa)
-    }
-
     It("should get the head"){
       init(d0) >> ((department composeLens head).hom(getSPerson) shouldBe hd)
     }
 
     It("should set the head"){
-
       val hd2 = SPerson("b2", Some(SAddress("c3", 0)))
 
       init(d0) *>
@@ -61,34 +64,51 @@ trait ZipCodeSpec[P[_]] extends FunSpec[P] {
   }
 
   Describe("Department's head"){
+
     It("should get info"){
       init(d0) >>
-      (department composeLens Department.head composeLens Department.Person.name).get shouldBe "b"
+      (department composeLens head composeLens name).get shouldBe "b"
     }
 
     It("should set info"){
       init(d0) >>
-      (department composeLens Department.head composeLens Department.Person.name).put("cc") >>
-      (department composeLens Department.head composeLens Department.Person.name).get shouldBe "cc"
+      (department composeLens head composeLens name).put("cc") >>
+      (department composeLens head composeLens name).get shouldBe "cc"
     }
   }
 
   Describe("Department's members"){
+
     It("should get all members"){
       init(d0) >>
-      (department composeTraversal Department.members composeLens Department.Person.name).getList shouldBe
-        List("b","a","c")
+      (department composeTraversal members).hom(getSPerson).map(_.toSet) shouldBe Set(
+        SPerson("b", Option(SAddress("c0", 0))),
+        SPerson("a", Option(SAddress("c1", 1))),
+        SPerson("c", Option(SAddress("c2", 2))))
     }
   }
 
   Describe("Person's address"){
+
+    It("should get optional address"){
+      init(d0) >>
+      (department composeLens head composeOptional optAddress).hom(getSAddress) shouldBe Option(SAddress("c0",0))
+    }
+
+    It("should set optional address"){
+      val ad2 = SAddress("c3", 3)
+
+      init(d0) *>
+      Lift2(Alg.Person.Address.init(ad2)) >>=
+      (ad => (department composeLens head composeOptional optAddress).setOption(ad) *>
+      ((department composeLens head composeOptional optAddress).hom(getSAddress) shouldBe Option(ad2)))
+    }
+
     It("should get info if not none"){
       init(d0) >>
       (for {
-        Some(_) <- (department composeLens
-                   Department.head composeOptional
-                   Department.Person.optAddress).getOption
-      } yield ()  )
+        Some(_) <- (department composeLens head composeOptional optAddress).getOption
+      } yield ())
     }
 
     It("should get all zip codes"){
