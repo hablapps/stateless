@@ -36,6 +36,11 @@ trait ZipCodeSpec[P[_]] extends FunSpec[P] {
     (city.get |@| zip.get) { (c, z) => SAddress(c, z) }
   }
 
+  lazy val setDefaultEmail: Sys.Department.Person.P[Unit] = {
+    implicit lazy val _ = Sys.Department.Person.name
+    name.get >>= (n => emailMap(0).set(Some(s"$n@habla.org")))
+  }
+
   Describe("Department"){
 
     It("should get the budget"){
@@ -85,6 +90,16 @@ trait ZipCodeSpec[P[_]] extends FunSpec[P] {
         SPerson("b", Option(SAddress("c0", 0))),
         SPerson("a", Option(SAddress("c1", 1))),
         SPerson("c", Option(SAddress("c2", 2))))
+    }
+  }
+
+  Describe("Person's email map") {
+
+    It("should add a new email") {
+      init(d0) >>
+      ((department composeTraversal members).hom(setDefaultEmail)) >>
+      ((department composeTraversal members).hom(emailMap(0).get)
+        shouldBe List("b@habla.org", "a@habla.org", "c@habla.org").map(Some(_)))
     }
   }
 

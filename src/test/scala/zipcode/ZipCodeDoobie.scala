@@ -4,7 +4,7 @@ package test
 import scalaz._, Scalaz._
 import doobie.imports._
 import monocle.syntax._
-import core.nat._, doobieImpl._
+import core.nat._, lib._, doobieImpl._
 
 import shapeless._
 
@@ -77,6 +77,23 @@ object PersonTable{ // } extends DoobieSchemaKV[Int,(String,Int,Int)]{
   val DTraversalMembers = DoobieTraversal[Int,Int]("Person","pid","did")
 }
 
+object EmailTable {
+
+  val createTable: Update0 = sql"""
+    CREATE TABLE IF NOT EXISTS Email(
+      pid INTEGER PRIMARY KEY,
+      alias INTEGER NOT NULL,
+      email VARCHAR(50) NOT NULL
+  );""".update
+
+  val dropTable: Update0 = sql"""
+    DROP TABLE IF EXISTS Email CASCADE;
+  """.update
+
+  val DAtEmail = DoobieAt[Int, Int, String]("Email", "pid", "alias", "email")
+  val DFIEmail = DoobieFilterIndex[Int, Int, String]("Email", "pid", "alias", "email")
+}
+
 object AddressTable{
 
   val createTable: Update0 = sql"""
@@ -111,11 +128,13 @@ object ZipCodeDoobie{
     val create: ConnectionIO[Unit] =
       DepartmentTable.createTable.run *>
       PersonTable.createTable.run *>
+      EmailTable.createTable.run *>
       AddressTable.createTable.run.as(())
 
     def destroy =
       DepartmentTable.dropTable.run *>
       PersonTable.dropTable.run *>
+      EmailTable.dropTable.run *>
       AddressTable.dropTable.run.as(())
 
     def initAddress(ad: SAddress): ConnectionIO[Int] =
@@ -157,6 +176,9 @@ object ZipCodeDoobie{
     val name: LensAlg[P, String] = LensesDoobie.fromState(PersonTable.DLensName)
     lazy val optAddress: OptionalAlg.Aux[P, Address.P, Ad] =
       OptionalDoobie.fromStateT(PersonTable.DOptionalAddress)
+    lazy val emailMap = MapAlg[P, State[String, ?], Int, String](
+      AtDoobie.fromState[Int, Int, String](EmailTable.DAtEmail),
+      FilterIndexDoobie.fromState[Int, Int, String](EmailTable.DFIEmail))
   }
 
   object DoobieAddress extends Address[Int]{
