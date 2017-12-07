@@ -21,8 +21,8 @@ trait ZipCodeSpec[P[_]] extends FunSpec[P] {
   val ad = SAddress("c0", 0)
   val hd = SPerson("b", Some(ad))
   val d0 = SDepartment(10, hd, List(
-    SPerson("a",Some(SAddress("c1",1))),
-    SPerson("c",Some(SAddress("c2",2)))))
+    SPerson("a",Some(SAddress("c1",1)), Map(1 -> "a@gmail.com")),
+    SPerson("c",Some(SAddress("c2",2)), Map(2 -> "c@hotmail.com"))))
 
   import Department._, Person._, Address._
 
@@ -34,6 +34,11 @@ trait ZipCodeSpec[P[_]] extends FunSpec[P] {
   lazy val getSAddress: Sys.Department.Person.Address.P[SAddress] = {
     implicit lazy val _ = Sys.Department.Person.Address.city
     (city.get |@| zip.get) { (c, z) => SAddress(c, z) }
+  }
+
+  lazy val setDefaultEmail: Sys.Department.Person.P[Unit] = {
+    implicit lazy val _ = Sys.Department.Person.name
+    name.get >>= (n => emailMap(0).set(Some(s"$n@habla.org")))
   }
 
   Describe("Department"){
@@ -85,6 +90,24 @@ trait ZipCodeSpec[P[_]] extends FunSpec[P] {
         SPerson("b", Option(SAddress("c0", 0))),
         SPerson("a", Option(SAddress("c1", 1))),
         SPerson("c", Option(SAddress("c2", 2))))
+    }
+  }
+
+  Describe("Person's email map") {
+
+    It("should set a corporative email") {
+      init(d0) >>
+      ((department composeTraversal members).hom(setDefaultEmail)) >>
+      ((department composeTraversal members).hom(emailMap(0).get)
+        shouldBe List("b@habla.org", "a@habla.org", "c@habla.org").map(Some(_)))
+    }
+
+    It("should upper case keys greater than 1") {
+      init(d0) >>
+      ((department composeTraversal members).hom(
+        emailMap.filterIndex(_ > 1).modify(_.toUpperCase))) >>
+      ((department composeTraversal members).hom(emailMap.foci)
+        shouldBe List(List(), List("a@gmail.com"), List("C@HOTMAIL.COM")))
     }
   }
 

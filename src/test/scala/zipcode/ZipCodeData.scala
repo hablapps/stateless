@@ -3,7 +3,7 @@ package test
 
 import scalaz.State
 
-import core.nat._
+import core.nat._, op._, lib._
 
 // Data layer
 
@@ -40,6 +40,7 @@ trait Person[Pr] {
 
   val name: LensAlg[P, String]
   val optAddress: OptionalAlg.Aux[P, Address.P, Ad]
+  val emailMap: MapAlg[P, Int, String]
 }
 
 object Person{

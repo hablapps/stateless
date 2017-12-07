@@ -6,15 +6,22 @@ import monocle.macros.Lenses
 
 @Lenses case class System(department: SDepartment)
 
-@Lenses case class SDepartment(budget: Int, head: SPerson, members: List[SPerson])
+@Lenses case class SDepartment(
+  budget: Int,
+  head: SPerson,
+  members: List[SPerson])
 
-@Lenses case class SPerson(name: String, address: Option[SAddress])
+@Lenses case class SPerson(
+  name: String,
+  address: Option[SAddress],
+  email: Map[Int, String] = Map.empty[Int, String])
 
 @Lenses case class SAddress(city: String, zip: Int)
 
 object ZipCodeState{
 
   import core.nat._
+  import lib._
   import smonocle.nat.all._
   import monocle.std.option.some
   import monocle.function.Each._
@@ -36,7 +43,7 @@ object ZipCodeState{
   //- BEGIN AUX
 
   implicit class LensOp[S,A](lens: monocle.PLens[S,S,A,A]){
-    def :+(trav: monocle.PTraversal[S,S,A,A]) = 
+    def :+(trav: monocle.PTraversal[S,S,A,A]) =
       new monocle.PTraversal[S, S, A, A]{
         def modifyF[F[_]: Applicative](f: A => F[A])(s: S): F[S] =
           (lens.modifyF(f)(s) |@| trav.modifyF(f)(s)){
@@ -64,6 +71,7 @@ object ZipCodeState{
 
     val name = asLensAlg(SPerson.name)
     val optAddress = fromOptional(SPerson.address composePrism some)
+    val emailMap = mapFromMapMLens[F, SPerson, Int, String](SPerson.email)
   }
 
   def stateAddress[F[_]: Monad] = new Address[SAddress] {
