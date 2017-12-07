@@ -90,11 +90,11 @@ object DoobieAt {
       ).query[V],
       (k1: K1) => (k2: K2) => (v: V) => (
         fr"INSERT INTO" ++ Fragment.const(table) ++
-        fr"(" ++ Fragment.const(valField) ++ fr"," ++
-                 Fragment.const(key1Field) ++ fr"," ++
-                 Fragment.const(key2Field) ++ fr")" ++
+        fr"(" ++ Fragment.const(key1Field) ++ fr"," ++
+                 Fragment.const(key2Field) ++ fr"," ++
+                 Fragment.const(valField) ++ fr")" ++
         fr"VALUES" ++
-        fr"(" ++ fr"$v"++ fr"," ++ fr"$k1"++ fr"," ++ fr"$k2" ++ fr")"
+        fr"(" ++ fr"$k1"++ fr"," ++ fr"$k2"++ fr"," ++ fr"$v" ++ fr")"
       ).update,
       (k1: K1) => (k2: K2) => (
         fr"DELETE FROM" ++ Fragment.const(table) ++
@@ -115,15 +115,15 @@ object DoobieFilterIndex {
       valField: String): DoobieFilterIndex[K1, K2, V] =
     DoobieFilterIndex[K1, K2, V](
       (k1: K1) => (
-        fr"SELECT (" ++ Fragment.const(valField) ++ fr"," ++
-                        Fragment.const(key2Field) ++ fr")" ++
+        fr"SELECT " ++ Fragment.const(key2Field) ++ fr"," ++
+                       Fragment.const(valField) ++
         fr"FROM" ++ Fragment.const(table) ++
         fr"WHERE" ++ Fragment.const(key1Field) ++ fr"=$k1"
       ).query[(K2, V)],
       (k1: K1) => (k2: K2) => (v: V) => (
         fr"UPDATE" ++ Fragment.const(table) ++
-        fr"SET" ++ Fragment.const(valField) ++ fr"=" ++ fr"$v" ++
-        fr"WHERE" ++ Fragment.const(key1Field) ++ fr"=" ++ fr"$k1" ++
+        fr"SET" ++ Fragment.const(valField) ++ fr"=$v" ++
+        fr"WHERE" ++ Fragment.const(key1Field) ++ fr"=$k1" ++
         fr"AND" ++ Fragment.const(key2Field) ++ fr"=$k2"
       ).update)
 }

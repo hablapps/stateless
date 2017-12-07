@@ -81,7 +81,7 @@ object EmailTable {
 
   val createTable: Update0 = sql"""
     CREATE TABLE IF NOT EXISTS Email(
-      pid INTEGER PRIMARY KEY,
+      pid INTEGER NOT NULL,
       alias INTEGER NOT NULL,
       email VARCHAR(50) NOT NULL
   );""".update
@@ -89,6 +89,11 @@ object EmailTable {
   val dropTable: Update0 = sql"""
     DROP TABLE IF EXISTS Email CASCADE;
   """.update
+
+  def insert(pid: Int, alias: Int, email: String): Update0 =
+    sql"""
+      INSERT INTO Email (pid, alias, email) VALUES ($pid, $alias, $email);
+    """.update
 
   val DAtEmail = DoobieAt[Int, Int, String]("Email", "pid", "alias", "email")
   val DFIEmail = DoobieFilterIndex[Int, Int, String]("Email", "pid", "alias", "email")
@@ -141,9 +146,11 @@ object ZipCodeDoobie{
       AddressTable.insert(ad.city,ad.zip).withUniqueGeneratedKeys[Int]("aid")
 
     def initPerson(did: Int)(p: SPerson): ConnectionIO[Int] =
-      p.address.traverse(initAddress) >>= {
-        PersonTable.insertWithAdd(p.name,did,_).withUniqueGeneratedKeys[Int]("pid")
-      }
+      for {
+        aid <- p.address.traverse(initAddress)
+        pid <- PersonTable.insertWithAdd(p.name,did,aid).withUniqueGeneratedKeys[Int]("pid")
+        _   <- p.email.toList.traverseU { case (k, v) => EmailTable.insert(pid, k, v).run }
+      } yield pid
 
     def init(dep: SDepartment): ConnectionIO[Unit] = for {
       did <- DepartmentTable.insert(dep.budget).withUniqueGeneratedKeys[Int]("did")

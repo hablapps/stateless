@@ -21,8 +21,8 @@ object FilterIndexDoobie {
                 _.traverse { case (k2, v) =>
                   if (p(k2))
                     q(k2 :: HNil)(v) match {
-                      case (newG, out) =>
-                        dfi.insertOrUpdate(k1)(k2)(newG).run.as(Option(out))
+                      case (v2, out) =>
+                        dfi.insertOrUpdate(k1)(k2)(v2).run.as(Option(out))
                     }
                   else Option.empty[X].point[ConnectionIO]
                 }.map(xs => (k1, xs.flatten))
