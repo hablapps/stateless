@@ -284,5 +284,6 @@ performance. The optimization of instances is crucial to make stateless viable.
 ## Contributing
 TODO
 
-## License
-TODO
+# License
+
+Puretest is licensed under the Apache License, Version 2.0.
