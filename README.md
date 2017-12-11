@@ -30,7 +30,7 @@ resolvers ++= Seq("Habla releases" at "http://repo.hablapps.com/releases")
 libraryDependencies += "org.hablapps" %% "stateless" % "0.1"
 ```
 
-(!) *Soon, we'll publish this library in official repositories, so the resolver 
+(!) *Soon, we'll publish this library in official repositories, so the resolver
 will become unnecessary.*
 
 This library depends on [Monocle](https://github.com/julien-truffaut/Monocle),
@@ -99,7 +99,7 @@ is how we encode `Address`:
 ```scala
 trait Address[Ad] {
   type P[_]
-  
+
   val city: LensAlg[P, String]
   val zip: LensAlg[P, Int]
 }
@@ -138,18 +138,17 @@ address, we declare two optic algebras: `name` and `optAddress`. There
 is nothing remarkable about `name`, but `optAddress`, which is a
 so-called optional algebra, brings new patterns.
 
-Specifically, its returning type refers to a generic address type
-`Ad`, which is declared as a type member. The fact that we intend this
-type to be used as an actual address is declared through the
-corresponding type class instance `Address`. Also, the `optAddress`
-field's type exposes a second type constructor parameter through the
-`Aux` pattern. In fact, every optic algebra hides a type constructor
-member `Q`, that represents the type of program that evolves the
-focus; optic algebras are then equipped with a natural transformation
-that turns these *inner* programs into programs that evolve the whole
-`P`, or *outer* programs. Since the focus of the optional field is of
-type `Ad`, we use `Address.P` as the type of inner programs for the optional lens. This is
-the essential mechanism that enables optic algebra composition in stateless.
+Specifically, its returning type refers to a generic address type `Ad`, which is
+declared as a type member. The fact that we intend this type to be used as an
+actual address is declared through the corresponding type class instance
+`Address`. Also, the `optAddress` field's type exposes a second type constructor
+parameter through the `Aux` pattern. In fact, every optic algebra hides a type
+constructor member `Q`, that represents the type of program that evolves the
+focus; optic algebras are then equipped with a natural transformation that turns
+these *inner* programs into programs that evolve the whole `P`, or *outer*
+programs. Since the focus of the optional field is of type `Ad`, we use
+`Address.P` as the type of inner programs for the optional lens. This is the
+essential mechanism that enables optic algebra composition in stateless.
 
 Finally, this is how we represent departments:
 
@@ -186,14 +185,15 @@ def modifyZip[D](f: Int => Int)(Dep: Department[D]): Dep.P[Unit] = {
 }
 ```
 
-First, compare to the `modifyZip` function for case classes that was
-shown previously, this new signature is truly generic. It no longer
-works for a specific `SDepartment` case class, but for any type `D`
-that qualifies as a department. Similarly, the type of the
-transformation program returned by this function is not fixed once and
-for all but depends on the actual type of department received. This
-level of generality allows us to decouple this implementation from any
-concrete infrastructure. And, still, what is great here is that this implementation is almost the same as the one we did for the in-memory scenario with Monocle.
+First, compare to the `modifyZip` function for case classes that was shown
+previously, this new signature is truly generic. It no longer works for a
+specific `SDepartment` case class, but for any type `D` that qualifies as a
+department. Similarly, the type of the transformation program returned by this
+function is not fixed once and for all but depends on the actual type of
+department received. This level of generality allows us to decouple this
+implementation from any concrete infrastructure. And, still, what is great here
+is that this implementation is almost the same as the one we did for the
+in-memory scenario with Monocle.
 
 #### Recovering the In-memory Setting
 
@@ -229,9 +229,9 @@ val stateDepartment = new Department[SDepartment] {
 }
 ```
 
-If we feed this value to `modifyZip`, we get a `State[SDepartment, Unit]` program, which
-updates all the zip codes existing in the department when executed over an
-instance of `SDepartment`.
+If we feed this value to `modifyZip`, we get a `State[SDepartment, Unit]`
+program, which updates all the zip codes existing in the department when
+executed over an instance of `SDepartment`.
 
 ```scala
 scala> val initial = SDepartment(1000, List(
@@ -247,7 +247,12 @@ We can see how the zip codes for Juan and Maria are incremented in one unit.
 
 #### Relational Database Instance
 
-TODO
+We provide facilities to instantiate the data layer of an application with
+[doobie](https://github.com/tpolecat/doobie). In this sense, each kind of optic
+has an associated schema. The programmer is responsible for supplying instances
+of such schemas to build the corresponding optic algebras. In general, these
+ideas are work in progress, you can check the standing facilities
+[here](https://github.com/hablapps/stateless/tree/master/src/main/scala/doobie/nat).
 
 ## Additional Features
 
