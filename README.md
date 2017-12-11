@@ -1,5 +1,7 @@
 # Stateless
 
+[![Join the chat at https://gitter.im/hablapps/stateless](https://badges.gitter.im/hablapps/stateless.svg)](https://gitter.im/hablapps/stateless?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 ## Overview
 
 Optics provide abstractions and patterns to access and update
