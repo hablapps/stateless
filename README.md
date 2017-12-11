@@ -28,12 +28,12 @@ resolvers ++= Seq("Habla releases" at "http://repo.hablapps.com/releases")
 libraryDependencies += "org.hablapps" %% "stateless" % "0.1"
 ```
 
+(!) *Soon, we'll publish this library in official repositories, so the resolver 
+will become unnecessary.*
+
 This library depends on [Monocle](https://github.com/julien-truffaut/Monocle),
 [Scalaz](https://github.com/scalaz/scalaz) and
 [Shapeless](https://github.com/milessabin/shapeless).
-
-(!) *Soon, we'll publish this library in official repositories, so the resolver 
-will become unnecessary*
 
 ## Getting Started
 
@@ -97,6 +97,7 @@ is how we encode `Address`:
 ```scala
 trait Address[Ad] {
   type P[_]
+  
   val city: LensAlg[P, String]
   val zip: LensAlg[P, Int]
 }
@@ -283,9 +284,6 @@ context.
 * We need to establish what we consider "reasonable" when we talk about
 performance. The optimization of instances is crucial to make stateless viable.
 * We're working on macro annotations to remove boilerplate from applications.
-
-## Contributing
-TODO
 
 # License
 
