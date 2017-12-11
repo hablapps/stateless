@@ -289,4 +289,4 @@ performance. The optimization of instances is crucial to make stateless viable.
 
 # License
 
-Puretest is licensed under the Apache License, Version 2.0.
+Stateless is licensed under the Apache License, Version 2.0.
