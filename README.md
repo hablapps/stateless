@@ -32,6 +32,9 @@ This library depends on [Monocle](https://github.com/julien-truffaut/Monocle),
 [Scalaz](https://github.com/scalaz/scalaz) and
 [Shapeless](https://github.com/milessabin/shapeless).
 
+(!) *Soon, we'll publish this library in official repositories, so the resolver 
+will become unnecessary*
+
 ## Getting Started
 
 Suppose that we wanted to modify the optional zip code field
