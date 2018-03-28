@@ -66,7 +66,7 @@ import monocle.std.option.some
 // Business Logic
 def modifyZip(f: Int => Int): SDepartment => SDepartment = {
   import SDepartment.people, SPerson.address, SAddress.zip
-  (people composeTravesal each 
+  (people composeTraversal each 
           composeLens address 
           composePrism some 
           composeLens zip).modify(f)
