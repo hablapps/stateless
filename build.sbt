@@ -8,12 +8,8 @@ organization := "org.hablapps"
 
 version := "0.1-SNAPSHOT"
 
-resolvers ++= Seq(
-  "Habla repo - releases" at "http://repo.hablapps.com/releases",
-  "Habla repo - snapshots" at "http://repo.hablapps.com/snapshots")
-
 libraryDependencies ++= Seq(
-  "org.hablapps" %% "puretest-scalaz" % "0.3.1",
+  "org.hablapps" %% "puretest-scalaz" % "0.3.2",
   "org.scalaz" %% "scalaz-core" % "7.2.8",
   "com.chuusai" %% "shapeless" % "2.3.2",
   "com.github.julien-truffaut" %%  "monocle-core"  % "1.4.0",

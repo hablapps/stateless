@@ -14,7 +14,7 @@ import monocle.Traversal
 
 import smonocle.nat.all._
 
-import org.hablapps.puretest._
+import puretest._
 
 class LensAlgTest extends FlatSpec with Matchers with Checkers {
 

@@ -13,7 +13,7 @@
 
 // import smonocle.nat.all._
 
-// // import org.hablapps.puretest._
+// // import puretest._
 
 // class TraversalAlgTest extends FlatSpec with Matchers with Checkers {
 

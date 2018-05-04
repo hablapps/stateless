@@ -5,7 +5,7 @@
 // import scalaz.MonadError
 // import scalaz.syntax.monad._
 
-// import org.hablapps.puretest._, Filter.Syntax._
+// import puretest._, Filter.Syntax._
 
 // trait UniversitySpec[P[_]] {
 

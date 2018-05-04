@@ -5,7 +5,7 @@
 // import scalaz.Monad
 
 // import org.scalatest._
-// import org.hablapps.puretest._, scalatestImpl._, ProgramStateMatchers.Syntax._
+// import puretest._, scalatestImpl._, ProgramStateMatchers.Syntax._
 
 // trait MyTest[S, P[_]] extends GeofenceSpec[P] { self: FunSpec with Matchers =>
 
