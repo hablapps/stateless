@@ -12,7 +12,7 @@
 // import core.nat.lib.MapAlg
 // import smonocle.nat.all._
 
-// import org.hablapps.puretest, puretest._, puretest.Filter.Syntax._
+// import puretest, puretest._, puretest.Filter.Syntax._
 
 // import StateTests._
 

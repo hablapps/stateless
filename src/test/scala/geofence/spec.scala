@@ -5,7 +5,7 @@
 // import scalaz.MonadError
 // import scalaz.syntax.monad._
 
-// import org.hablapps.puretest._
+// import puretest._
 
 // trait GeofenceSpec[P[_]] extends FunSpec[P]{
 

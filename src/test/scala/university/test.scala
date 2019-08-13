@@ -3,7 +3,7 @@
 // package university
 
 // import org.scalatest._
-// import org.hablapps.puretest._, scalatestImpl._, ProgramStateMatchers.Syntax._
+// import puretest._, scalatestImpl._, ProgramStateMatchers.Syntax._
 
 // trait MyTest[P[_], U] extends UniversitySpec[P] { self: FunSpec with Matchers =>
 

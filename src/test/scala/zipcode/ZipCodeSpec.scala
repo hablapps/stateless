@@ -2,7 +2,7 @@ package org.hablapps.stateless
 package test
 
 import scalaz._, Scalaz._
-import org.hablapps.puretest._
+import puretest._
 import core.nat.GetterAlg
 
 trait ZipCodeSpec[P[_]] extends FunSpec[P] {

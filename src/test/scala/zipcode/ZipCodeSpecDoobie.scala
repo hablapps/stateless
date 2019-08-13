@@ -2,7 +2,7 @@ package org.hablapps.stateless
 package test
 
 import scalaz._, Scalaz._
-import org.hablapps.puretest._
+import puretest._
 import doobie.imports._
 
 import ZipCodeSpecDoobie._
