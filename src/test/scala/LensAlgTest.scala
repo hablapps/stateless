@@ -18,6 +18,48 @@ import puretest._
 
 class LensAlgTest extends FlatSpec with Matchers with Checkers {
 
+  import core.nat._
+
+  trait University[P[_], U] {
+    val unv: LensAlg[P, String]
+    type Q[_]
+    type D
+    val Department: Department[Q, D]
+    val mathDep: LensAlg.Aux[P, Q, D]
+  }
+
+  trait Department[P[_], D] {
+    val dpt: LensAlg[P, String]
+    val budget: LensAlg[P, Int]
+  }
+
+  def doubleUnivBudget[P[_], U](implicit univ: University[P, U]): P[Unit] = {
+    import univ._, Department._
+    (mathDep composeLens budget).modify(_ * 2)
+  }
+
+  @Lenses
+  case class SUniversity(unv: String, mathDep: SDepartment)
+
+  @Lenses
+  case class SDepartment(dpt: String, budget: Int) 
+
+  implicit val stateUniversity = new University[State[SUniversity, ?], SUniversity] {
+    val unv = SUniversity.unv
+    type Q[x] = State[SDepartment, x]
+    type D = SDepartment
+    val Department = new Department[State[SDepartment, ?], SDepartment] {
+      val dpt = SDepartment.dpt
+      val budget = SDepartment.budget 
+    }
+    val mathDep = SUniversity.mathDep
+  }
+
+  val urjc = SUniversity("urjc", SDepartment("math", 100000))
+
+  doubleUnivBudget[State[SUniversity, ?], SUniversity].exec(urjc)
+  // SUniversity(urjc,SDepartment(math,200000))
+
   @Lenses
   case class Person(name: String, last: String, age: Int, address: Address)
 

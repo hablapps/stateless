@@ -2,10 +2,7 @@ package org.hablapps.stateless
 package smonocle
 package nat
 
-import scalaz.{ Monad, State, StateT, ~> }
-import scalaz.Id.Id
-import scalaz.syntax.monad._
-import scalaz.std.tuple._
+import scalaz._, Scalaz._
 
 import monocle.{ Getter => MGetter }
 
@@ -34,4 +31,11 @@ trait GetterState {
       λ[State[A, ?] ~> StateT[F, S, ?]] { sa =>
         StateT(s => sa(gt.get(s)).swap.as(s).swap.point[F])
       })(implicitly, stateTMonadReader[Id, A])
+
+  def fromGetter[S, A](gt: monocle.Getter[S, A])
+      : GetterAlg.Aux[Reader[S, ?], Reader[A, ?], A] =
+    GetterAlg[Reader[S, ?], Reader[A, ?], A](
+      λ[Reader[A, ?] ~> Reader[S, ?]] { ra =>
+        Reader(s => ra.run(gt.get(s)))
+      })
 }

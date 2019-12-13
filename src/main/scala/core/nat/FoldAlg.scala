@@ -64,4 +64,13 @@ object FoldAlg {
     implicit val fev = fev1
     val hom = hom2
   }
+
+  // def filtered[P[_], A](p: A => Boolean)(implicit ev: MonadReader[P, A]): Aux[P, P, A] =
+  //   apply[P, P, A](λ[P ~> λ[x => P[List[x]]]](px =>
+  //     for { x <- px; a <- ev.ask } yield (if(p(a)) List(x) else List.empty)))
+
+  def filtered[P[_], A](p: P[Boolean])(implicit ev: MonadReader[P, A]): Aux[P, P, A] =
+    apply[P, P, A](λ[P ~> λ[x => P[List[x]]]](px => 
+      p.flatMap(b => if (b) px.map(List(_)) else List.empty.point[P])))
 }
+
